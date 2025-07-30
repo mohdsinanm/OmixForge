@@ -14,7 +14,7 @@ all: build-bin build-deb build-debian
 # Step 1: Build the PyInstaller executable
 build-bin:
 	@echo "Building PyInstaller executable..."
-	pyinstaller --name $(BIN_NAME) --onefile --noconsole $(ENTRY_POINT)
+	pyinstaller --name $(BIN_NAME) --onefile --noconsole $(ENTRY_POINT) --add-data "src/assets/omixforge.png:src/assets"
 	@echo "Executable built at dist/$(BIN_NAME)"
 
 # Step 2: Prepare .deb package structure

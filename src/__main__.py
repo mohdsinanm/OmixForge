@@ -12,6 +12,8 @@ from PyQt6.QtWidgets import (
 import sys
 import os
 import subprocess
+from pathlib import Path
+from src.utils.resource import resource_path
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -26,8 +28,9 @@ class MainWindow(QMainWindow):
         toolbar = QToolBar("My main toolbar")
         toolbar.setIconSize(QSize(16, 16))
         self.addToolBar(toolbar)
+        icon_path = resource_path('src/assets/omixforge.png')
 
-        button_action = QAction(QIcon("/home/sinan/Projects/OmixForge/OmixForge/omixforge.png"), "Your button", self)
+        button_action = QAction(QIcon(icon_path), "Your button", self)
         button_action.setStatusTip("This is your button")
         button_action.triggered.connect(self.toolbar_button_clicked)
         button_action.setCheckable(True)
