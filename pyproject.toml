@@ -1,0 +1,19 @@
+[project]
+name = "omixforge"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "mohdsinanm",email = "mohamedysf@bicpu.edu.in"}
+]
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "pytest (>=8.4.1,<9.0.0)",
+    "pyqt6 (>=6.9.1,<7.0.0)",
+    "pyinstaller (>=6.14.1,<7.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
