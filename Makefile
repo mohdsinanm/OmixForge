@@ -9,7 +9,7 @@ ICON_NAME = $(APP_NAME).png
 
 .PHONY: all clean build-deb build-bin
 
-all: build-bin build-deb build-debian
+all: remove-omix build-bin build-deb build-debian install-omix
 
 # Step 1: Build the PyInstaller executable
 build-bin:
@@ -52,3 +52,12 @@ build-debian:
 clean:
 	@echo "Cleaning build artifacts..."
 	rm -rf build dist __pycache__ *.spec $(BUILD_DIR)
+
+install-omix:
+	sudo dpkg -i $(BUILD_DIR).deb
+
+remove-omix:
+	sudo apt remove omixforge --purge -y || true
+
+dev-run:
+	python3 src/__main__.py
