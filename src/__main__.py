@@ -15,6 +15,8 @@ from src.utils.resource import resource_path
 from src.core.dashboard.pipeline_dashboard import PipelineDashboard
 from src.core.status_page.pipeline_status import PipelineStatus
 from src.core.settings_page.settings import SettingsPage
+from src.core.sample.sample_prep import SamplePrepPage
+from src.core.initiate import InitiateApp
 from PyQt6.QtWidgets import QStackedWidget
 
 class MainWindow(QMainWindow):
@@ -37,7 +39,7 @@ class MainWindow(QMainWindow):
             Qt.DockWidgetArea.LeftDockWidgetArea 
         )
         sidebar_widget = QListWidget()
-        sidebar_widget.addItems(["Pipeline Dashboard", "Pipeline Status", "Settings"])
+        sidebar_widget.addItems(["Pipeline Dashboard","Sample Prep", "Pipeline Status", "Settings"])
         sidebar_widget.itemClicked.connect(self.list_item_clicked)
         self.sidebar.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
         self.sidebar.setWidget(sidebar_widget)
@@ -58,12 +60,14 @@ class MainWindow(QMainWindow):
         self.pipeline_dashboard = PipelineDashboard()
         self.pipeline_status = PipelineStatus()
         self.settings_page = SettingsPage()
+        self.sample_prep_page = SamplePrepPage()
 
         # Stacked widget to host pages without destroying them when switching
         self.stack = QStackedWidget()
         self.stack.addWidget(self.pipeline_dashboard.widget)
         self.stack.addWidget(self.pipeline_status.widget)
         self.stack.addWidget(self.settings_page.widget)
+        self.stack.addWidget(self.sample_prep_page.widget)
 
         self.setCentralWidget(self.stack)
 
@@ -81,10 +85,12 @@ class MainWindow(QMainWindow):
             self.stack.setCurrentWidget(self.pipeline_status.widget)
         elif page == "Settings":
             self.stack.setCurrentWidget(self.settings_page.widget)
+        elif page == "Sample Prep":
+            self.stack.setCurrentWidget(self.sample_prep_page.widget)
        
 
 app = QApplication(sys.argv)
-
+initiate = InitiateApp()
 window = MainWindow()
 window.showMaximized()
 window.show()

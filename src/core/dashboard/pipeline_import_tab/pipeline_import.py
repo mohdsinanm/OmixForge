@@ -1,10 +1,35 @@
 from PyQt6.QtWidgets import QLabel, QWidget, QVBoxLayout, QComboBox, QScrollArea, QSizePolicy, QPushButton
+from PyQt6.QtCore import QThread, QObject, pyqtSignal, Qt
+from pyqtwaitingspinner import WaitingSpinner
 from src.utils.nfcore_utils import NfcoreUtils
 import os, subprocess
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
+from src.core.dashboard.pipeline_import_tab.import_worker import PipelineImportWorker
+from src.core.dashboard.pipeline_import_tab.refresh_worker import PipelineRefreshWorker
 
 logger = OmixForgeLogger.get_logger()
+
+
+class PipelineRefreshWorker(QObject):
+    """Worker thread to fetch pipeline list without blocking UI."""
+    
+    finished = pyqtSignal()
+    error = pyqtSignal(str)
+    pipelines_ready = pyqtSignal(list)
+    
+    def run(self):
+        """Fetch pipelines from nf-core."""
+        try:
+            utils = NfcoreUtils()
+            pipelines = utils.get_pipelines()
+            self.pipelines_ready.emit(pipelines)
+        except Exception as e:
+            logger.error(f"Error refreshing pipelines: {e}")
+            self.error.emit(str(e))
+        finally:
+            self.finished.emit()
+
 
 
 class PipelineImport(QWidget):
@@ -12,11 +37,21 @@ class PipelineImport(QWidget):
     QScrollArea so content is constrained to the screen and can be
     scrolled vertically when it's larger than the available space.
     """
+    
+    import_successful = pyqtSignal()  # Emitted when a pipeline is successfully imported
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self.pipelines = []
+        
+        # Worker threads for async operations
+        self.refresh_worker = None
+        self.refresh_worker_thread = None
+        self.import_worker = None
+        self.import_worker_thread = None
+        self.refresh_spinner = None
+        self.import_spinner = None
 
         # Main layout for this widget (contains the scroll area)
         self.main_layout = QVBoxLayout(self)
@@ -52,18 +87,68 @@ class PipelineImport(QWidget):
         self.main_layout.addWidget(self.scroll)
 
     def refresh_pipelines(self):
-        # clear any shown details while we refresh
+        """Refresh pipelines asynchronously with spinner."""
         logger.info("Refreshing nf-core pipeline list...")
         self.clear_details()
         self.btn.setText("Refreshing...")
-        utils = NfcoreUtils()
-        self.pipelines = utils.get_pipelines()
-
+        self.btn.setEnabled(False)
+        
+        # Stop any existing worker thread
+        if self.refresh_worker_thread is not None:
+            self.refresh_worker_thread.quit()
+            self.refresh_worker_thread.wait()
+        
+        # Create and show spinner
+        self.refresh_spinner = WaitingSpinner(self.content)
+        self.refresh_spinner.start()
+        self.content_layout.insertWidget(3, self.refresh_spinner)
+        
+        # Create worker thread
+        self.refresh_worker = PipelineRefreshWorker()
+        self.refresh_worker_thread = QThread()
+        self.refresh_worker.moveToThread(self.refresh_worker_thread)
+        
+        # Connect signals
+        self.refresh_worker_thread.started.connect(self.refresh_worker.run)
+        self.refresh_worker.pipelines_ready.connect(self._on_pipelines_ready)
+        self.refresh_worker.error.connect(self._on_refresh_error)
+        self.refresh_worker.finished.connect(self.refresh_worker_thread.quit)
+        
+        # Start the thread
+        self.refresh_worker_thread.start()
+    
+    def _on_pipelines_ready(self, pipelines):
+        """Handle pipelines ready signal."""
+        self.pipelines = pipelines
+        
+        # Stop spinner
+        if self.refresh_spinner:
+            self.refresh_spinner.stop()
+            self.content_layout.removeWidget(self.refresh_spinner)
+            self.refresh_spinner.deleteLater()
+            self.refresh_spinner = None
+        
         # Update combo
         self.combobox.clear()
         for pipeline in self.pipelines:
             self.combobox.addItem(pipeline.name)
+        
         self.btn.setText("Refresh Pipelines")
+        self.btn.setEnabled(True)
+        logger.info(f"Successfully loaded {len(self.pipelines)} pipelines")
+    
+    def _on_refresh_error(self, error_msg):
+        """Handle refresh error."""
+        # Stop spinner
+        if self.refresh_spinner:
+            self.refresh_spinner.stop()
+            self.content_layout.removeWidget(self.refresh_spinner)
+            self.refresh_spinner.deleteLater()
+            self.refresh_spinner = None
+        
+        self.btn.setText("Refresh Pipelines")
+        self.btn.setEnabled(True)
+        logger.error(f"Error refreshing pipelines: {error_msg}")
 
     def current_text(self, _):  # We receive the index, but don't use it.
         # Clear previous detail widgets so new selection doesn't duplicate
@@ -114,18 +199,77 @@ class PipelineImport(QWidget):
             w.deleteLater()
     
     def import_pipeline(self):
-        logger.info(f"Importing nf-core/{self.combobox.currentText()}")   
-        try:
-            pipeline_exist = subprocess.run(["nextflow", "list"],stdout=subprocess.PIPE,stderr=subprocess.PIPE, text=True)
-            if (self.combobox.currentText() in pipeline_exist.stdout):
-                logger.info(f"Pipeline nf-core/{self.combobox.currentText()} already exists locally.")
-                self.import_btn.setText("Imported Already Exists")
-                return
-            import_process = subprocess.run(["nextflow", "pull", f"nf-core/{self.combobox.currentText()}",], stdout=subprocess.PIPE,stderr=subprocess.PIPE, text=True)
-            if import_process.returncode == 0:
-                logger.info(f"Successfully imported nf-core/{self.combobox.currentText()}.")
-                self.import_btn.setText("Imported Successfully")
-            else:
-                logger.error(f"Failed to import nf-core/{self.combobox.currentText()}: {import_process.stderr}")
-        except Exception as e:
-            logger.error(f"Error importing pipeline: {e}")
+        """Import pipeline asynchronously with spinner."""
+        pipeline_name = self.combobox.currentText()
+        logger.info(f"Importing nf-core/{pipeline_name}")
+        
+        self.import_btn.setEnabled(False)
+        
+        # Stop any existing worker thread
+        if self.import_worker_thread is not None:
+            self.import_worker_thread.quit()
+            self.import_worker_thread.wait()
+        
+        # Create and show spinner
+        self.import_spinner = WaitingSpinner(self.content)
+        self.import_spinner.start()
+        spinner_label = QLabel("Importing pipeline...")
+        spinner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.content_layout.addWidget(self.import_spinner)
+        self.content_layout.addWidget(spinner_label)
+        self.detail_widgets.extend([self.import_spinner, spinner_label])
+        
+        # Create worker thread
+        self.import_worker = PipelineImportWorker(pipeline_name)
+        self.import_worker_thread = QThread()
+        self.import_worker.moveToThread(self.import_worker_thread)
+        
+        # Connect signals
+        self.import_worker_thread.started.connect(self.import_worker.run)
+        self.import_worker.import_ready.connect(self._on_import_ready)
+        self.import_worker.error.connect(self._on_import_error)
+        self.import_worker.finished.connect(self.import_worker_thread.quit)
+        
+        # Start the thread
+        self.import_worker_thread.start()
+    
+    def _on_import_ready(self, success, message):
+        """Handle import completion."""
+        # Stop spinner
+        if self.import_spinner:
+            self.import_spinner.stop()
+        
+        # Remove spinner widgets from detail_widgets
+        for w in [self.import_spinner] + [w for w in self.detail_widgets if isinstance(w, QLabel) and "Importing" in (w.text() if hasattr(w, 'text') else "")]:
+            if w in self.detail_widgets:
+                self.detail_widgets.remove(w)
+                self.content_layout.removeWidget(w)
+                w.deleteLater()
+        
+        self.import_btn.setEnabled(True)
+        
+        if success:
+            logger.info(f"Successfully imported pipeline: {message}")
+            self.import_btn.setText("Imported Successfully")
+            # Emit signal to trigger refresh in local pipeline tab
+            self.import_successful.emit()
+        else:
+            logger.error(f"Import failed: {message}")
+            self.import_btn.setText(f"Import Failed: {message}")
+    
+    def _on_import_error(self, error_msg):
+        """Handle import error."""
+        # Stop spinner
+        if self.import_spinner:
+            self.import_spinner.stop()
+        
+        # Remove spinner widgets
+        for w in [self.import_spinner] + [w for w in self.detail_widgets if isinstance(w, QLabel) and "Importing" in (w.text() if hasattr(w, 'text') else "")]:
+            if w in self.detail_widgets:
+                self.detail_widgets.remove(w)
+                self.content_layout.removeWidget(w)
+                w.deleteLater()
+        
+        self.import_btn.setEnabled(True)
+        logger.error(f"Error importing pipeline: {error_msg}")
+        self.import_btn.setText("Import Failed")
