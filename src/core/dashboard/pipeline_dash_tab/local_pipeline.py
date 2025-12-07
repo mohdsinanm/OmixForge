@@ -128,6 +128,24 @@ class PipelineLocal(QWidget):
                 col = 0
                 row += 1
 
+    def _find_run_for_pipeline(self, pipeline_name: str):
+        """Return the run_name key for a running process matching pipeline_name, or None."""
+        for rn, entry in self.processes.items():
+            try:
+                p_name = entry.get('pipeline')
+                if p_name and (pipeline_name == p_name or pipeline_name == p_name.replace('nf-core/', '')):
+                    return rn
+                proc = entry.get('proc')
+                args = proc.arguments() if proc else []
+                if pipeline_name in args:
+                    return rn
+                short = pipeline_name.replace("nf-core/", "")
+                if short in args:
+                    return rn
+            except Exception:
+                continue
+        return None
+
 
     def on_card_clicked(self, name):
         # Clear old details
@@ -148,11 +166,29 @@ class PipelineLocal(QWidget):
         delete_btn.setFixedSize(60, 30)
         delete_btn.clicked.connect(self.on_delete_clicked)
 
-        run_btn = QPushButton("Run", parent=self.details_box)
-        run_btn.setFixedSize(60, 30)
-        run_btn.clicked.connect(self.on_run_clicked)
+        # Run and Cancel buttons
+        self.run_btn = QPushButton("Run", parent=self.details_box)
+        self.run_btn.setFixedSize(60, 30)
+        self.run_btn.clicked.connect(self.on_run_clicked)
 
-        self.action_section.addWidget(run_btn)
+        self.cancel_btn = QPushButton("Cancel", parent=self.details_box)
+        self.cancel_btn.setFixedSize(60, 30)
+        self.cancel_btn.clicked.connect(self.on_cancel_clicked)
+
+        # If this pipeline already has a running process, reflect that in the UI
+        running_rn = self._find_run_for_pipeline(name)
+        if running_rn:
+            self.run_btn.setEnabled(False)
+            self.cancel_btn.setEnabled(True)
+            # set current run tracking so cancel will refer to the right process
+            self.current_run_name = running_rn
+            self.current_pipeline = name
+        else:
+            self.run_btn.setEnabled(True)
+            self.cancel_btn.setEnabled(False)
+
+        self.action_section.addWidget(self.run_btn)
+        self.action_section.addWidget(self.cancel_btn)
         self.action_section.addWidget(delete_btn)
         self.details_layout.addLayout(self.action_section)
 
@@ -196,8 +232,22 @@ class PipelineLocal(QWidget):
             proc.setArguments(["run", pipeline, "-profile", "docker"])
             proc.setWorkingDirectory(str(run_dir))
 
-            # keep proc referenced by run_name
-            self.processes[run_name] = proc
+            # keep proc referenced by run_name and record the pipeline name
+            # store a small dict so we can easily map runs -> pipeline
+            self.processes[run_name] = {"proc": proc, "pipeline": pipeline}
+
+            # mark current run/pipeline for UI control (cancel/run buttons)
+            self.current_run_name = run_name
+            self.current_pipeline = pipeline
+            # disable the run button and enable cancel
+            try:
+                self.run_btn.setEnabled(False)
+            except Exception:
+                pass
+            try:
+                self.cancel_btn.setEnabled(True)
+            except Exception:
+                pass
 
             # connect signals using run_name only; callbacks will lookup the proc
             proc.readyReadStandardOutput.connect(lambda rn=run_name: self._proc_stdout(rn))
@@ -211,7 +261,10 @@ class PipelineLocal(QWidget):
 
     def _proc_stdout(self, run_name):
         # lookup the live process by run_name (proc may have been deleted)
-        proc = self.processes.get(run_name)
+        entry = self.processes.get(run_name)
+        if not entry:
+            return
+        proc = entry.get('proc')
         if not proc:
             return
         try:
@@ -224,7 +277,10 @@ class PipelineLocal(QWidget):
             logger.error(f"Error reading stdout for {run_name}: {e}")
 
     def _proc_stderr(self, run_name):
-        proc = self.processes.get(run_name)
+        entry = self.processes.get(run_name)
+        if not entry:
+            return
+        proc = entry.get('proc')
         if not proc:
             return
         try:
@@ -236,31 +292,88 @@ class PipelineLocal(QWidget):
         except Exception as e:
             logger.error(f"Error reading stderr for {run_name}: {e}")
 
+    def on_cancel_clicked(self):
+        # Cancel the currently running pipeline (if any)
+        if not hasattr(self, 'current_run_name') or not self.current_run_name:
+            return
+        rn = self.current_run_name
+        entry = self.processes.get(rn)
+        if not entry:
+            return
+        proc = entry.get('proc')
+        if not proc:
+            return
+        try:
+            append_to_file(PIPELINES_RUNS / rn, "Pipeline run cancelled by user.\n")
+            logger.info(f"Cancelling pipeline run: {rn}")
+            if proc.state() != QProcess.ProcessState.NotRunning:
+                proc.terminate()
+                proc.waitForFinished(2000)
+                if proc.state() != QProcess.ProcessState.NotRunning:
+                    proc.kill()
+                    proc.waitForFinished(1000)
+        except Exception as e:
+            logger.error(f"Error cancelling pipeline {rn}: {e}")
+        finally:
+            # clean up and update UI
+            try:
+                proc.deleteLater()
+            except Exception:
+                pass
+            self.processes.pop(rn, None)
+            try:
+                self.run_btn.setEnabled(True)
+            except Exception:
+                pass
+            try:
+                self.cancel_btn.setEnabled(False)
+            except Exception:
+                pass
+            self.current_run_name = None
+            self.current_pipeline = None
+
     def _proc_finished(self, run_name, exitCode, exitStatus):
         try:
             append_to_file(PIPELINES_RUNS / run_name, "Pipeline run completed.\n")
             logger.info(f"Pipeline {run_name} finished (code={exitCode})")
         finally:
             # Clean up stored process
-            proc = self.processes.pop(run_name, None)
-            if proc:
+            entry = self.processes.pop(run_name, None)
+            proc = None
+            if entry:
+                proc = entry.get('proc')
                 try:
                     # ensure process is not running
-                    if proc.state() != QProcess.ProcessState.NotRunning:
+                    if proc and proc.state() != QProcess.ProcessState.NotRunning:
                         proc.kill()
                         proc.waitForFinished(2000)
                 except Exception:
                     pass
                 try:
-                    proc.deleteLater()
+                    if proc:
+                        proc.deleteLater()
                 except Exception:
                     pass
+            # If this finished run was the currently displayed one, update buttons
+            if hasattr(self, 'current_run_name') and self.current_run_name == run_name:
+                try:
+                    self.run_btn.setEnabled(True)
+                except Exception:
+                    pass
+                try:
+                    self.cancel_btn.setEnabled(False)
+                except Exception:
+                    pass
+                # clear current run tracking
+                self.current_run_name = None
+                self.current_pipeline = None
 
     def closeEvent(self, event):
         # Terminate any running processes when the widget is closed/destroyed
-        for rn, proc in list(self.processes.items()):
+        for rn, entry in list(self.processes.items()):
+            proc = entry.get('proc') if entry else None
             try:
-                if proc.state() != QProcess.ProcessState.NotRunning:
+                if proc and proc.state() != QProcess.ProcessState.NotRunning:
                     proc.terminate()
                     proc.waitForFinished(2000)
                     if proc.state() != QProcess.ProcessState.NotRunning:
@@ -269,7 +382,8 @@ class PipelineLocal(QWidget):
             except Exception:
                 pass
             try:
-                proc.deleteLater()
+                if proc:
+                    proc.deleteLater()
             except Exception:
                 pass
             self.processes.pop(rn, None)
