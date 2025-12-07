@@ -4,7 +4,7 @@ import json
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea,
-    QHBoxLayout, QGridLayout, QPushButton, QDialog,  QMessageBox, 
+    QHBoxLayout, QGridLayout, QPushButton, QDialog, QMessageBox, QTextEdit
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QProcess
 from PyQt6.QtGui import QFont
@@ -25,8 +25,11 @@ class PipelineLocal(QWidget):
         super().__init__(parent)
         # keep references to running processes so they are not GC'd
         self.processes = {}
+        self.output_displays = {}  # Store references to output display widgets by run_name
+        self.current_pipeline_name = None  # Track the currently displayed pipeline
         
         self.pipelines = []
+        self.pipeline_info_lines = {}
         self.get_local_pipelines()
 
         main_layout = QVBoxLayout(self)
@@ -114,17 +117,37 @@ class PipelineLocal(QWidget):
 
 
     def on_card_clicked(self, name):
+        # Store the current pipeline name for use in on_run_clicked
+        self.current_pipeline_name = name
+        
         # Clear old details
         for i in reversed(range(self.details_layout.count())):
             item = self.details_layout.takeAt(i)
             if item.widget():
                 item.widget().deleteLater()
 
-        # New content
-        self.details_layout.addWidget(QLabel(f"Details for pipeline: {name}"))
-        self.details_layout.addWidget(
-            QLabel("Here you can show pipeline metadata, description, parameters, etc.")
-        )
+
+        shell_out = run_shell_command(f"nextflow info {name}")
+        content = ''
+        for line in shell_out.stdout.splitlines():
+            if ": " in line:
+                key, value = line.split(": ", 1)
+                self.pipeline_info_lines[key.strip()] = value.strip()
+                content += f"{key.strip()}: {value.strip()}\n\n"
+                
+        self._details_content_label = QLabel(content)
+        self._details_content_label.setWordWrap(True)
+        self._details_content_label.setFont(QFont("Courier New", 10))
+
+        # Scroll area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setWidget(self._details_content_label)
+
+        self.details_layout.addWidget(scroll)
+                
         self.action_section = QHBoxLayout()
         
 
@@ -181,11 +204,14 @@ class PipelineLocal(QWidget):
         self.render_cards()
 
     def on_run_clicked(self):
-        # Get the pipeline name
-        pipeline = self.details_layout.itemAt(0).widget().text().split(': ')[1]
+        # Get the pipeline name from stored attribute
+        pipeline = self.current_pipeline_name
+        if not pipeline:
+            QMessageBox.warning(self, "Error", "No pipeline selected.")
+            return
         
         # Show the args dialog
-        dialog = PipelineArgsDialog(pipeline, parent=self)
+        dialog = PipelineArgsDialog(pipeline, self.pipeline_info_lines, parent=self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         

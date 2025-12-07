@@ -16,6 +16,7 @@ from src.core.dashboard.pipeline_dashboard import PipelineDashboard
 from src.core.status_page.pipeline_status import PipelineStatus
 from src.core.settings_page.settings import SettingsPage
 from src.core.sample.sample_prep import SamplePrepPage
+from src.core.initiate import InitiateApp
 from PyQt6.QtWidgets import QStackedWidget
 
 class MainWindow(QMainWindow):
@@ -89,7 +90,7 @@ class MainWindow(QMainWindow):
        
 
 app = QApplication(sys.argv)
-
+initiate = InitiateApp()
 window = MainWindow()
 window.showMaximized()
 window.show()

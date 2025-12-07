@@ -67,3 +67,15 @@ def move_file(src: str, dest: str) -> None:
     """Move a file from src to dest."""
     import shutil
     shutil.move(src, dest)  
+
+def json_read(file_path: str) -> dict:
+    """Read JSON content from a file and return as a dictionary."""
+    import json
+    with open(file_path, 'r') as f:
+        return json.load(f)
+
+def json_write(file_path: str, data: dict) -> None:
+    """Write a dictionary as JSON content to a file."""
+    import json
+    with open(file_path, 'w') as f:
+        json.dump(data, f, indent=4)
