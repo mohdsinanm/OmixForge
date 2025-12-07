@@ -3,8 +3,12 @@ from PyQt6.QtWidgets import QLabel, QMainWindow, QHBoxLayout, QWidget, QVBoxLayo
 from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QWidget
 
-from core.dashboard.pipeline_import_tab.pipeline_import import PipelineImport
+from src.core.dashboard.pipeline_import_tab.pipeline_import import PipelineImport
+from src.core.dashboard.pipeline_dash_tab.local_pipeline import PipelineLocal
 
+from src.utils.logger_module.omix_logger import OmixForgeLogger
+
+logger = OmixForgeLogger.get_logger()
 
 class Color(QWidget):
     def __init__(self, color):
@@ -23,24 +27,12 @@ class PipelineDashboard(QWidget):
 
         tab_widget = QTabWidget()
 
-        # tab1 = QWidget()
-        # tab1_layout = QVBoxLayout()
-        # tab1_layout.addWidget(QLabel("This is Tab 1"))
-        # tab1.setLayout(tab1_layout)
+        pipeline_import_tab = PipelineImport()
+        local_pipeline_tab = PipelineLocal()
 
-        pipeline_import_tab = PipelineImport().pipeline_import_tab
+        tab_widget.addTab(local_pipeline_tab, "Pipeline")
+        tab_widget.addTab(pipeline_import_tab, "Import")
 
-        tab2 = QWidget()
-        tab2_layout = QVBoxLayout()
-        tab2_layout.addWidget(QLabel("This is Tab 2"))
-        tab2.setLayout(tab2_layout)
-
-        tab_widget.addTab(pipeline_import_tab, "Pipeline Import")
-        tab_widget.addTab(tab2, "Tab 2")
-
-
-        tab2_layout.addWidget(Color("orange"))
-        tab2_layout.addWidget(Color("blue"))
 
         layout.addWidget(tab_widget)
 

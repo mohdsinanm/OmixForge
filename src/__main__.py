@@ -11,13 +11,17 @@ from PyQt6.QtWidgets import (
     QToolBar,QListWidget, QDockWidget, 
 )
 import sys
-from utils.resource import resource_path
-from core.dashboard.pipeline_dashboard import PipelineDashboard
-from core.status_page.pipeline_status import PipelineStatus
-from core.settings_page.settings import SettingsPage
+from src.utils.resource import resource_path
+from src.core.dashboard.pipeline_dashboard import PipelineDashboard
+from src.core.status_page.pipeline_status import PipelineStatus
+from src.core.settings_page.settings import SettingsPage
+from src.utils.logger_module.omix_logger import OmixForgeLogger
+
+logger = OmixForgeLogger.get_logger()
 
 class MainWindow(QMainWindow):
     def __init__(self):
+        logger.info("Starting OmixForge Application")
         super().__init__()
         self.setWindowTitle("OmixForge")
 
@@ -57,13 +61,16 @@ class MainWindow(QMainWindow):
     def toggle_sidebar(self, checked):
             """Show/hide sidebar based on button state"""
             self.sidebar.setVisible(checked)
+            
 
 
     def list_item_clicked(self, item):
         page = item.text()
         if page == 'Pipeline Dashboard':
+            logger.info("Loading Pipeline Dashboard...")
             PipelineDashboard(self)
         elif page == 'Pipeline Status':
+            logger.info("Loading Pipeline Status...")
             PipelineStatus(self)
         elif page == "Settings":
             SettingsPage(self)
