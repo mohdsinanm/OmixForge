@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=OmixForge
+Exec=omixforge
+Icon=omixforge
+Type=Application
+Categories=Science;Utility;
+Terminal=false
