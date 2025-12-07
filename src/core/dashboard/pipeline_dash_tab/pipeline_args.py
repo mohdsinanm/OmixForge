@@ -192,6 +192,28 @@ class PipelineArgsDialog(QDialog):
                 if meta.get('default') is True:
                     cb.setChecked(True)
                 w = cb
+            elif isinstance(meta, dict) and meta.get('type') == 'string' and 'enum' in meta:
+                combo = QComboBox()
+                for option in meta['enum']:
+                    combo.addItem(str(option))
+                w = combo
+            elif 'path' in  meta.get('format', "").lower():
+                path_h = QHBoxLayout()
+                le = QLineEdit()
+                if help_text:
+                    le.setPlaceholderText(help_text)
+                browse_btn = QPushButton("Browse")
+                
+                def browse_path():
+                    path, _ = QFileDialog.getOpenFileName(self, f"Select file for {key}", str(RUN_DIR))
+                    if path:
+                        le.setText(path)
+                
+                browse_btn.clicked.connect(browse_path)
+                path_h.addWidget(le)
+                path_h.addWidget(browse_btn)
+                w = QWidget()
+                w.setLayout(path_h)
             else:
                 le = QLineEdit()
                 if help_text:
@@ -241,10 +263,7 @@ class PipelineArgsDialog(QDialog):
             json_content = json_read(f"{self.pipeline_info['local path']}/nextflow_schema.json")
             self.params_list = json_content.get("definitions", {})
             if "$defs" in json_content.keys():
-                logger.info("Using $defs for pipeline parameters.")
                 self.params_list = json_content.get("$defs", {})
-            logger.info(f"Pipeline parameters found in JSON schema. {json_content.keys()}")
-            logger.info(f"Extracted pipeline parameters: {list(self.params_list.keys())}")
         except Exception as json_e:
             logger.error(f"Error extracting pipeline parameters: {json_e}")
             self.pipeline_params = []
