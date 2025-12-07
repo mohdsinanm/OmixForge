@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea,
     QHBoxLayout, QGridLayout, QPushButton,
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QFont
 
 
@@ -89,6 +89,15 @@ class PipelineRunStatus(QWidget):
 
         self.render_cards()
 
+        # Periodically refresh the run list so status updates while processes write logs
+        self._refresh_timer = QTimer(self)
+        self._refresh_timer.setInterval(2000)
+        self._refresh_timer.timeout.connect(self._periodic_refresh)
+        self._refresh_timer.start()
+
+        # Timer used to refresh the details content when a run is selected
+        self._details_timer = None
+
 
     def get_local_pipelines_status(self):
 
@@ -111,7 +120,9 @@ class PipelineRunStatus(QWidget):
             content = read_from_file(PIPELINES_RUNS / name)
 
             if "error" in content.lower() or "failed" in content.lower():
-                card = PipelineCard(name, "#ff4c4c")  # Red for error
+                card = PipelineCard(name, "#ff4c4c")
+            elif "cancelled" in content.lower():
+                card = PipelineCard(name, "#6c70dc")  # Red for error
             elif "completed" in content.lower():
                 card = PipelineCard(name, "#4bb543")  # Green for completed
             else:
@@ -142,22 +153,31 @@ class PipelineRunStatus(QWidget):
         # Title
         self.details_layout.addWidget(QLabel(f"Details for pipeline: {name}"))
 
-        # Read file content
+        # Read file content and create a label that we will refresh periodically
         content = read_from_file(PIPELINES_RUNS / name)
-
-        # Large content label
-        content_label = QLabel(content)
-        content_label.setWordWrap(True)
-        content_label.setFont(QFont("Courier New", 10))
+        self._details_content_label = QLabel(content)
+        self._details_content_label.setWordWrap(True)
+        self._details_content_label.setFont(QFont("Courier New", 10))
 
         # Scroll area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll.setWidget(content_label)
+        scroll.setWidget(self._details_content_label)
 
         self.details_layout.addWidget(scroll)
+
+        # start a short timer to refresh the contents of the details view
+        if self._details_timer:
+            try:
+                self._details_timer.stop()
+            except Exception:
+                pass
+        self._details_timer = QTimer(self)
+        self._details_timer.setInterval(1000)
+        self._details_timer.timeout.connect(lambda: self._refresh_details_content(name))
+        self._details_timer.start()
 
         # Action section
         self.action_section = QHBoxLayout()
@@ -187,6 +207,12 @@ class PipelineRunStatus(QWidget):
                 # Refresh the local pipelines list and UI
                 self.clear_details_layout()
                 self.details_box.hide()
+                if self._details_timer:
+                    try:
+                        self._details_timer.stop()
+                    except Exception:
+                        pass
+                    self._details_timer = None
                 self.pipeline_runs = []
                 self.get_local_pipelines_status()
                 # Re-render the cards   
@@ -201,3 +227,19 @@ class PipelineRunStatus(QWidget):
             widget = item.widget()
             if widget:
                 widget.deleteLater()
+
+    def _periodic_refresh(self):
+        # Called by timer to refresh list and cards
+        try:
+            self.get_local_pipelines_status()
+            self.render_cards()
+        except Exception:
+            pass
+
+    def _refresh_details_content(self, name):
+        try:
+            content = read_from_file(PIPELINES_RUNS / name)
+            if hasattr(self, '_details_content_label') and self._details_content_label:
+                self._details_content_label.setText(content)
+        except Exception:
+            pass
