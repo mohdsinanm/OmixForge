@@ -20,7 +20,7 @@ class Color(QWidget):
         self.setPalette(palette)
 
 class PipelineDashboard(QWidget):
-    def __init__(self, main_window: QMainWindow):
+    def __init__(self):
         super().__init__()
 
         layout = QVBoxLayout()
@@ -33,14 +33,11 @@ class PipelineDashboard(QWidget):
         tab_widget.addTab(local_pipeline_tab, "Pipeline")
         tab_widget.addTab(pipeline_import_tab, "Import")
 
-
         layout.addWidget(tab_widget)
 
-        widget = QWidget()
-        widget.setLayout(layout)
+        self.setLayout(layout)
 
-
-
-        # Set this widget as the central widget of the main window
-        main_window.setCentralWidget(widget)
+        # expose the widget so callers can embed this dashboard without
+        # PipelineDashboard itself forcing it as the main window central widget
+        self.widget = self
 

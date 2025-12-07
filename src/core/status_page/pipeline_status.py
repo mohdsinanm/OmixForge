@@ -18,7 +18,7 @@ class Color(QWidget):
         self.setPalette(palette)
 
 class PipelineStatus(QWidget):
-    def __init__(self, main_window: QMainWindow):
+    def __init__(self):
         super().__init__()
 
         layout = QVBoxLayout()
@@ -31,14 +31,8 @@ class PipelineStatus(QWidget):
         tab_widget.addTab(pipeline_status_tab, "Status")
         tab_widget.addTab(pipeline_result_tab, "Results")
 
-
         layout.addWidget(tab_widget)
 
-        widget = QWidget()
-        widget.setLayout(layout)
-
-
-
-        # Set this widget as the central widget of the main window
-        main_window.setCentralWidget(widget)
+        self.setLayout(layout)
+        self.widget = self
 

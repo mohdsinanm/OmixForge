@@ -1,8 +1,14 @@
 from PyQt6.QtWidgets import QLabel
 
 
-class SettingsPage():
-    def __init__(self, main_window):
-        
+from PyQt6.QtWidgets import QWidget, QVBoxLayout
+
+
+class SettingsPage(QWidget):
+    def __init__(self):
+        super().__init__()
+        layout = QVBoxLayout()
         label = QLabel("Settings")
-        main_window.setCentralWidget(label)
+        layout.addWidget(label)
+        self.setLayout(layout)
+        self.widget = self
