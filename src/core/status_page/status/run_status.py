@@ -1,14 +1,15 @@
+
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.subcommands.shell import run_shell_command, run_shell_command_stream
 from src.utils.constants import RUN_DIR, PIPELINES_RUNS
-from src.utils.fileops.file_handle import ensure_directory, write_to_file, append_to_file
+from src.utils.fileops.file_handle import list_files_in_directory, read_from_file, delete_directory, delete_file
 import time
 
 logger = OmixForgeLogger.get_logger()
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea,
-    QHBoxLayout, QGridLayout, QPushButton
+    QHBoxLayout, QGridLayout, QPushButton,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
@@ -17,26 +18,27 @@ from PyQt6.QtGui import QFont
 class PipelineCard(QFrame):
     clicked = pyqtSignal(str)
 
-    def __init__(self, name):
+    def __init__(self, name, background):
         super().__init__()
         self.name = name
 
         self.setObjectName("pipelineCard")
+        
         self.setStyleSheet("""
-            QFrame#pipelineCard {
+            QFrame#pipelineCard {{
                 border: 1px solid #ccc;
                 border-radius: 10px;
                 padding: 12px;
-                background: #fafafa;
+                background: {background};
                 color: #444;
-            }
-            QFrame#pipelineCard:hover {
+            }}
+            QFrame#pipelineCard:hover {{
                 background: #eaeaea;
-            }
-            QFrame#pipelineCard:hover QLabel {
+            }}
+            QFrame#pipelineCard:hover QLabel {{
                 color: black;
-            }
-        """)
+            }}
+        """.format(background=background))
 
         layout = QHBoxLayout()
         label = QLabel(name)
@@ -53,13 +55,13 @@ class PipelineCard(QFrame):
         event.accept()
 
 
-class PipelineLocal(QWidget):
+class PipelineRunStatus(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.pipelines = []
-        self.get_local_pipelines()
+        self.pipeline_runs = []
+        self.get_local_pipelines_status()
 
         main_layout = QVBoxLayout(self)
 
@@ -88,16 +90,10 @@ class PipelineLocal(QWidget):
         self.render_cards()
 
 
-    def get_local_pipelines(self):
-        process = run_shell_command("nextflow list")
-        try:
-            output = process.stdout.strip().splitlines()
-            for line in output:
-                if line and not line.startswith("You can run"):
-                    name = line.split()[0]
-                    self.pipelines.append(name)
-        except Exception as e:
-            logger.error(f"Error decoding nextflow list output: {e}")
+    def get_local_pipelines_status(self):
+
+        items_collected = list_files_in_directory(PIPELINES_RUNS)
+        self.pipeline_runs = items_collected
 
 
     def render_cards(self):
@@ -111,8 +107,16 @@ class PipelineLocal(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-        for index, name in enumerate(self.pipelines):
-            card = PipelineCard(name)
+        for index, name in enumerate(self.pipeline_runs):
+            content = read_from_file(PIPELINES_RUNS / name)
+
+            if "error" in content.lower() or "failed" in content.lower():
+                card = PipelineCard(name, "#ff4c4c")  # Red for error
+            elif "completed" in content.lower():
+                card = PipelineCard(name, "#4bb543")  # Green for completed
+            else:
+                card = PipelineCard(name, "#f0ad4e")  # Yellow for running/unknown
+            
             card.clicked.connect(self.on_card_clicked)
 
             # Add card to grid
@@ -125,71 +129,75 @@ class PipelineLocal(QWidget):
             if col >= columns:
                 col = 0
                 row += 1
-
+    
 
     def on_card_clicked(self, name):
-        # Clear old details
+        # Clear previous details
+        
         for i in reversed(range(self.details_layout.count())):
             item = self.details_layout.takeAt(i)
             if item.widget():
                 item.widget().deleteLater()
 
-        # New content
+        # Title
         self.details_layout.addWidget(QLabel(f"Details for pipeline: {name}"))
-        self.details_layout.addWidget(
-            QLabel("Here you can show pipeline metadata, description, parameters, etc.")
-        )
+
+        # Read file content
+        content = read_from_file(PIPELINES_RUNS / name)
+
+        # Large content label
+        content_label = QLabel(content)
+        content_label.setWordWrap(True)
+        content_label.setFont(QFont("Courier New", 10))
+
+        # Scroll area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setWidget(content_label)
+
+        self.details_layout.addWidget(scroll)
+
+        # Action section
         self.action_section = QHBoxLayout()
-        
 
         delete_btn = QPushButton("Delete", parent=self.details_box)
         delete_btn.setFixedSize(60, 30)
         delete_btn.clicked.connect(self.on_delete_clicked)
 
-        run_btn = QPushButton("Run", parent=self.details_box)
-        run_btn.setFixedSize(60, 30)
-        run_btn.clicked.connect(self.on_run_clicked)
-
-        self.action_section.addWidget(run_btn)
         self.action_section.addWidget(delete_btn)
         self.details_layout.addLayout(self.action_section)
 
         self.details_box.show()
-    
+
+        
     def on_delete_clicked(self):
         try:
-            process_dlt = run_shell_command("nextflow drop " + self.details_layout.itemAt(0).widget().text().split(": ")[1])
-            if process_dlt.returncode == 0:
-                logger.info(f"Successfully deleted pipeline: {self.details_layout.itemAt(0).widget().text().split(': ')[1]}")
+            file_name = self.details_layout.itemAt(0).widget().text().split(': ')[1]
+            delete_file(PIPELINES_RUNS / file_name)
+            delete_directory(RUN_DIR / file_name.replace(".txt",""))
+            logger.info(f"Successfully deleted pipeline: {self.details_layout.itemAt(0).widget().text().split(': ')[1]}")
 
-                # Clear the grid layout
-                for i in reversed(range(self.cards_grid.count())):
-                    item = self.cards_grid.takeAt(i)
-                    if item.widget():
-                        item.widget().deleteLater()
+            # Clear the grid layout
+            for i in reversed(range(self.cards_grid.count())):
+                item = self.cards_grid.takeAt(i)
+                if item.widget():
+                    item.widget().deleteLater()
                 # Refresh the local pipelines list and UI
-                self.pipelines = []
-                self.get_local_pipelines()
+                self.clear_details_layout()
+                self.details_box.hide()
+                self.pipeline_runs = []
+                self.get_local_pipelines_status()
                 # Re-render the cards   
             # Here you can add logic to delete the pipeline
         except Exception as e:
             logger.error(f"Error deleting pipeline: {e}")
         self.render_cards()
 
-    def on_run_clicked(self):
-        # Here you can add logic to run the pipeline
-        run_name = f"{self.details_layout.itemAt(0).widget().text().split(': ')[1]}_{time.time()}_run.txt".replace("nf-core/","")
-        ensure_directory([f"{RUN_DIR}/{run_name.replace('.txt', '')}",PIPELINES_RUNS])
-
-        logger.info(f"Running pipeline: {self.details_layout.itemAt(0).widget().text().split(': ')[1]}")
-        try:
-            write_to_file(PIPELINES_RUNS / run_name , f"Running pipeline: {self.details_layout.itemAt(0).widget().text().split(': ')[1]}\n")
-            process_run, stream  = run_shell_command_stream(f"cd {RUN_DIR/run_name.replace('.txt', '')} && nextflow run " + self.details_layout.itemAt(0).widget().text().split(": ")[1] + " -profile docker")
-            for line in stream:
-                append_to_file(PIPELINES_RUNS / run_name , line + "\n")
-                logger.info(line)
-            append_to_file(PIPELINES_RUNS / run_name , "Pipeline run completed.\n")
-        except Exception as e:
-            logger.error(f"Error running pipeline: {e}")
-            append_to_file(PIPELINES_RUNS / run_name , f"Error running pipeline: {e}\n")
-
+    def clear_details_layout(self):
+        while self.details_layout.count():
+            item = self.details_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()

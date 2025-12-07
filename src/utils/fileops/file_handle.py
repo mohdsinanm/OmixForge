@@ -1,10 +1,18 @@
 import os
+from src.utils.logger_module.omix_logger import OmixForgeLogger
+logger = OmixForgeLogger.get_logger()
 
-def ensure_directory(path: str) -> None:    
-    """Ensure that a directory exists; create it if it doesn't."""
-    if not os.path.exists(path):
-        os.makedirs(path)
-
+def ensure_directory(path: str | list) -> None:    
+    """Ensure that a directory exists; create it if it doesn't.
+    If path_list is provided, ensure all directories in the list exist."""
+    if  isinstance(path, list):
+        for path in path:
+            if not os.path.exists(path):
+                os.makedirs(path)
+    else:  
+        if not os.path.exists(path):
+            os.makedirs(path)
+    
 def write_to_file(file_path: str, content: str) -> None:
     """Write content to a file."""
     with open(file_path, 'w') as f:
@@ -17,13 +25,22 @@ def read_from_file(file_path: str) -> str:
 
 def append_to_file(file_path: str, content: str) -> None:
     """Append content to a file."""
-    with open(file_path, 'a') as f:
-        f.write(content)
+    try:
+        with open(file_path, 'a') as f:
+            f.write(content)
+    except Exception as e:  
+        logger.error(f"Error appending to file '{file_path}': {str(e)}")
 
 def delete_file(file_path: str) -> None:
     """Delete a file if it exists."""
     if os.path.exists(file_path):
         os.remove(file_path)
+
+def delete_directory(directory_path: str) -> None:
+    """Delete a directory and all its contents."""
+    import shutil
+    if os.path.exists(directory_path):
+        shutil.rmtree(directory_path)
 
 def list_files_in_directory(directory_path: str) -> list:
     """List all files in a given directory."""
