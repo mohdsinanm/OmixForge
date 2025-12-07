@@ -197,23 +197,37 @@ class PipelineArgsDialog(QDialog):
                 for option in meta['enum']:
                     combo.addItem(str(option))
                 w = combo
-            elif 'path' in  meta.get('format', "").lower():
-                path_h = QHBoxLayout()
+            elif 'path' in meta.get('format', "").lower():
+                # FIXED: Store the QLineEdit directly, not the wrapper widget
                 le = QLineEdit()
                 if help_text:
                     le.setPlaceholderText(help_text)
                 browse_btn = QPushButton("Browse")
                 
-                def browse_path():
-                    path, _ = QFileDialog.getOpenFileName(self, f"Select file for {key}", str(RUN_DIR))
-                    if path:
-                        le.setText(path)
+                def make_browse_handler(line_edit, param_key):
+                    def browse_path():
+                        path, _ = QFileDialog.getOpenFileName(self, f"Select file for {param_key}", str(RUN_DIR))
+                        if path:
+                            line_edit.setText(path)
+                    return browse_path
                 
-                browse_btn.clicked.connect(browse_path)
+                browse_btn.clicked.connect(make_browse_handler(le, key))
+                
+                # Create wrapper for display but store the QLineEdit for data retrieval
+                row_widget = QWidget()
+                path_h = QHBoxLayout(row_widget)
                 path_h.addWidget(le)
                 path_h.addWidget(browse_btn)
-                w = QWidget()
-                w.setLayout(path_h)
+                path_h.setContentsMargins(0, 0, 0, 0)
+                
+                row = QHBoxLayout()
+                row.addWidget(label)
+                row.addWidget(row_widget)
+                self.params_layout.addLayout(row)
+                
+                # Store the QLineEdit, not the wrapper
+                self.params_widgets[key] = le
+                continue  # Skip the common layout code below
             else:
                 le = QLineEdit()
                 if help_text:
@@ -248,11 +262,16 @@ class PipelineArgsDialog(QDialog):
             try:
                 if isinstance(widget, QCheckBox):
                     config[k] = widget.isChecked()
+                elif isinstance(widget, QComboBox):
+                    val = widget.currentText()
+                    if val:
+                        config[k] = val
                 elif isinstance(widget, QLineEdit):
                     val = widget.text().strip()
                     if val:
                         config[k] = val
-            except Exception:
+            except Exception as e:
+                logger.error(f"Error retrieving value for {k}: {e}")
                 continue
 
         return config
