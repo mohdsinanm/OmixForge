@@ -50,6 +50,33 @@ class PipelineInfoWorker(QObject):
             self.finished.emit()
 
 
+class PipelineDeleteWorker(QObject):
+    """Worker to delete a pipeline (nextflow drop) without blocking UI."""
+    finished = pyqtSignal()
+    error = pyqtSignal(str)
+    result = pyqtSignal(bool, str)  # success, message
+
+    def __init__(self, pipeline_name):
+        super().__init__()
+        self.pipeline_name = pipeline_name
+
+    def run(self):
+        try:
+            proc = run_shell_command(f"nextflow drop {self.pipeline_name}")
+            # If the helper returns an object with returncode and stderr
+            rc = getattr(proc, 'returncode', 0)
+            if rc == 0:
+                self.result.emit(True, "Deleted")
+            else:
+                err = getattr(proc, 'stderr', '') or str(proc)
+                self.result.emit(False, err)
+        except Exception as e:
+            logger.error(f"Error deleting pipeline: {e}")
+            self.error.emit(str(e))
+        finally:
+            self.finished.emit()
+
+
 class PipelineLocal(QWidget):
 
     def __init__(self, parent=None):
@@ -172,8 +199,17 @@ class PipelineLocal(QWidget):
         
         # Stop any existing worker thread
         if self.info_worker_thread is not None:
-            self.info_worker_thread.quit()
-            self.info_worker_thread.wait()
+            try:
+                # Check if thread is still alive before quitting
+                if self.info_worker_thread.isRunning():
+                    self.info_worker_thread.quit()
+                    self.info_worker_thread.wait(1000)
+            except (RuntimeError, AttributeError):
+                # Thread was already deleted or is invalid
+                pass
+            finally:
+                self.info_worker_thread = None
+                self.info_worker = None
         
         # Create and show spinner
         spinner = WaitingSpinner(self.details_box)
@@ -194,7 +230,10 @@ class PipelineLocal(QWidget):
         self.info_worker_thread.started.connect(self.info_worker.run)
         self.info_worker.info_ready.connect(lambda info: self._on_pipeline_info_ready(info, name, spinner))
         self.info_worker.error.connect(lambda err: self._on_pipeline_info_error(err, spinner))
+        # ensure thread quits when worker finishes and clean up objects
         self.info_worker.finished.connect(self.info_worker_thread.quit)
+        self.info_worker.finished.connect(self.info_worker.deleteLater)
+        # Note: do NOT call deleteLater on QThread itself; it causes "wrapped C/C++ object has been deleted" errors
         
         # Start the thread
         self.info_worker_thread.start()
@@ -281,24 +320,173 @@ class PipelineLocal(QWidget):
         self.details_layout.addWidget(error_label)
     
     def on_delete_clicked(self):
-        try:
-            process_dlt = run_shell_command("nextflow drop " + self.details_layout.itemAt(0).widget().text().split(": ")[1])
-            if process_dlt.returncode == 0:
-                logger.info(f"Successfully deleted pipeline: {self.details_layout.itemAt(0).widget().text().split(': ')[1]}")
+        """Asynchronously delete a pipeline using PipelineDeleteWorker and show a spinner.
 
-                # Clear the grid layout
-                for i in reversed(range(self.cards_grid.count())):
-                    item = self.cards_grid.takeAt(i)
-                    if item.widget():
-                        item.widget().deleteLater()
-                # Refresh the local pipelines list and UI
-                self.pipelines = []
-                self.get_local_pipelines()
-                # Re-render the cards   
-            # Here you can add logic to delete the pipeline
+        This replaces the previous synchronous `nextflow drop` call so the UI remains responsive.
+        """
+        try:
+            # Determine pipeline name (prefer stored current_pipeline_name)
+            pipeline = getattr(self, 'current_pipeline_name', None)
+
+            if not pipeline and isinstance(self.pipeline_info_lines, dict):
+                pipeline = self.pipeline_info_lines.get('name') or self.pipeline_info_lines.get('Name')
+
+            if not pipeline:
+                # last-resort scan for a QLabel containing a "Key: value" pattern
+                for i in range(self.details_layout.count()):
+                    item = self.details_layout.itemAt(i)
+                    w = item.widget() if item is not None else None
+                    if w and isinstance(w, QLabel) and hasattr(w, 'text'):
+                        txt = w.text()
+                        if ": " in txt:
+                            pipeline = txt.split(": ", 1)[1].strip()
+                            break
+
+            if not pipeline:
+                logger.error("Could not determine pipeline name to delete")
+                return
+
+            # Confirm deletion with the user
+            resp = QMessageBox.question(
+                self,
+                "Confirm Delete",
+                f"Delete pipeline {pipeline}? This will remove the local pipeline.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if resp != QMessageBox.StandardButton.Yes:
+                return
+
+            # Show spinner and label in the details pane
+            spinner = WaitingSpinner(self.details_box)
+            spinner.start()
+            deleting_label = QLabel("Deleting pipeline...")
+            deleting_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.details_layout.addWidget(spinner)
+            self.details_layout.addWidget(deleting_label)
+
+            # Setup worker and thread
+            delete_worker = PipelineDeleteWorker(pipeline)
+            delete_thread = QThread()
+            delete_worker.moveToThread(delete_thread)
+
+            # retain references so they are not garbage-collected while running
+            self.delete_worker = delete_worker
+            self.delete_thread = delete_thread
+
+            def _cleanup_spinner_and_widgets():
+                try:
+                    spinner.stop()
+                except Exception:
+                    pass
+                try:
+                    # remove spinner and deleting_label if still present
+                    for j in reversed(range(self.details_layout.count())):
+                        it = self.details_layout.itemAt(j)
+                        w = it.widget() if it is not None else None
+                        if w is spinner or w is deleting_label:
+                            try:
+                                self.details_layout.removeWidget(w)
+                            except Exception:
+                                pass
+                            try:
+                                w.deleteLater()
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+            def _on_delete_result(success, message):
+                _cleanup_spinner_and_widgets()
+                if success:
+                    logger.info(f"Successfully deleted pipeline: {pipeline}")
+                    try:
+                        # Refresh pipelines and UI
+                        self.refresh_pipelines()
+                        # Aggressively clear details pane: remove all widgets and layouts
+                        while self.details_layout.count() > 0:
+                            it = self.details_layout.takeAt(0)
+                            if it is not None:
+                                # Handle widgets
+                                w = it.widget()
+                                if w is not None:
+                                    try:
+                                        self.details_layout.removeWidget(w)
+                                    except Exception:
+                                        pass
+                                    try:
+                                        w.deleteLater()
+                                    except Exception:
+                                        pass
+                                # Handle nested layouts
+                                else:
+                                    sub_layout = it.layout()
+                                    if sub_layout is not None:
+                                        while sub_layout.count() > 0:
+                                            sub_it = sub_layout.takeAt(0)
+                                            if sub_it and sub_it.widget():
+                                                try:
+                                                    sub_it.widget().deleteLater()
+                                                except Exception:
+                                                    pass
+                        self.details_box.hide()
+                    except Exception as e:
+                        logger.error(f"Error clearing details after delete: {e}")
+                else:
+                    logger.error(f"Failed to delete pipeline {pipeline}: {message}")
+                    try:
+                        err_label = QLabel(f"Delete failed: {message}")
+                        err_label.setStyleSheet("color: red;")
+                        err_label.setWordWrap(True)
+                        self.details_layout.addWidget(err_label)
+                    except Exception:
+                        pass
+                try:
+                    delete_thread.quit()
+                except Exception:
+                    pass
+
+            def _on_delete_error(err):
+                _cleanup_spinner_and_widgets()
+                logger.error(f"Error deleting pipeline: {err}")
+                try:
+                    err_label = QLabel(f"Delete error: {err}")
+                    err_label.setStyleSheet("color: red;")
+                    err_label.setWordWrap(True)
+                    self.details_layout.addWidget(err_label)
+                except Exception:
+                    pass
+                try:
+                    delete_thread.quit()
+                except Exception:
+                    pass
+
+            delete_worker.result.connect(_on_delete_result)
+            delete_worker.error.connect(_on_delete_error)
+            delete_worker.finished.connect(delete_thread.quit)
+            # ensure proper cleanup of worker (NOT thread; threads shouldn't be deleteLater'd)
+            delete_worker.finished.connect(delete_worker.deleteLater)
+            # when thread finishes, clear our references
+            def _on_delete_thread_finished():
+                try:
+                    self.delete_worker = None
+                except Exception:
+                    pass
+                try:
+                    self.delete_thread = None
+                except Exception:
+                    pass
+            delete_thread.finished.connect(_on_delete_thread_finished)
+            delete_thread.started.connect(delete_worker.run)
+
+            # Start deletion thread
+            delete_thread.start()
+
         except Exception as e:
             logger.error(f"Error deleting pipeline: {e}")
-        self.render_cards()
+            try:
+                QMessageBox.critical(self, "Delete Error", f"Failed to delete pipeline: {e}")
+            except Exception:
+                pass
 
     def on_run_clicked(self):
         # Get the pipeline name from stored attribute
@@ -497,5 +685,26 @@ class PipelineLocal(QWidget):
             except Exception:
                 pass
             self.processes.pop(rn, None)
+        # Stop any worker threads cleanly
+        try:
+            if getattr(self, 'info_worker_thread', None) is not None:
+                try:
+                    self.info_worker_thread.quit()
+                    self.info_worker_thread.wait(1000)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        try:
+            if getattr(self, 'delete_thread', None) is not None:
+                try:
+                    self.delete_thread.quit()
+                    self.delete_thread.wait(1000)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         super().closeEvent(event)
 
