@@ -29,6 +29,9 @@ class PipelineDashboard(QWidget):
 
         pipeline_import_tab = PipelineImport()
         local_pipeline_tab = PipelineLocal()
+        
+        # Connect import success signal to refresh local pipelines
+        pipeline_import_tab.import_successful.connect(local_pipeline_tab.refresh_pipelines)
 
         tab_widget.addTab(local_pipeline_tab, "Pipeline")
         tab_widget.addTab(pipeline_import_tab, "Import")
