@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem, QFileDialog, QLabel, QMessageBox, QSpinBox, QInputDialog, QApplication
 )
 from PyQt6.QtCore import Qt
-import re
+import re, os
 from PyQt6.QtGui import QKeySequence
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.constants import SAMPLE_PREP_DIR
@@ -145,7 +145,7 @@ class SamplePrepPage(QWidget):
             return
         
         try:
-            with open(file_path, 'w', newline='', encoding='utf-8') as f:
+            with open(file_path+".csv", 'w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
                 
                 # Write headers
@@ -224,7 +224,7 @@ class SamplePrepPage(QWidget):
         - Uses filename base (without PE suffix) as sample name
         - Clears the existing table and fills rows for each sample found
         """
-        dir_path = QFileDialog.getExistingDirectory(self, "Select directory with FASTQ/FASTA files")
+        dir_path = QFileDialog.getExistingDirectory(self, "Select directory with FASTQ/FASTA files", f"{os.getenv("HOME")}")
         if not dir_path:
             return
 

@@ -1,56 +1,22 @@
-from src.utils.logger_module.omix_logger import OmixForgeLogger
-from src.utils.subcommands.shell import run_shell_command, run_shell_command_stream
-from src.utils.constants import RUN_DIR, PIPELINES_RUNS
-from src.utils.fileops.file_handle import ensure_directory, write_to_file, append_to_file
 import time
+import json
 
-logger = OmixForgeLogger.get_logger()
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea,
-    QHBoxLayout, QGridLayout, QPushButton
+    QHBoxLayout, QGridLayout, QPushButton, QDialog,  QMessageBox, 
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QProcess
 from PyQt6.QtGui import QFont
 
+from src.utils.logger_module.omix_logger import OmixForgeLogger
+from src.utils.subcommands.shell import run_shell_command, run_shell_command_stream
+from src.utils.constants import RUN_DIR, PIPELINES_RUNS, SAMPLE_PREP_DIR
+from src.utils.fileops.file_handle import ensure_directory, write_to_file, append_to_file
+from src.core.dashboard.pipeline_dash_tab.pipeline_args import PipelineArgsDialog
+from src.core.dashboard.pipeline_dash_tab.pipeline_card import PipelineCard
 
-class PipelineCard(QFrame):
-    clicked = pyqtSignal(str)
-
-    def __init__(self, name):
-        super().__init__()
-        self.name = name
-
-        self.setObjectName("pipelineCard")
-        self.setStyleSheet("""
-            QFrame#pipelineCard {
-                border: 1px solid #ccc;
-                border-radius: 10px;
-                padding: 12px;
-                background: #fafafa;
-                color: #444;
-            }
-            QFrame#pipelineCard:hover {
-                background: #eaeaea;
-            }
-            QFrame#pipelineCard:hover QLabel {
-                color: black;
-            }
-        """)
-
-        layout = QHBoxLayout()
-        label = QLabel(name)
-        
-               
-        label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        layout.addWidget(label)
-        layout.addStretch()
-        self.setLayout(layout)
-
-    
-    def mousePressEvent(self, event):
-        self.clicked.emit(self.name)
-        event.accept()
+logger = OmixForgeLogger.get_logger()
 
 
 class PipelineLocal(QWidget):
@@ -215,28 +181,47 @@ class PipelineLocal(QWidget):
         self.render_cards()
 
     def on_run_clicked(self):
-        # Run pipeline asynchronously using QProcess so UI stays responsive
+        # Get the pipeline name
         pipeline = self.details_layout.itemAt(0).widget().text().split(': ')[1]
+        
+        # Show the args dialog
+        dialog = PipelineArgsDialog(pipeline, parent=self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        
+        # Get the config
+        config = dialog.get_config()
+        
+        # Validate mandatory args
+        if not config.get("input"):
+            QMessageBox.warning(self, "Missing Argument", "Please specify the input (sample sheet) file.")
+            return
+        
         run_name = f"{pipeline}_{time.time()}_run.txt".replace("nf-core/", "")
         run_dir = RUN_DIR / run_name.replace('.txt', '')
         ensure_directory([str(run_dir), PIPELINES_RUNS])
 
         logger.info(f"Starting pipeline: {pipeline}")
         try:
+            # Write config to JSON file in run directory
+            config_file = run_dir / "params.json"
+            with open(config_file, 'w') as f:
+                json.dump(config, f, indent=2)
+            
             write_to_file(PIPELINES_RUNS / run_name, f"Running pipeline: {pipeline}\n")
+            write_to_file(PIPELINES_RUNS / run_name, f"Config: {json.dumps(config, indent=2)}\n")
 
-            # create QProcess without parent so it won't be deleted when this widget is
-            # destroyed; we will manage its lifecycle explicitly
+            # create QProcess without parent
             proc = QProcess()
             proc.setProgram("nextflow")
-            proc.setArguments(["run", pipeline, "-profile", "docker"])
+            # Include -params-file to pass the JSON config
+            proc.setArguments(["run", pipeline, "-profile", "docker", "-params-file", str(config_file)])
             proc.setWorkingDirectory(str(run_dir))
 
-            # keep proc referenced by run_name and record the pipeline name
-            # store a small dict so we can easily map runs -> pipeline
+            # keep proc referenced
             self.processes[run_name] = {"proc": proc, "pipeline": pipeline}
 
-            # mark current run/pipeline for UI control (cancel/run buttons)
+            # mark current run/pipeline
             self.current_run_name = run_name
             self.current_pipeline = pipeline
             # disable the run button and enable cancel
@@ -249,15 +234,17 @@ class PipelineLocal(QWidget):
             except Exception:
                 pass
 
-            # connect signals using run_name only; callbacks will lookup the proc
+            # connect signals
             proc.readyReadStandardOutput.connect(lambda rn=run_name: self._proc_stdout(rn))
             proc.readyReadStandardError.connect(lambda rn=run_name: self._proc_stderr(rn))
             proc.finished.connect(lambda exitCode, exitStatus, rn=run_name: self._proc_finished(rn, exitCode, exitStatus))
 
             proc.start()
+            QMessageBox.information(self, "Pipeline Started", f"Started {pipeline}\nConfig saved to {config_file}")
         except Exception as e:
             logger.error(f"Error starting pipeline: {e}")
             append_to_file(PIPELINES_RUNS / run_name, f"Error starting pipeline: {e}\n")
+            QMessageBox.critical(self, "Error", f"Failed to start pipeline: {e}")
 
     def _proc_stdout(self, run_name):
         # lookup the live process by run_name (proc may have been deleted)
