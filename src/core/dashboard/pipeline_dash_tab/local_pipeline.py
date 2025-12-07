@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea,
     QHBoxLayout, QGridLayout, QPushButton
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QProcess
 from PyQt6.QtGui import QFont
 
 
@@ -57,7 +57,9 @@ class PipelineLocal(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-
+        # keep references to running processes so they are not GC'd
+        self.processes = {}
+        
         self.pipelines = []
         self.get_local_pipelines()
 
@@ -177,19 +179,99 @@ class PipelineLocal(QWidget):
         self.render_cards()
 
     def on_run_clicked(self):
-        # Here you can add logic to run the pipeline
-        run_name = f"{self.details_layout.itemAt(0).widget().text().split(': ')[1]}_{time.time()}_run.txt".replace("nf-core/","")
-        ensure_directory([f"{RUN_DIR}/{run_name.replace('.txt', '')}",PIPELINES_RUNS])
+        # Run pipeline asynchronously using QProcess so UI stays responsive
+        pipeline = self.details_layout.itemAt(0).widget().text().split(': ')[1]
+        run_name = f"{pipeline}_{time.time()}_run.txt".replace("nf-core/", "")
+        run_dir = RUN_DIR / run_name.replace('.txt', '')
+        ensure_directory([str(run_dir), PIPELINES_RUNS])
 
-        logger.info(f"Running pipeline: {self.details_layout.itemAt(0).widget().text().split(': ')[1]}")
+        logger.info(f"Starting pipeline: {pipeline}")
         try:
-            write_to_file(PIPELINES_RUNS / run_name , f"Running pipeline: {self.details_layout.itemAt(0).widget().text().split(': ')[1]}\n")
-            process_run, stream  = run_shell_command_stream(f"cd {RUN_DIR/run_name.replace('.txt', '')} && nextflow run " + self.details_layout.itemAt(0).widget().text().split(": ")[1] + " -profile docker")
-            for line in stream:
-                append_to_file(PIPELINES_RUNS / run_name , line + "\n")
-                logger.info(line)
-            append_to_file(PIPELINES_RUNS / run_name , "Pipeline run completed.\n")
+            write_to_file(PIPELINES_RUNS / run_name, f"Running pipeline: {pipeline}\n")
+
+            # create QProcess without parent so it won't be deleted when this widget is
+            # destroyed; we will manage its lifecycle explicitly
+            proc = QProcess()
+            proc.setProgram("nextflow")
+            proc.setArguments(["run", pipeline, "-profile", "docker"])
+            proc.setWorkingDirectory(str(run_dir))
+
+            # keep proc referenced by run_name
+            self.processes[run_name] = proc
+
+            # connect signals using run_name only; callbacks will lookup the proc
+            proc.readyReadStandardOutput.connect(lambda rn=run_name: self._proc_stdout(rn))
+            proc.readyReadStandardError.connect(lambda rn=run_name: self._proc_stderr(rn))
+            proc.finished.connect(lambda exitCode, exitStatus, rn=run_name: self._proc_finished(rn, exitCode, exitStatus))
+
+            proc.start()
         except Exception as e:
-            logger.error(f"Error running pipeline: {e}")
-            append_to_file(PIPELINES_RUNS / run_name , f"Error running pipeline: {e}\n")
+            logger.error(f"Error starting pipeline: {e}")
+            append_to_file(PIPELINES_RUNS / run_name, f"Error starting pipeline: {e}\n")
+
+    def _proc_stdout(self, run_name):
+        # lookup the live process by run_name (proc may have been deleted)
+        proc = self.processes.get(run_name)
+        if not proc:
+            return
+        try:
+            out = proc.readAllStandardOutput().data().decode('utf-8', errors='ignore')
+            if out:
+                for line in out.splitlines():
+                    append_to_file(PIPELINES_RUNS / run_name, line + "\n")
+                    logger.info(line)
+        except Exception as e:
+            logger.error(f"Error reading stdout for {run_name}: {e}")
+
+    def _proc_stderr(self, run_name):
+        proc = self.processes.get(run_name)
+        if not proc:
+            return
+        try:
+            err = proc.readAllStandardError().data().decode('utf-8', errors='ignore')
+            if err:
+                for line in err.splitlines():
+                    append_to_file(PIPELINES_RUNS / run_name, line + "\n")
+                    logger.error(line)
+        except Exception as e:
+            logger.error(f"Error reading stderr for {run_name}: {e}")
+
+    def _proc_finished(self, run_name, exitCode, exitStatus):
+        try:
+            append_to_file(PIPELINES_RUNS / run_name, "Pipeline run completed.\n")
+            logger.info(f"Pipeline {run_name} finished (code={exitCode})")
+        finally:
+            # Clean up stored process
+            proc = self.processes.pop(run_name, None)
+            if proc:
+                try:
+                    # ensure process is not running
+                    if proc.state() != QProcess.ProcessState.NotRunning:
+                        proc.kill()
+                        proc.waitForFinished(2000)
+                except Exception:
+                    pass
+                try:
+                    proc.deleteLater()
+                except Exception:
+                    pass
+
+    def closeEvent(self, event):
+        # Terminate any running processes when the widget is closed/destroyed
+        for rn, proc in list(self.processes.items()):
+            try:
+                if proc.state() != QProcess.ProcessState.NotRunning:
+                    proc.terminate()
+                    proc.waitForFinished(2000)
+                    if proc.state() != QProcess.ProcessState.NotRunning:
+                        proc.kill()
+                        proc.waitForFinished(1000)
+            except Exception:
+                pass
+            try:
+                proc.deleteLater()
+            except Exception:
+                pass
+            self.processes.pop(rn, None)
+        super().closeEvent(event)
 
