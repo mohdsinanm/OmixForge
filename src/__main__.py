@@ -15,13 +15,10 @@ from src.utils.resource import resource_path
 from src.core.dashboard.pipeline_dashboard import PipelineDashboard
 from src.core.status_page.pipeline_status import PipelineStatus
 from src.core.settings_page.settings import SettingsPage
-from src.utils.logger_module.omix_logger import OmixForgeLogger
-
-logger = OmixForgeLogger.get_logger()
+from PyQt6.QtWidgets import QStackedWidget
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        logger.info("Starting OmixForge Application")
         super().__init__()
         self.setWindowTitle("OmixForge")
 
@@ -56,7 +53,19 @@ class MainWindow(QMainWindow):
 
         # Status bar
         self.setStatusBar(QStatusBar(self))
-        PipelineDashboard(self)
+
+        # Create pages and keep them so state (like running processes) persists
+        self.pipeline_dashboard = PipelineDashboard()
+        self.pipeline_status = PipelineStatus()
+        self.settings_page = SettingsPage()
+
+        # Stacked widget to host pages without destroying them when switching
+        self.stack = QStackedWidget()
+        self.stack.addWidget(self.pipeline_dashboard.widget)
+        self.stack.addWidget(self.pipeline_status.widget)
+        self.stack.addWidget(self.settings_page.widget)
+
+        self.setCentralWidget(self.stack)
 
     def toggle_sidebar(self, checked):
             """Show/hide sidebar based on button state"""
@@ -67,13 +76,11 @@ class MainWindow(QMainWindow):
     def list_item_clicked(self, item):
         page = item.text()
         if page == 'Pipeline Dashboard':
-            logger.info("Loading Pipeline Dashboard...")
-            PipelineDashboard(self)
+            self.stack.setCurrentWidget(self.pipeline_dashboard.widget)
         elif page == 'Pipeline Status':
-            logger.info("Loading Pipeline Status...")
-            PipelineStatus(self)
+            self.stack.setCurrentWidget(self.pipeline_status.widget)
         elif page == "Settings":
-            SettingsPage(self)
+            self.stack.setCurrentWidget(self.settings_page.widget)
        
 
 app = QApplication(sys.argv)
