@@ -47,3 +47,11 @@ class InitiateApp:
         else:
             logger.warning("Nextflow is not installed.")
             return False
+                
+    def generate_encrypted_file(self, data: str, filepath: str, key: bytes):
+        from cryptography.fernet import Fernet
+        fernet = Fernet(key)
+        encrypted_data = fernet.encrypt(data.encode())
+        with open(filepath, 'wb') as file:
+            file.write(encrypted_data)
+        logger.info(f"Encrypted file generated at: {filepath}")

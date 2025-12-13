@@ -16,12 +16,13 @@ from PyQt6.QtGui import QFont
 class PipelineArgsDialog(QDialog):
     """Dialog to collect pipeline arguments and build JSON config."""
 
-    def __init__(self, pipeline_name: str, pipeline_info :dict, sample_sheet_path=None, parent=None):
+    def __init__(self, pipeline_name: str, run_dir:str,  pipeline_info :dict, sample_sheet_path=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle(f"Configure {pipeline_name}")
         self.setGeometry(100, 100, 600, 500)
         self.pipeline_name = pipeline_name
         self.pipeline_info = pipeline_info
+        self.run_dir = run_dir
         self.params_list = {}
         self.config = {}
         
@@ -79,7 +80,7 @@ class PipelineArgsDialog(QDialog):
         # Output directory
         args_layout.addWidget(QLabel("outdir:"), row, 0)
         self.outdir_field = QLineEdit()
-        self.outdir_field.setText(str(RUN_DIR / f"{pipeline_name}_output"))
+        self.outdir_field.setText(self.run_dir)
         args_layout.addWidget(self.outdir_field, row, 1)
         row += 1
     

@@ -1,4 +1,10 @@
 import os
+import shutil
+import json
+import zipfile
+import tarfile
+import os
+
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 logger = OmixForgeLogger.get_logger()
 
@@ -38,7 +44,7 @@ def delete_file(file_path: str) -> None:
 
 def delete_directory(directory_path: str) -> None:
     """Delete a directory and all its contents."""
-    import shutil
+    
     if os.path.exists(directory_path):
         shutil.rmtree(directory_path)
 
@@ -60,22 +66,40 @@ def get_file_size(file_path: str) -> int:
 
 def copy_file(src: str, dest: str) -> None:
     """Copy a file from src to dest."""
-    import shutil
+    
     shutil.copy2(src, dest) 
 
 def move_file(src: str, dest: str) -> None:
     """Move a file from src to dest."""
-    import shutil
+    
     shutil.move(src, dest)  
 
 def json_read(file_path: str) -> dict:
     """Read JSON content from a file and return as a dictionary."""
-    import json
+    
     with open(file_path, 'r') as f:
         return json.load(f)
 
 def json_write(file_path: str, data: dict) -> None:
     """Write a dictionary as JSON content to a file."""
-    import json
+    
     with open(file_path, 'w') as f:
         json.dump(data, f, indent=4)
+
+def zip_folder(folder_path, zip_path):
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                full_path = os.path.join(root, file)
+                arc_path = os.path.relpath(full_path, folder_path)
+                zipf.write(full_path, arc_path)
+
+def tar_folder(folder_path, tar_path):
+    """
+    Create a .tar.gz archive from a folder.
+    Preserves directory structure and avoids ZIP overhead issues.
+    """
+    folder_path = os.path.abspath(folder_path)
+
+    with tarfile.open(tar_path, "w:gz") as tar:
+        tar.add(folder_path, arcname=os.path.basename(folder_path))

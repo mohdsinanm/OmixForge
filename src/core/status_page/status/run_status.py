@@ -9,7 +9,7 @@ logger = OmixForgeLogger.get_logger()
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea,
-    QHBoxLayout, QGridLayout, QPushButton,
+    QHBoxLayout, QGridLayout, QPushButton, QApplication
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QFont
@@ -119,17 +119,18 @@ class PipelineRunStatus(QWidget):
         for index, name in enumerate(self.pipeline_runs):
             content = read_from_file(PIPELINES_RUNS / name)
 
-            if "error" in content.lower() or "failed" in content.lower():
+            if "<<exit-code:1>>" in content.lower():
                 card = PipelineCard(name, "#ff4c4c")
             elif "cancelled" in content.lower():
                 card = PipelineCard(name, "#6c70dc")  # Red for error
-            elif "completed" in content.lower():
+            elif "<<exit-code:0>>" in content.lower():
                 card = PipelineCard(name, "#4bb543")  # Green for completed
             else:
                 card = PipelineCard(name, "#f0ad4e")  # Yellow for running/unknown
             
             card.clicked.connect(self.on_card_clicked)
 
+            card.setMaximumHeight(200)
             # Add card to grid
             self.cards_grid.addWidget(card, row, col)
 
@@ -195,10 +196,21 @@ class PipelineRunStatus(QWidget):
     def on_delete_clicked(self):
         try:
             file_name = self.details_layout.itemAt(0).widget().text().split(': ')[1]
-            delete_file(PIPELINES_RUNS / file_name)
-            delete_directory(RUN_DIR / file_name.replace(".txt",""))
-            logger.info(f"Successfully deleted pipeline: {self.details_layout.itemAt(0).widget().text().split(': ')[1]}")
+            try:
+                app = QApplication.instance()
+                if app.cred:
+                    delete_file(RUN_DIR / file_name.replace(".txt",".zip.enc"))
+                    delete_file(PIPELINES_RUNS / file_name)
+                else:
+                    delete_file(PIPELINES_RUNS / file_name)
+                    delete_directory(RUN_DIR / file_name.replace(".txt",""))
+                
+                logger.info(f"Successfully deleted pipeline: {self.details_layout.itemAt(0).widget().text().split(': ')[1]}")
 
+
+            except Exception as e:
+                logger.error(f"Failed to delete run {file_name}")
+                
             # Clear the grid layout
             for i in reversed(range(self.cards_grid.count())):
                 item = self.cards_grid.takeAt(i)
