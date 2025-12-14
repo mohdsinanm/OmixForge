@@ -1,5 +1,5 @@
 
-from src.utils.constants import INITIATE_CACHE_JSON, CONFIG_DIR
+from src.utils.constants import INITIATE_CACHE_JSON, CONFIG_DIR, CONFIG_FILE, populate_constants
 from src.utils.nfcore_utils import NfcoreUtils
 from src.utils.fileops.file_handle import  json_write, ensure_directory
 from src.utils.logger_module.omix_logger import OmixForgeLogger
@@ -11,7 +11,8 @@ class InitiateApp:
 
         self.load_json_data() 
         self.docker_installed = self.check_docker_installed()
-        self.nextflow_installed = self.check_nextflow_installed()       
+        self.nextflow_installed = self.check_nextflow_installed()     
+        self.constants = populate_constants(CONFIG_FILE)  
 
     
     def load_json_data(self):
@@ -47,3 +48,13 @@ class InitiateApp:
         else:
             logger.warning("Nextflow is not installed.")
             return False
+                
+    def generate_encrypted_file(self, data: str, filepath: str, key: bytes):
+        from cryptography.fernet import Fernet
+        fernet = Fernet(key)
+        encrypted_data = fernet.encrypt(data.encode())
+        with open(filepath, 'wb') as file:
+            file.write(encrypted_data)
+        logger.info(f"Encrypted file generated at: {filepath}")
+
+   

@@ -1,5 +1,5 @@
 from src.utils.logger_module.omix_logger import OmixForgeLogger
-from src.utils.constants import RUN_DIR, SAMPLE_PREP_DIR
+from src.utils.constants import RUN_DIR, SAMPLE_PREP_DIR, CONFIG_FILE
 from src.utils.fileops.file_handle import json_read
 
 logger = OmixForgeLogger.get_logger()
@@ -16,14 +16,20 @@ from PyQt6.QtGui import QFont
 class PipelineArgsDialog(QDialog):
     """Dialog to collect pipeline arguments and build JSON config."""
 
-    def __init__(self, pipeline_name: str, pipeline_info :dict, sample_sheet_path=None, parent=None):
+    def __init__(self, pipeline_name: str, run_dir:str,  pipeline_info :dict, sample_sheet_path=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle(f"Configure {pipeline_name}")
         self.setGeometry(100, 100, 600, 500)
         self.pipeline_name = pipeline_name
         self.pipeline_info = pipeline_info
+        self.run_dir = run_dir
         self.params_list = {}
         self.config = {}
+
+        self.constants = json_read(CONFIG_FILE)
+        self.RUN_DIR = self.constants.get("folders",{}).get("RUN_DIR", RUN_DIR)
+        self.SAMPLE_PREP_DIR =  self.constants.get("folders",{}).get("SAMPLE_PREP_DIR", SAMPLE_PREP_DIR)
+  
         
         layout = QVBoxLayout()
 
@@ -79,7 +85,7 @@ class PipelineArgsDialog(QDialog):
         # Output directory
         args_layout.addWidget(QLabel("outdir:"), row, 0)
         self.outdir_field = QLineEdit()
-        self.outdir_field.setText(str(RUN_DIR / f"{pipeline_name}_output"))
+        self.outdir_field.setText(self.run_dir)
         args_layout.addWidget(self.outdir_field, row, 1)
         row += 1
     
@@ -115,7 +121,7 @@ class PipelineArgsDialog(QDialog):
         self.setLayout(layout)
     
     def browse_input(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Select sample sheet", str(SAMPLE_PREP_DIR), "CSV Files (*.csv)")
+        path, _ = QFileDialog.getOpenFileName(self, "Select sample sheet", str(self.SAMPLE_PREP_DIR), "CSV Files (*.csv)")
         if path:
             self.input_field.setText(path)
 
@@ -206,7 +212,7 @@ class PipelineArgsDialog(QDialog):
                 
                 def make_browse_handler(line_edit, param_key):
                     def browse_path():
-                        path, _ = QFileDialog.getOpenFileName(self, f"Select file for {param_key}", str(RUN_DIR))
+                        path, _ = QFileDialog.getOpenFileName(self, f"Select file for {param_key}", str(self.RUN_DIR))
                         if path:
                             line_edit.setText(path)
                     return browse_path

@@ -9,9 +9,11 @@ readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "pytest (>=8.4.1,<9.0.0)",
-    "pyqt6 (>=6.9.1,<7.0.0)",
+    "pyqt6 (>=6.7.0,<7.0.0)",
     "pyinstaller (>=6.14.1,<7.0.0)",
-    "nf-core (>=3.3.2,<4.0.0)"
+    "nf-core (>=3.3.2,<4.0.0)",
+    "polars (>=1.33.1,<2.0.0)",
+    "pyqtwaitingspinner (>=1.3.2,<2.0.0)",
 ]
 
 
