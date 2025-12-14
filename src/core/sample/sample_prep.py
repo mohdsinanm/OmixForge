@@ -8,8 +8,8 @@ from PyQt6.QtCore import Qt
 import re, os
 from PyQt6.QtGui import QKeySequence
 from src.utils.logger_module.omix_logger import OmixForgeLogger
-from src.utils.constants import SAMPLE_PREP_DIR
-from src.utils.fileops.file_handle import ensure_directory
+from src.utils.constants import SAMPLE_PREP_DIR, CONFIG_FILE
+from src.utils.fileops.file_handle import ensure_directory, json_read
 logger = OmixForgeLogger.get_logger()
 
 
@@ -19,6 +19,10 @@ class SamplePrepPage(QWidget):
     def __init__(self):
         super().__init__()
         self.current_file = None
+
+        self.constants = json_read(CONFIG_FILE)
+        self.SAMPLE_PREP_DIR =  self.constants.get("folders",{}).get("SAMPLE_PREP_DIR", SAMPLE_PREP_DIR)
+
         
         layout = QVBoxLayout()
         
@@ -137,9 +141,9 @@ class SamplePrepPage(QWidget):
     
     def save_csv(self):
         """Export table data to a CSV file."""
-        ensure_directory(SAMPLE_PREP_DIR)
+        ensure_directory(self.SAMPLE_PREP_DIR)
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Save as CSV", str(SAMPLE_PREP_DIR), "CSV Files (*.csv);;All Files (*)"
+            self, "Save as CSV", str(self.SAMPLE_PREP_DIR), "CSV Files (*.csv);;All Files (*)"
         )
         if not file_path:
             return

@@ -14,7 +14,7 @@ all: remove-omix build-bin build-deb build-debian install-omix
 # Step 1: Build the PyInstaller executable
 build-bin:
 	@echo "Building PyInstaller executable..."
-	pyinstaller --name $(BIN_NAME) --onefile --noconsole $(ENTRY_POINT) --add-data "src/assets/omixforge.png:src/assets"
+	pyinstaller --name $(BIN_NAME) --onefile --noconsole $(ENTRY_POINT) --add-data "src/assets/omixforge.png:src/assets" --add-data "src/assets/users-alt.svg:src/assets" --add-data "src/assets/lock.svg:src/assets"
 	@echo "Executable built at dist/$(BIN_NAME)"
 
 # Step 2: Prepare .deb package structure
@@ -40,7 +40,7 @@ build-deb:
 	echo "Priority: optional" >> $(BUILD_DIR)/DEBIAN/control
 	echo "Architecture: $(ARCH)" >> $(BUILD_DIR)/DEBIAN/control
 	echo "Depends: python3" >> $(BUILD_DIR)/DEBIAN/control
-	echo "Maintainer: Sinan <you@example.com>" >> $(BUILD_DIR)/DEBIAN/control
+	echo "Maintainer: Sinan <mohamedysf@bicpu.edu.in>" >> $(BUILD_DIR)/DEBIAN/control
 	echo "Description: OmixForge - offline bioinformatics workflow manager" >> $(BUILD_DIR)/DEBIAN/control
 	echo " A desktop application for managing bioinformatics pipelines locally." >> $(BUILD_DIR)/DEBIAN/control
 
@@ -59,5 +59,6 @@ install-omix:
 remove-omix:
 	sudo apt remove omixforge --purge -y || true
 
-dev-run:
-	python3 src/__main__.py
+dev:
+	cp src/__main__.py __main__.py
+	python3 __main__.py
