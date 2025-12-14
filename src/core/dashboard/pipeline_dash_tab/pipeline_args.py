@@ -1,5 +1,5 @@
 from src.utils.logger_module.omix_logger import OmixForgeLogger
-from src.utils.constants import RUN_DIR, SAMPLE_PREP_DIR
+from src.utils.constants import RUN_DIR, SAMPLE_PREP_DIR, CONFIG_FILE
 from src.utils.fileops.file_handle import json_read
 
 logger = OmixForgeLogger.get_logger()
@@ -25,6 +25,11 @@ class PipelineArgsDialog(QDialog):
         self.run_dir = run_dir
         self.params_list = {}
         self.config = {}
+
+        self.constants = json_read(CONFIG_FILE)
+        self.RUN_DIR = self.constants.get("folders",{}).get("RUN_DIR", RUN_DIR)
+        self.SAMPLE_PREP_DIR =  self.constants.get("folders",{}).get("SAMPLE_PREP_DIR", SAMPLE_PREP_DIR)
+  
         
         layout = QVBoxLayout()
 
@@ -116,7 +121,7 @@ class PipelineArgsDialog(QDialog):
         self.setLayout(layout)
     
     def browse_input(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Select sample sheet", str(SAMPLE_PREP_DIR), "CSV Files (*.csv)")
+        path, _ = QFileDialog.getOpenFileName(self, "Select sample sheet", str(self.SAMPLE_PREP_DIR), "CSV Files (*.csv)")
         if path:
             self.input_field.setText(path)
 
@@ -207,7 +212,7 @@ class PipelineArgsDialog(QDialog):
                 
                 def make_browse_handler(line_edit, param_key):
                     def browse_path():
-                        path, _ = QFileDialog.getOpenFileName(self, f"Select file for {param_key}", str(RUN_DIR))
+                        path, _ = QFileDialog.getOpenFileName(self, f"Select file for {param_key}", str(self.RUN_DIR))
                         if path:
                             line_edit.setText(path)
                     return browse_path

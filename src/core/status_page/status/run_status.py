@@ -1,9 +1,7 @@
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
-from src.utils.subcommands.shell import run_shell_command, run_shell_command_stream
-from src.utils.constants import RUN_DIR, PIPELINES_RUNS
-from src.utils.fileops.file_handle import list_files_in_directory, read_from_file, delete_directory, delete_file
-import time
+from src.utils.constants import RUN_DIR, PIPELINES_RUNS, CONFIG_FILE
+from src.utils.fileops.file_handle import list_files_in_directory, read_from_file, delete_directory, delete_file, json_read
 
 logger = OmixForgeLogger.get_logger()
 
@@ -60,6 +58,10 @@ class PipelineRunStatus(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.constants = json_read(CONFIG_FILE)
+        self.RUN_DIR = self.constants.get("folders",{}).get("RUN_DIR", RUN_DIR)
+        self.PIPELINES_RUNS = self.constants.get("folders",{}).get("PIPELINES_RUNS", PIPELINES_RUNS)
+       
         self.pipeline_runs = []
         self.get_local_pipelines_status()
 
@@ -101,7 +103,7 @@ class PipelineRunStatus(QWidget):
 
     def get_local_pipelines_status(self):
 
-        items_collected = list_files_in_directory(PIPELINES_RUNS)
+        items_collected = list_files_in_directory(self.PIPELINES_RUNS )
         self.pipeline_runs = items_collected
 
 
@@ -117,7 +119,7 @@ class PipelineRunStatus(QWidget):
                 item.widget().deleteLater()
 
         for index, name in enumerate(self.pipeline_runs):
-            content = read_from_file(PIPELINES_RUNS / name)
+            content = read_from_file(f"{self.PIPELINES_RUNS}/{name}")
 
             if "<<exit-code:1>>" in content.lower():
                 card = PipelineCard(name, "#ff4c4c")
@@ -155,7 +157,7 @@ class PipelineRunStatus(QWidget):
         self.details_layout.addWidget(QLabel(f"Details for pipeline: {name}"))
 
         # Read file content and create a label that we will refresh periodically
-        content = read_from_file(PIPELINES_RUNS / name)
+        content = read_from_file(f"{self.PIPELINES_RUNS}/{name}")
         self._details_content_label = QLabel(content)
         self._details_content_label.setWordWrap(True)
         self._details_content_label.setFont(QFont("Courier New", 10))
@@ -199,17 +201,19 @@ class PipelineRunStatus(QWidget):
             try:
                 app = QApplication.instance()
                 if app.cred:
-                    delete_file(RUN_DIR / file_name.replace(".txt",".zip.enc"))
-                    delete_file(PIPELINES_RUNS / file_name)
-                else:
-                    delete_file(PIPELINES_RUNS / file_name)
-                    delete_directory(RUN_DIR / file_name.replace(".txt",""))
-                
+                    delete_file(f'{self.RUN_DIR}/{file_name.replace(".txt",".zip.enc")}')
+                    delete_file(f"{self.PIPELINES_RUNS}/{file_name}")
+                    
                 logger.info(f"Successfully deleted pipeline: {self.details_layout.itemAt(0).widget().text().split(': ')[1]}")
 
 
             except Exception as e:
-                logger.error(f"Failed to delete run {file_name}")
+                try:
+                    delete_file(f"{self.PIPELINES_RUNS}/{file_name}")
+                    delete_directory(f'{self.RUN_DIR}/{file_name.replace(".txt","")}')
+                    logger.info(f"Successfully deleted pipeline: {self.details_layout.itemAt(0).widget().text().split(': ')[1]}")
+                except:
+                    logger.error(f"Failed to delete run {file_name}")
                 
             # Clear the grid layout
             for i in reversed(range(self.cards_grid.count())):
@@ -250,7 +254,7 @@ class PipelineRunStatus(QWidget):
 
     def _refresh_details_content(self, name):
         try:
-            content = read_from_file(PIPELINES_RUNS / name)
+            content = read_from_file(f"{self.PIPELINES_RUNS}/{name}")
             if hasattr(self, '_details_content_label') and self._details_content_label:
                 self._details_content_label.setText(content)
         except Exception:

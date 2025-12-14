@@ -11,8 +11,8 @@ from PyQt6.QtGui import QFont
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.subcommands.shell import run_shell_command
-from src.utils.constants import RUN_DIR, PIPELINES_RUNS, SAMPLE_PREP_DIR
-from src.utils.fileops.file_handle import ensure_directory, write_to_file, append_to_file, zip_folder, delete_file, delete_directory , tar_folder
+from src.utils.constants import CONFIG_FILE,RUN_DIR, PIPELINES_RUNS, SAMPLE_PREP_DIR
+from src.utils.fileops.file_handle import ensure_directory, write_to_file, append_to_file, json_read, delete_file, delete_directory , tar_folder
 from src.utils.encryption.handle import encrypt_file, decrypt_file, generate_key
 from src.core.dashboard.pipeline_dash_tab.pipeline_args import PipelineArgsDialog
 from src.core.dashboard.pipeline_dash_tab.pipeline_card import PipelineCard
@@ -119,6 +119,11 @@ class PipelineLocal(QWidget):
         self.processes = {}
         self.output_displays = {}  # Store references to output display widgets by run_name
         self.current_pipeline_name = None  # Track the currently displayed pipeline
+        
+        self.constants = json_read(CONFIG_FILE)
+        self.RUN_DIR = self.constants.get("folders",{}).get("RUN_DIR", RUN_DIR)
+        self.PIPELINES_RUNS = self.constants.get("folders",{}).get("PIPELINES_RUNS", PIPELINES_RUNS)
+        self.SAMPLE_PREP_DIR =  self.constants.get("folders",{}).get("SAMPLE_PREP_DIR", SAMPLE_PREP_DIR)
         
         # Worker thread and spinner for async pipeline info fetch
         self.info_worker = None
@@ -533,7 +538,7 @@ class PipelineLocal(QWidget):
         
         run_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         run_name = f"{pipeline}_{run_time}_run.txt".replace("nf-core/", "")
-        run_dir = RUN_DIR / run_name.replace('.txt', '')
+        run_dir = f"{self.RUN_DIR}/{run_name.replace('.txt', '')}"
 
         # Show the args dialog
         dialog = PipelineArgsDialog(pipeline, str(run_dir), self.pipeline_info_lines, parent=self)
@@ -548,17 +553,17 @@ class PipelineLocal(QWidget):
             QMessageBox.warning(self, "Missing Argument", "Please specify the input (sample sheet) file.")
             return
         
-        ensure_directory([str(run_dir), PIPELINES_RUNS])
+        ensure_directory([str(run_dir), self.PIPELINES_RUNS ])
 
         logger.info(f"Starting pipeline: {pipeline}")
         try:
             # Write config to JSON file in run directory
-            config_file = run_dir / "params.json"
+            config_file = f"{run_dir}/params.json"
             with open(config_file, 'w') as f:
                 json.dump(config, f, indent=2)
             
-            write_to_file(PIPELINES_RUNS / run_name, f"Running pipeline: {pipeline}\n")
-            write_to_file(PIPELINES_RUNS / run_name, f"Config: {json.dumps(config, indent=2)}\n")
+            write_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Running pipeline: {pipeline}\n")
+            write_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Config: {json.dumps(config, indent=2)}\n")
 
             # create QProcess without parent
             proc = QProcess()
@@ -592,7 +597,7 @@ class PipelineLocal(QWidget):
             QMessageBox.information(self, "Pipeline Started", f"Started {pipeline}\nConfig saved to {config_file}")
         except Exception as e:
             logger.error(f"Error starting pipeline: {e}")
-            append_to_file(PIPELINES_RUNS / run_name, f"Error starting pipeline: {e}\n")
+            append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Error starting pipeline: {e}\n")
             QMessageBox.critical(self, "Error", f"Failed to start pipeline: {e}")
 
     def _proc_stdout(self, run_name):
@@ -607,7 +612,7 @@ class PipelineLocal(QWidget):
             out = proc.readAllStandardOutput().data().decode('utf-8', errors='ignore')
             if out:
                 for line in out.splitlines():
-                    append_to_file(PIPELINES_RUNS / run_name, line + "\n")
+                    append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", line + "\n")
                     logger.info(line)
         except Exception as e:
             logger.error(f"Error reading stdout for {run_name}: {e}")
@@ -623,7 +628,7 @@ class PipelineLocal(QWidget):
             err = proc.readAllStandardError().data().decode('utf-8', errors='ignore')
             if err:
                 for line in err.splitlines():
-                    append_to_file(PIPELINES_RUNS / run_name, line + "\n")
+                    append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", line + "\n")
                     logger.error(line)
         except Exception as e:
             logger.error(f"Error reading stderr for {run_name}: {e}")
@@ -640,7 +645,7 @@ class PipelineLocal(QWidget):
         if not proc:
             return
         try:
-            append_to_file(PIPELINES_RUNS / rn, "Pipeline run cancelled by user.\n")
+            append_to_file(f"{self.PIPELINES_RUNS}/{rn}", "Pipeline run cancelled by user.\n")
             logger.info(f"Cancelling pipeline run: {rn}")
             if proc.state() != QProcess.ProcessState.NotRunning:
                 proc.terminate()
@@ -674,8 +679,8 @@ class PipelineLocal(QWidget):
             try:
                 app = QApplication.instance()
                 if app.cred:
-                    zip_name = f"{RUN_DIR/run_name.replace('.txt', '.tar.gz')}"
-                    run_dir = f"{RUN_DIR/run_name.replace('.txt','')}"
+                    zip_name = f"{self.RUN_DIR}/{run_name.replace('.txt', '.tar.gz')}"
+                    run_dir = f"{self.RUN_DIR}/{run_name.replace('.txt','')}"
 
                     worker = ZipEncryptWorker(run_name, run_dir, zip_name, app.cred, exitCode)
 
@@ -686,11 +691,11 @@ class PipelineLocal(QWidget):
                     # Start async
                     QThreadPool.globalInstance().start(worker)
                 else:
-                    append_to_file(PIPELINES_RUNS / run_name, f"Pipeline run completed <<exit-code:{exitCode}>>.\n")
+                    append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{exitCode}>>.\n")
                     logger.info(f"Pipeline {run_name} finished (code={exitCode})")
             except Exception as e:
-                logger.error("Failed to complete run")
-                append_to_file(PIPELINES_RUNS / run_name, f"Pipeline run completed <<exit-code:{0}>>.\n")
+                logger.error(f"Failed to complete run - {e}")
+                append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{1}>>.\n")
 
             
         finally:
@@ -727,14 +732,14 @@ class PipelineLocal(QWidget):
 
     def _on_zip_encrypt_done(self, run_name, exitCode):
         logger.info(f"Zip/encrypt cleanup completed for run: {run_name}")
-        append_to_file(PIPELINES_RUNS / run_name, f"Pipeline run completed <<exit-code:{exitCode}>>.\n")
+        append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{exitCode}>>.\n")
         logger.info(f"Pipeline {run_name} finished (code={exitCode})")
         # optionally update UI here
 
 
     def _on_zip_encrypt_error(self, run_name, err, exitCode):
         logger.error(f"Zip/encrypt failed for run {run_name}: {err}")
-        append_to_file(PIPELINES_RUNS / run_name, f"Pipeline run completed <<exit-code:{1}>>.\n")
+        append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{1}>>.\n")
         logger.error(f"Pipeline {run_name} finished (code={exitCode}) , But encryption failed")
         
 

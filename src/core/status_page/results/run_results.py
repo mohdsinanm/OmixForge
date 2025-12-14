@@ -1,8 +1,8 @@
 
 from pathlib import Path
 from src.utils.logger_module.omix_logger import OmixForgeLogger
-from src.utils.constants import RUN_DIR
-from src.utils.fileops.file_handle import list_files_in_directory, delete_directory, delete_file, untar_folder
+from src.utils.constants import RUN_DIR, CONFIG_FILE
+from src.utils.fileops.file_handle import list_files_in_directory, delete_directory, delete_file, untar_folder, json_read, file_exists
 from src.utils.encryption.handle import generate_key, decrypt_file
 from src.utils.widgets.filetree import FilesTreeWidget
 from src.utils.widgets.loading import LoadingDialog
@@ -114,6 +114,10 @@ class PipelineResultsPage(QWidget):
         self.pipeline_runs = []
         self.files_tree_window = None
 
+        self.constants = json_read(CONFIG_FILE)
+        self.RUN_DIR = self.constants.get("folders",{}).get("RUN_DIR", RUN_DIR)
+  
+
         self.get_local_pipelines_status()
 
         main_layout = QVBoxLayout(self)
@@ -147,7 +151,7 @@ class PipelineResultsPage(QWidget):
 
 
     def get_local_pipelines_status(self):
-        self.pipeline_runs = list_files_in_directory(RUN_DIR)
+        self.pipeline_runs = list_files_in_directory(self.RUN_DIR )
 
 
     def render_cards(self):
@@ -164,6 +168,8 @@ class PipelineResultsPage(QWidget):
             locked = name.endswith(".tar.gz.enc")
             card = PipelineDataCard(name, locked)
             card.clicked.connect(self.on_card_clicked)
+
+            card.setMaximumHeight(150)
 
             self.cards_grid.addWidget(card, row, col)
 
@@ -185,7 +191,7 @@ class PipelineResultsPage(QWidget):
         self.details_layout.addWidget(title)
 
         # Open Files Tree Window
-        run_dir = RUN_DIR / name.replace(".tar.gz.enc", "")
+        run_dir = f'{self.RUN_DIR}/{name.replace(".tar.gz.enc", "")}'
         self.open_files_tree(run_dir)
 
         # Actions
@@ -202,9 +208,11 @@ class PipelineResultsPage(QWidget):
         actions.addStretch()
         actions.addWidget(delete_btn)
         app = QApplication.instance()
-
-        if app.cred and ".tar.gz.enc" in name:
-            actions.addWidget(decrept_btn)
+        try:
+            if app.cred and ".tar.gz.enc" in name:
+                actions.addWidget(decrept_btn)
+        except:
+            pass
 
         self.details_layout.addLayout(actions)
         self.details_box.show()
@@ -212,13 +220,13 @@ class PipelineResultsPage(QWidget):
     def open_files_tree(self, run_dir: Path):
         """Embed file tree inside details_box"""
 
-        if not run_dir.exists():
+        if not file_exists(run_dir):
             logger.warning(f"Run directory does not exist: {run_dir}")
             return
 
 
         self.files_tree_window = FilesTreeWidget(
-            root_dir=str(run_dir),
+            root_dir=run_dir,
             allowed_exts=[".pdf", ".html", ".svg", ".txt"],
             parent=self.details_box
         )
@@ -246,8 +254,8 @@ class PipelineResultsPage(QWidget):
                 "password": password
             }
             if app.cred == cred:
-                tar_name = f"{RUN_DIR/name}"
-                run_dir = f"{RUN_DIR/name.replace('.tar.gz.enc','')}"
+                tar_name = f"{self.RUN_DIR}{name}"
+                run_dir = f"{self.RUN_DIR}/{name.replace('.tar.gz.enc','')}"
 
                 self.loading_dialog = LoadingDialog(
                     message="Decrypting pipeline…",
@@ -307,9 +315,9 @@ class PipelineResultsPage(QWidget):
         try:
 
             if name.endswith(".tar.gz.enc"):
-                delete_file(RUN_DIR / name)
+                delete_file({f"{self.RUN_DIR}/{name}"})
             else:
-                delete_directory(RUN_DIR / name)
+                delete_directory(f"{self.RUN_DIR}/{name}")
 
             logger.info(f"Deleted pipeline: {name}")
 
