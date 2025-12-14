@@ -35,22 +35,41 @@ def encrypt_file(path:str, key: bytes):
         encrypted_file.write(encrypted)
 
 
-def decrypt_file(filepath: str, key: bytes) -> str:
+def decrypt_file(filepath: str, key: bytes, need_data: bool = False):
     """
-    Decrypt an encrypted file with the given key.
-    
-    :param filepath: Filepath of the encrypted file
-    :type filepath: str
-    :param key: Decryption key
-    :type key: bytes
-    :return: Decrypted data as a string
-    :rtype: str
+    Decrypt an encrypted file.
+
+    - Returns bytes by default
+    - Decodes ONLY if need_data=True
+    - Safe for binary files (.tar.gz, .pdf, etc.)
     """
-    fernet = Fernet(key)
-    with open (filepath, 'rb') as file:
-        encrypted_data = file.read()
-    decrypted_data = fernet.decrypt(encrypted_data).decode()
-    return decrypted_data
+    try:
+        fernet = Fernet(key)
+
+        with open(filepath, "rb") as file:
+            encrypted_data = file.read()
+
+        decrypted_bytes = fernet.decrypt(encrypted_data)
+
+        # If caller wants data returned
+        if need_data:
+            try:
+                return decrypted_bytes.decode("utf-8")  # text files only
+            except UnicodeDecodeError:
+                return decrypted_bytes  # binary fallback
+
+        # Otherwise write decrypted file
+        output_path = str(filepath).replace(".enc", "")
+        with open(output_path, "wb") as f:
+            f.write(decrypted_bytes)
+
+        return output_path
+
+    except Exception as e:
+        logger.error(f"Failed to decrypt {filepath}: {e}")
+        raise
+        
+
 
 def generate_key( s: str) -> str:
     """

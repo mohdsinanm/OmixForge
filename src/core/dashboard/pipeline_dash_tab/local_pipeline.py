@@ -1,4 +1,4 @@
-import time
+from datetime import datetime
 import json
 from pyqtwaitingspinner import WaitingSpinner
 
@@ -530,7 +530,9 @@ class PipelineLocal(QWidget):
             QMessageBox.warning(self, "Error", "No pipeline selected.")
             return
         
-        run_name = f"{pipeline}_{time.time()}_run.txt".replace("nf-core/", "")
+        
+        run_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        run_name = f"{pipeline}_{run_time}_run.txt".replace("nf-core/", "")
         run_dir = RUN_DIR / run_name.replace('.txt', '')
 
         # Show the args dialog

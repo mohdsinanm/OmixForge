@@ -53,7 +53,8 @@ class ProfilePage(QWidget):
             if self.username_input.text() and self.password_input.text():
                 cred = decrypt_file(
                     filepath = AUTH_JSON,
-                    key = generate_key((f"{self.username_input.text()}:{self.password_input.text()}" ))) 
+                    key = generate_key((f"{self.username_input.text()}:{self.password_input.text()}" )),
+                    need_data=True) 
                 app.cred = json.loads("{" + cred + "}")
 
                 self.login_success.emit()

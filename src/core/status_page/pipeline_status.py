@@ -4,6 +4,7 @@ from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QWidget
 
 from src.core.status_page.status.run_status import PipelineRunStatus
+from src.core.status_page.results.run_results import PipelineResultsPage
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 
 logger = OmixForgeLogger.get_logger()
@@ -26,7 +27,7 @@ class PipelineStatus(QWidget):
         tab_widget = QTabWidget()
 
         pipeline_status_tab = PipelineRunStatus()
-        pipeline_result_tab = PipelineRunStatus()
+        pipeline_result_tab = PipelineResultsPage()
 
         tab_widget.addTab(pipeline_status_tab, "Status")
         tab_widget.addTab(pipeline_result_tab, "Results")
