@@ -1,6 +1,9 @@
-import pytest
-import os 
+import pytest, os, sys
+sys.path.append(os.getcwd())
+from src.__main__ import MainWindow
 from pathlib import Path
+from PyQt6.QtCore import Qt
+
 
 @pytest.fixture
 def get_test_files():
@@ -13,3 +16,13 @@ def get_lock_key():
 @pytest.fixture
 def tmp_path():
     return Path("tests/test_files/tmp")
+
+@pytest.fixture
+def sidebar_items():
+    return ["Pipeline Dashboard", "Sample Prep", "Pipeline Status", "Settings"]
+
+@pytest.fixture
+def window(qtbot):
+    app = MainWindow()
+    qtbot.addWidget(app)
+    return app
