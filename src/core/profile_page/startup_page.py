@@ -36,12 +36,14 @@ class AccessModePage(QWidget):
         public_card = self.create_card("Public Mode", "Run without login", resource_path("src/assets/users-alt.svg"), "The run data will be stored locally on your machine without any encryption.")
         public_card.mousePressEvent = lambda e: self.public_selected.emit()
         card_layout.addWidget(public_card)
+        public_card.setObjectName("public_access_card")
 
         # PRIVATE MODE
         private_card = self.create_card("Private Mode", "Requires login", resource_path("src/assets/lock.svg"), "The run data will be encrypted and stored locally, ensuring privacy and security. Only one user will be able to access the private mode on this installation.")
 
         private_card.mousePressEvent = lambda e: self.private_selected.emit()
         card_layout.addWidget(private_card)
+        private_card.setObjectName("private_access_card")
 
         self.setStyleSheet(self.stylesheet())
 
@@ -124,13 +126,15 @@ class AccessModePage(QWidget):
             margin-bottom: 12px;
             opacity: 0.7;
         }
-
+        QFrame#public_access_card,
+        QFrame#private_access_card,
         QFrame#accessCard {
             border-radius: 16px;
             padding: 20px;
             border: 1px solid rgba(120,120,120,0.4);
         }
-
+        QFrame#public_access_card:hover,
+        QFrame#private_access_card:hover,
         QFrame#accessCard:hover {
             border: 1px solid #4a90e2;
         }

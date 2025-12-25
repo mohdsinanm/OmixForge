@@ -154,6 +154,7 @@ class PipelineLocal(QWidget):
         # DETAILS BOX
         self.details_box = QFrame()
         self.details_box.hide()
+        self.details_box.setObjectName("pipeline_info_box")
         self.details_layout = QVBoxLayout(self.details_box)
         main_layout.addWidget(self.details_box)
 
@@ -313,15 +314,18 @@ class PipelineLocal(QWidget):
         self.action_section = QHBoxLayout()
         
         delete_btn = QPushButton("Delete", parent=self.details_box)
+        delete_btn.setObjectName("pipeline_delete_btn")
         delete_btn.setFixedSize(60, 30)
         delete_btn.clicked.connect(self.on_delete_clicked)
 
         # Run and Cancel buttons
         self.run_btn = QPushButton("Run", parent=self.details_box)
+        self.run_btn.setObjectName("pipeline_run_btn")
         self.run_btn.setFixedSize(60, 30)
         self.run_btn.clicked.connect(self.on_run_clicked)
 
         self.cancel_btn = QPushButton("Cancel", parent=self.details_box)
+        self.cancel_btn.setObjectName("pipeline_cancel_btn")
         self.cancel_btn.setFixedSize(60, 30)
         self.cancel_btn.clicked.connect(self.on_cancel_clicked)
 

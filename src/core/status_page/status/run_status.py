@@ -20,20 +20,20 @@ class PipelineCard(QFrame):
         super().__init__()
         self.name = name
 
-        self.setObjectName("pipelineCard")
+        self.setObjectName("pipelineResultCard")
         
         self.setStyleSheet("""
-            QFrame#pipelineCard {{
+            QFrame#pipelineResultCard {{
                 border: 1px solid #ccc;
                 border-radius: 10px;
                 padding: 12px;
                 background: {background};
                 color: #444;
             }}
-            QFrame#pipelineCard:hover {{
+            QFrame#pipelineResultCard:hover {{
                 background: #eaeaea;
             }}
-            QFrame#pipelineCard:hover QLabel {{
+            QFrame#pipelineResultCard:hover QLabel {{
                 color: black;
             }}
         """.format(background=background))
