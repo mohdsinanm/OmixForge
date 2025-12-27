@@ -14,7 +14,7 @@ all: remove-omix build-bin build-deb build-debian install-omix
 # Step 1: Build the PyInstaller executable
 build-bin:
 	@echo "Building PyInstaller executable..."
-	pyinstaller --name $(BIN_NAME) --onefile --noconsole $(ENTRY_POINT) --add-data "src/assets/omixforge.png:src/assets" --add-data "src/assets/users-alt.svg:src/assets" --add-data "src/assets/lock.svg:src/assets"
+	poetry run pyinstaller --name $(BIN_NAME) --onefile --noconsole $(ENTRY_POINT) --add-data "src/assets/omixforge.png:src/assets" --add-data "src/assets/users-alt.svg:src/assets" --add-data "src/assets/lock.svg:src/assets"
 	@echo "Executable built at dist/$(BIN_NAME)"
 
 # Step 2: Prepare .deb package structure
