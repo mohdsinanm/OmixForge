@@ -1,4 +1,5 @@
 
+from src.assets.stylesheet import close_btn_red_bg
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.constants import RUN_DIR, PIPELINES_RUNS, CONFIG_FILE
 from src.utils.fileops.file_handle import list_files_in_directory, read_from_file, delete_directory, delete_file, json_read
@@ -158,7 +159,8 @@ class PipelineRunStatus(QWidget):
 
         close_btn = QPushButton("X", parent=self.details_box)
         close_btn.setObjectName("close_status_details")
-        close_btn.setFixedSize(30,30)
+        close_btn.setStyleSheet(close_btn_red_bg())
+        close_btn.setFixedSize(40,30)
         close_btn.clicked.connect(self._on_close_button_click)
         self.action_items_top.addWidget(QLabel(f"Details for pipeline: {name}"))
         self.action_items_top.addWidget(close_btn)
@@ -196,8 +198,8 @@ class PipelineRunStatus(QWidget):
         self.action_section = QHBoxLayout()
 
         delete_btn = QPushButton("Delete", parent=self.details_box)
-        delete_btn.setFixedSize(60, 30)
-        delete_btn.clicked.connect(self.on_delete_clicked)
+        delete_btn.setFixedSize(70, 30)
+        delete_btn.clicked.connect(lambda: self.on_delete_clicked(name))
 
         self.action_section.addWidget(delete_btn)
         self.details_layout.addLayout(self.action_section)
@@ -227,9 +229,8 @@ class PipelineRunStatus(QWidget):
             pass
 
         
-    def on_delete_clicked(self):
+    def on_delete_clicked(self,file_name):
         try:
-            file_name = self.details_layout.itemAt(0).widget().text().split(': ')[1]
             try:
                 app = QApplication.instance()
                 if app.cred:

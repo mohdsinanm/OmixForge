@@ -16,6 +16,7 @@ from src.utils.fileops.file_handle import ensure_directory, write_to_file, appen
 from src.utils.encryption.handle import encrypt_file, decrypt_file, generate_key
 from src.core.dashboard.pipeline_dash_tab.pipeline_args import PipelineArgsDialog
 from src.core.dashboard.pipeline_dash_tab.pipeline_card import PipelineCard
+from src.assets.stylesheet import close_btn_red_bg
 
 logger = OmixForgeLogger.get_logger()
 
@@ -302,7 +303,8 @@ class PipelineLocal(QWidget):
 
         close_btn = QPushButton("X", parent=self.details_box)
         close_btn.setObjectName("close_pipeline_details")
-        close_btn.setFixedSize(30,30)
+        close_btn.setStyleSheet(close_btn_red_bg())
+        close_btn.setFixedSize(40,30)
         close_btn.clicked.connect(self._on_close_button_click)
         self.action_items_top.addStretch()
         self.action_items_top.addWidget(close_btn)
@@ -326,7 +328,7 @@ class PipelineLocal(QWidget):
         
         delete_btn = QPushButton("Delete", parent=self.details_box)
         delete_btn.setObjectName("pipeline_delete_btn")
-        delete_btn.setFixedSize(60, 30)
+        delete_btn.setFixedSize(70, 30)
         delete_btn.clicked.connect(self.on_delete_clicked)
 
         # Run and Cancel buttons
@@ -337,7 +339,7 @@ class PipelineLocal(QWidget):
 
         self.cancel_btn = QPushButton("Cancel", parent=self.details_box)
         self.cancel_btn.setObjectName("pipeline_cancel_btn")
-        self.cancel_btn.setFixedSize(60, 30)
+        self.cancel_btn.setFixedSize(70, 30)
         self.cancel_btn.clicked.connect(self.on_cancel_clicked)
 
         # If this pipeline already has a running process, reflect that in the UI
