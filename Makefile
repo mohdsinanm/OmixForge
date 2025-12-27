@@ -67,6 +67,6 @@ configure:
 	poetry install --no-root
 
 test: configure
-	poetry run pytest -q
+	QT_QPA_PLATFORM=offscreen poetry run pytest -q
 
 package: build-bin build-deb build-debian
