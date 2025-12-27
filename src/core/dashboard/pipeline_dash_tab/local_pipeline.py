@@ -297,7 +297,18 @@ class PipelineLocal(QWidget):
         content = ''
         for key, value in info.items():
             content += f"{key}: {value}\n\n"
-        
+
+        self.action_items_top = QHBoxLayout()
+
+        close_btn = QPushButton("X", parent=self.details_box)
+        close_btn.setObjectName("close_pipeline_details")
+        close_btn.setFixedSize(30,30)
+        close_btn.clicked.connect(self._on_close_button_click)
+        self.action_items_top.addStretch()
+        self.action_items_top.addWidget(close_btn)
+
+        self.details_layout.addLayout(self.action_items_top)
+
         self._details_content_label = QLabel(content)
         self._details_content_label.setWordWrap(True)
         self._details_content_label.setFont(QFont("Courier New", 10))
@@ -345,7 +356,28 @@ class PipelineLocal(QWidget):
         self.action_section.addWidget(self.cancel_btn)
         self.action_section.addWidget(delete_btn)
         self.details_layout.addLayout(self.action_section)
-    
+
+    def clear_layout(self, layout):
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                child_layout = item.layout()
+
+                if widget is not None:
+                    widget.deleteLater()
+
+                elif child_layout is not None:
+                    self.clear_layout(child_layout)
+
+    def _on_close_button_click(self):
+        self.details_box.hide()
+
+        try:
+            self.clear_layout(self.details_layout)
+        except:
+            pass
+
     def _on_pipeline_info_error(self, error_msg, spinner):
         """Handle pipeline info error - show error message."""
         # Stop spinner

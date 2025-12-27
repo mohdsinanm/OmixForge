@@ -153,8 +153,18 @@ class PipelineRunStatus(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-        # Title
-        self.details_layout.addWidget(QLabel(f"Details for pipeline: {name}"))
+
+        self.action_items_top = QHBoxLayout()
+
+        close_btn = QPushButton("X", parent=self.details_box)
+        close_btn.setObjectName("close_status_details")
+        close_btn.setFixedSize(30,30)
+        close_btn.clicked.connect(self._on_close_button_click)
+        self.action_items_top.addWidget(QLabel(f"Details for pipeline: {name}"))
+        self.action_items_top.addWidget(close_btn)
+
+        self.details_layout.addLayout(self.action_items_top)
+
 
         # Read file content and create a label that we will refresh periodically
         content = read_from_file(f"{self.PIPELINES_RUNS}/{name}")
@@ -193,6 +203,28 @@ class PipelineRunStatus(QWidget):
         self.details_layout.addLayout(self.action_section)
 
         self.details_box.show()
+
+    
+    def clear_layout(self, layout):
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                child_layout = item.layout()
+
+                if widget is not None:
+                    widget.deleteLater()
+
+                elif child_layout is not None:
+                    self.clear_layout(child_layout)
+
+    def _on_close_button_click(self):
+        self.details_box.hide()
+
+        try:
+            self.clear_layout(self.details_layout)
+        except:
+            pass
 
         
     def on_delete_clicked(self):
