@@ -36,6 +36,18 @@ jobs:
       - name: Install Python deps (via Poetry)
         run: make configure
 
+      - name: Install system dependencies for PyQt6
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1-mesa-glx \
+            libegl1-mesa \
+            libx11-6 \
+            libxext6 \
+            libxrender1 \
+            libxcb1 \
+            libxkbcommon-x11-0
+
       - name: Run Tests
         run: make test   # <-- FAILS if pytest fails
 
