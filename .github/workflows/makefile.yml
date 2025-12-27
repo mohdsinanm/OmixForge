@@ -1,27 +1,52 @@
-name: Makefile CI
+name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
-  build:
-
+  build-test-package:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: configure
-      run: ./configure
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-    - name: Install dependencies
-      run: make
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-    - name: Run check
-      run: make check
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3-dev \
+            python3-venv \
+            build-essential \
+            dpkg-dev
 
-    - name: Run distcheck
-      run: make distcheck
+      - name: Install Python deps (via Poetry)
+        run: make configure
+
+      - name: Run Tests
+        run: make test   # <-- FAILS if pytest fails
+
+      - name: Build binary + .deb
+        run: make package
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: omixforge-deb
+          path: |
+            omixforge_*.deb
+            dist/omixforge
+          if-no-files-found: error
