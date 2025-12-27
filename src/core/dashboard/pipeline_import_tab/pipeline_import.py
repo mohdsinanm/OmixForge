@@ -67,11 +67,13 @@ class PipelineImport(QWidget):
         # Refresh button
         self.btn = QPushButton("Refresh Pipelines", parent=self.content)
         self.btn.clicked.connect(self.refresh_pipelines)
+        self.btn.setObjectName("refersh_pipeline")
         self.content_layout.addWidget(self.btn)
 
         # Combo box
         self.combobox = QComboBox(parent=self.content)
-        self.combobox.activated.connect(self.current_text)
+        self.combobox.setObjectName("select_pipelines_box")
+        self.combobox.currentIndexChanged.connect(self.current_text)
         self.content_layout.addWidget(self.combobox)
 
         # Container to keep track of dynamically-added detail widgets
@@ -172,6 +174,7 @@ class PipelineImport(QWidget):
 
                 self.import_btn = QPushButton("Import Pipelines", parent=self.content)
                 self.import_btn.clicked.connect(self.import_pipeline)
+                self.import_btn.setObjectName("import_selected_pipeline")
 
                 for w in (
                     self.pipeline_name,

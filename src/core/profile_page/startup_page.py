@@ -2,13 +2,14 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,QT
 from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtCore import Qt, pyqtSignal
 
+from src.core.profile_page.requirements import RequirementsNotSatisfied
 from src.utils.resource import resource_path
 
 class AccessModePage(QWidget):
     public_selected = pyqtSignal()
     private_selected = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, docker_installed :bool, nextflow_installed: bool):
         super().__init__()
 
         main_layout = QVBoxLayout(self)
@@ -19,13 +20,23 @@ class AccessModePage(QWidget):
         title = QLabel("OmixForge")
         title.setObjectName("titleLabel")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(title)
+        main_layout.addWidget(title)  
 
-        # SUBTITLE
-        subtitle = QLabel("Offline Bioinformatics Pipeline Execution")
-        subtitle.setObjectName("subtitleLabel")
-        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(subtitle)
+        if docker_installed and nextflow_installed:
+            # SUBTITLE
+            subtitle = QLabel("Offline Bioinformatics Pipeline Execution")
+            subtitle.setObjectName("subtitleLabel")
+            subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            main_layout.addWidget(subtitle)
+            self.show_access_modes(main_layout)
+        else:
+            self.show_requirements_not_satisfied(main_layout, docker_installed, nextflow_installed)
+
+    def show_requirements_not_satisfied(self, main_layout, docker_installed, nextflow_installed):
+        self.req_page = RequirementsNotSatisfied(main_layout, docker_installed, nextflow_installed)
+        self.setStyleSheet(self.stylesheet())
+
+    def show_access_modes(self, main_layout):
 
         # CARD CONTAINER
         card_layout = QHBoxLayout()
@@ -36,14 +47,17 @@ class AccessModePage(QWidget):
         public_card = self.create_card("Public Mode", "Run without login", resource_path("src/assets/users-alt.svg"), "The run data will be stored locally on your machine without any encryption.")
         public_card.mousePressEvent = lambda e: self.public_selected.emit()
         card_layout.addWidget(public_card)
+        public_card.setObjectName("public_access_card")
 
         # PRIVATE MODE
         private_card = self.create_card("Private Mode", "Requires login", resource_path("src/assets/lock.svg"), "The run data will be encrypted and stored locally, ensuring privacy and security. Only one user will be able to access the private mode on this installation.")
 
         private_card.mousePressEvent = lambda e: self.private_selected.emit()
         card_layout.addWidget(private_card)
+        private_card.setObjectName("private_access_card")
 
         self.setStyleSheet(self.stylesheet())
+
 
     
     def create_card(self, title, subtitle, svg_path=None, info_text=None):
@@ -124,13 +138,15 @@ class AccessModePage(QWidget):
             margin-bottom: 12px;
             opacity: 0.7;
         }
-
+        QFrame#public_access_card,
+        QFrame#private_access_card,
         QFrame#accessCard {
             border-radius: 16px;
             padding: 20px;
             border: 1px solid rgba(120,120,120,0.4);
         }
-
+        QFrame#public_access_card:hover,
+        QFrame#private_access_card:hover,
         QFrame#accessCard:hover {
             border: 1px solid #4a90e2;
         }

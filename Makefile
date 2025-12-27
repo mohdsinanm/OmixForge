@@ -62,3 +62,11 @@ remove-omix:
 dev:
 	cp src/__main__.py __main__.py
 	python3 __main__.py
+
+configure:
+	poetry install --no-root
+
+test: configure
+	poetry run pytest -q
+
+package: build-bin build-deb build-debian

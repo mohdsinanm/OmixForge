@@ -1,5 +1,6 @@
 
 from pathlib import Path
+from src.assets.stylesheet import close_btn_red_bg
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.constants import RUN_DIR, CONFIG_FILE
 from src.utils.fileops.file_handle import list_files_in_directory, delete_directory, delete_file, untar_folder, json_read, file_exists
@@ -188,7 +189,18 @@ class PipelineResultsPage(QWidget):
         # Title
         title = QLabel(f"Pipeline: {name}")
         title.setFont(QFont("Arial", 11, QFont.Weight.Bold))
-        self.details_layout.addWidget(title)
+
+        self.action_items_top = QHBoxLayout()
+
+        close_btn = QPushButton("X", parent=self.details_box)
+        close_btn.setObjectName("close_result_details")
+        close_btn.setStyleSheet(close_btn_red_bg())
+        close_btn.setFixedSize(40,30)
+        close_btn.clicked.connect(self._on_close_button_click)
+        self.action_items_top.addWidget(title)
+        self.action_items_top.addWidget(close_btn)
+
+        self.details_layout.addLayout(self.action_items_top)
 
         # Open Files Tree Window
         run_dir = f'{self.RUN_DIR}/{name.replace(".tar.gz.enc", "")}'
@@ -196,7 +208,6 @@ class PipelineResultsPage(QWidget):
 
         # Actions
         actions = QHBoxLayout()
-
         delete_btn = QPushButton("Delete")
         delete_btn.setFixedSize(80, 32)
         delete_btn.clicked.connect(lambda: self.on_delete_clicked(name))
@@ -206,16 +217,41 @@ class PipelineResultsPage(QWidget):
         decrept_btn.clicked.connect(lambda: self.on_decrypt_clicked(name))
 
         actions.addStretch()
-        actions.addWidget(delete_btn)
-        app = QApplication.instance()
-        try:
-            if app.cred and ".tar.gz.enc" in name:
-                actions.addWidget(decrept_btn)
-        except:
-            pass
+        if ".tar.gz.enc" in name:
+            app = QApplication.instance()
+            try:
+                if app.cred and ".tar.gz.enc" in name:
+                    actions.addWidget(decrept_btn)
+                    actions.addWidget(delete_btn)
+            except:
+                pass
+        else:
+            actions.addWidget(delete_btn)
 
         self.details_layout.addLayout(actions)
         self.details_box.show()
+
+    
+    def clear_layout(self, layout):
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                child_layout = item.layout()
+
+                if widget is not None:
+                    widget.deleteLater()
+
+                elif child_layout is not None:
+                    self.clear_layout(child_layout)
+
+    def _on_close_button_click(self):
+        self.details_box.hide()
+
+        try:
+            self.clear_layout(self.details_layout)
+        except:
+            pass
 
     def open_files_tree(self, run_dir: Path):
         """Embed file tree inside details_box"""
@@ -315,7 +351,7 @@ class PipelineResultsPage(QWidget):
         try:
 
             if name.endswith(".tar.gz.enc"):
-                delete_file({f"{self.RUN_DIR}/{name}"})
+                delete_file(f"{self.RUN_DIR}/{name}")
             else:
                 delete_directory(f"{self.RUN_DIR}/{name}")
 
