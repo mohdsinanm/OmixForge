@@ -21,11 +21,14 @@ from src.core.sample.sample_prep import SamplePrepPage
 from src.core.profile_page.profile import ProfilePage
 from src.core.profile_page.startup_page import AccessModePage
 from src.core.initiate import InitiateApp
+from src.assets.stylesheet import global_style_sheet
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, initiate : InitiateApp):
         super().__init__()
+
+        self.initiate = initiate
 
         self.setWindowTitle("OmixForge")
 
@@ -65,7 +68,7 @@ class MainWindow(QMainWindow):
     def show_access_page(self):
         self.cleanup_main_ui()
 
-        self.access_page = AccessModePage()
+        self.access_page = AccessModePage(self.initiate.docker_installed , self.initiate.nextflow_installed)
         self.access_page.public_selected.connect(self.load_main_app)
         self.access_page.private_selected.connect(self.show_login)
 
@@ -164,8 +167,10 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
+    app.setStyleSheet(global_style_sheet())
+
     initiate = InitiateApp()
-    window = MainWindow()
+    window = MainWindow(initiate)
     window.showMaximized()
 
     sys.exit(app.exec())

@@ -1,4 +1,5 @@
 
+from src.assets.stylesheet import close_btn_red_bg
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.constants import RUN_DIR, PIPELINES_RUNS, CONFIG_FILE
 from src.utils.fileops.file_handle import list_files_in_directory, read_from_file, delete_directory, delete_file, json_read
@@ -20,20 +21,20 @@ class PipelineCard(QFrame):
         super().__init__()
         self.name = name
 
-        self.setObjectName("pipelineCard")
+        self.setObjectName("pipelineResultCard")
         
         self.setStyleSheet("""
-            QFrame#pipelineCard {{
+            QFrame#pipelineResultCard {{
                 border: 1px solid #ccc;
                 border-radius: 10px;
                 padding: 12px;
                 background: {background};
                 color: #444;
             }}
-            QFrame#pipelineCard:hover {{
+            QFrame#pipelineResultCard:hover {{
                 background: #eaeaea;
             }}
-            QFrame#pipelineCard:hover QLabel {{
+            QFrame#pipelineResultCard:hover QLabel {{
                 color: black;
             }}
         """.format(background=background))
@@ -153,8 +154,19 @@ class PipelineRunStatus(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-        # Title
-        self.details_layout.addWidget(QLabel(f"Details for pipeline: {name}"))
+
+        self.action_items_top = QHBoxLayout()
+
+        close_btn = QPushButton("X", parent=self.details_box)
+        close_btn.setObjectName("close_status_details")
+        close_btn.setStyleSheet(close_btn_red_bg())
+        close_btn.setFixedSize(40,30)
+        close_btn.clicked.connect(self._on_close_button_click)
+        self.action_items_top.addWidget(QLabel(f"Details for pipeline: {name}"))
+        self.action_items_top.addWidget(close_btn)
+
+        self.details_layout.addLayout(self.action_items_top)
+
 
         # Read file content and create a label that we will refresh periodically
         content = read_from_file(f"{self.PIPELINES_RUNS}/{name}")
@@ -186,18 +198,39 @@ class PipelineRunStatus(QWidget):
         self.action_section = QHBoxLayout()
 
         delete_btn = QPushButton("Delete", parent=self.details_box)
-        delete_btn.setFixedSize(60, 30)
-        delete_btn.clicked.connect(self.on_delete_clicked)
+        delete_btn.setFixedSize(70, 30)
+        delete_btn.clicked.connect(lambda: self.on_delete_clicked(name))
 
         self.action_section.addWidget(delete_btn)
         self.details_layout.addLayout(self.action_section)
 
         self.details_box.show()
 
-        
-    def on_delete_clicked(self):
+    
+    def clear_layout(self, layout):
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                child_layout = item.layout()
+
+                if widget is not None:
+                    widget.deleteLater()
+
+                elif child_layout is not None:
+                    self.clear_layout(child_layout)
+
+    def _on_close_button_click(self):
+        self.details_box.hide()
+
         try:
-            file_name = self.details_layout.itemAt(0).widget().text().split(': ')[1]
+            self.clear_layout(self.details_layout)
+        except:
+            pass
+
+        
+    def on_delete_clicked(self,file_name):
+        try:
             try:
                 app = QApplication.instance()
                 if app.cred:

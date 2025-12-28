@@ -123,13 +123,11 @@ class ProfilePage(QWidget):
             border-radius: 8px;
             border: 1px solid #c8c8c8;
             font-size: 14px;
-            color: black;
-
+            color: palette(ButtonText);          /* adapts */
         }
         QLineEdit#inputField:focus {
             border: 1px solid #448aff;
-            color: black;
-
+            color: palette(ButtonText);          /* adapts */
         }
 
         /* LOGIN BUTTON */

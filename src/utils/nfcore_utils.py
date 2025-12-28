@@ -44,6 +44,7 @@ class NfcoreUtils:
 
     def __init__(self):
         self.wf_list = []
+        self.max_retry = 3
 
     def get_pipelines_json(self):
         """Retrieves remote workflows from `nf-co.re <https://nf-co.re>`_.
@@ -51,17 +52,23 @@ class NfcoreUtils:
         Remote workflows are stored in :attr:`self.remote_workflows` list.
         """
         # List all repositories at nf-core
-        try:
-            nfcore_url = "https://nf-co.re/pipelines.json"
-            response = requests.get(nfcore_url, timeout=100)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                logger.error(f"Error retrieving nf-core pipelines: HTTP {response.status_code}")
-                return {}
-        except requests.RequestException as e:
-            logger.error(f"Error retrieving nf-core pipelines: {e}")
-            return {}
+        retry = self.max_retry
+        response = {}
+        while retry > 0:
+            try: 
+                nfcore_url = "https://nf-co.re/pipelines.json"
+                response = requests.get(nfcore_url, timeout=100)
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    logger.error(f"Error retrieving nf-core pipelines: HTTP {response.status_code}")
+                    logger.info(f"Retrying for fetching data {retry}")
+                    retry -= 1
+                return response
+            except requests.RequestException as e:
+                logger.error(f"Error retrieving nf-core pipelines: {e}")
+                retry -= 1
+        return response
 
 
     def get_pipelines(self):
@@ -70,15 +77,20 @@ class NfcoreUtils:
         Remote workflows are stored in :attr:`self.remote_workflows` list.
         """
         # List all repositories at nf-core
-        try:
-            nfcore_url = "https://nf-co.re/pipelines.json"
-            response = requests.get(nfcore_url, timeout=100)
-            if response.status_code == 200:
-                repos = response.json()["remote_workflows"]
-                for repo in repos:
-                    self.wf_list.append(RemoteWorkflowList(repo))
-
-            return self.wf_list
-        except requests.RequestException as e:
-            logger.error(f"Error retrieving nf-core pipelines: {e}")
-            return []
+        retry = self.max_retry
+        response = {}
+        while retry > 0:
+            try: 
+                nfcore_url = "https://nf-co.re/pipelines.json"
+                response = requests.get(nfcore_url, timeout=100)
+                if response.status_code == 200:
+                    repos = response.json()["remote_workflows"]
+                    for repo in repos:
+                        self.wf_list.append(RemoteWorkflowList(repo))
+                    return self.wf_list
+                retry -= 1
+                return self.wf_list
+            except requests.RequestException as e:
+                logger.error(f"Error retrieving nf-core pipelines: {e}")
+                retry -= 1
+        return response
