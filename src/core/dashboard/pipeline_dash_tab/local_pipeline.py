@@ -716,19 +716,20 @@ class PipelineLocal(QWidget):
 
             try:
                 app = QApplication.instance()
-                if app.cred:
-                    zip_name = f"{self.RUN_DIR}/{run_name.replace('.txt', '.tar.gz')}"
-                    run_dir = f"{self.RUN_DIR}/{run_name.replace('.txt','')}"
+                try:
+                    if app.cred:
+                        zip_name = f"{self.RUN_DIR}/{run_name.replace('.txt', '.tar.gz')}"
+                        run_dir = f"{self.RUN_DIR}/{run_name.replace('.txt','')}"
 
-                    worker = ZipEncryptWorker(run_name, run_dir, zip_name, app.cred, exitCode)
+                        worker = ZipEncryptWorker(run_name, run_dir, zip_name, app.cred, exitCode)
 
-                    # Connect callbacks
-                    worker.signals.finished.connect(self._on_zip_encrypt_done)
-                    worker.signals.error.connect(self._on_zip_encrypt_error)
+                        # Connect callbacks
+                        worker.signals.finished.connect(self._on_zip_encrypt_done)
+                        worker.signals.error.connect(self._on_zip_encrypt_error)
 
-                    # Start async
-                    QThreadPool.globalInstance().start(worker)
-                else:
+                        # Start async
+                        QThreadPool.globalInstance().start(worker)
+                except AttributeError:
                     append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{exitCode}>>.\n")
                     logger.info(f"Pipeline {run_name} finished (code={exitCode})")
             except Exception as e:
@@ -772,7 +773,6 @@ class PipelineLocal(QWidget):
         logger.info(f"Zip/encrypt cleanup completed for run: {run_name}")
         append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{exitCode}>>.\n")
         logger.info(f"Pipeline {run_name} finished (code={exitCode})")
-        # optionally update UI here
 
 
     def _on_zip_encrypt_error(self, run_name, err, exitCode):

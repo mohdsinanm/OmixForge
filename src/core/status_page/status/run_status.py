@@ -237,16 +237,16 @@ class PipelineRunStatus(QWidget):
                     delete_file(f'{self.RUN_DIR}/{file_name.replace(".txt",".zip.enc")}')
                     delete_file(f"{self.PIPELINES_RUNS}/{file_name}")
                     
-                logger.info(f"Successfully deleted pipeline: {self.details_layout.itemAt(0).widget().text().split(': ')[1]}")
+                logger.info(f"Successfully deleted run: {file_name}")
 
 
             except Exception as e:
                 try:
                     delete_file(f"{self.PIPELINES_RUNS}/{file_name}")
                     delete_directory(f'{self.RUN_DIR}/{file_name.replace(".txt","")}')
-                    logger.info(f"Successfully deleted pipeline: {self.details_layout.itemAt(0).widget().text().split(': ')[1]}")
-                except:
-                    logger.error(f"Failed to delete run {file_name}")
+                    logger.info(f"Successfully deleted run: {file_name}")
+                except Exception as e:
+                    logger.error(f"Failed to delete run {file_name} - {e}")
                 
             # Clear the grid layout
             for i in reversed(range(self.cards_grid.count())):
