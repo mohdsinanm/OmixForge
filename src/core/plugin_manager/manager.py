@@ -59,6 +59,7 @@ class PluginManager:
             raise RuntimeError("Plugin must define class Plugin")
 
         instance = plugin_class()
+        instance.file_path = str(path)
 
         if not isinstance(instance, PluginBase):
             raise RuntimeError("Plugin must inherit PluginBase")

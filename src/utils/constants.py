@@ -12,6 +12,8 @@ AUTH_DIR = CONFIG_DIR / "auth"
 SAMPLE_PREP_DIR = DATA_DIR / "sample_prep"
 PLUGIN_DIR = CONFIG_DIR / "plugins"
 
+PLUGINS_API_URL = "https://api.github.com/repos/mohdsinanm/OmixForge-plugins/contents"
+
 
 ## Files
 AUTH_JSON = AUTH_DIR / "auth_data.json.enc"
