@@ -48,7 +48,7 @@ class StoreTab(QWidget):
             r = requests.get(api_url)
             r.raise_for_status()
             contents = r.json()
-            self.available_plugins = [f['name'] for f in contents if f['name'].endswith(".py")]
+            self.available_plugins = [f['name'] for f in contents if f['name'].endswith(".py") and f['name'] !='check_plugins.py']
             self.filtered_plugins = self.available_plugins.copy()
             self.update_list()
         except Exception as e:
