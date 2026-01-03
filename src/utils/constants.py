@@ -10,6 +10,9 @@ PIPELINES_RUNS = DATA_DIR / "pipelines_runs"
 CONFIG_DIR = APP_DIR / ".omixforge"
 AUTH_DIR = CONFIG_DIR / "auth"
 SAMPLE_PREP_DIR = DATA_DIR / "sample_prep"
+PLUGIN_DIR = CONFIG_DIR / "plugins"
+
+PLUGINS_API_URL = "https://api.github.com/repos/mohdsinanm/OmixForge-plugins/contents"
 
 
 ## Files

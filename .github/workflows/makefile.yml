@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-test-package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.5"
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3-dev \
+            python3-venv \
+            build-essential \
+            dpkg-dev
+
+      - name: Install Python deps (via Poetry)
+        run: make configure
+
+      - name: Install PyQt6 system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1 \
+            libegl1 \
+            libx11-6 \
+            libxext6 \
+            libxrender1 \
+            libxcb1 \
+            libxkbcommon-x11-0
+
+      - name: Run Tests
+        run: make test   # <-- FAILS if pytest fails
+
+      - name: Build binary + .deb
+        run: make package
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: omixforge-deb
+          path: |
+            omixforge_*.deb
+            dist/omixforge
+          if-no-files-found: error

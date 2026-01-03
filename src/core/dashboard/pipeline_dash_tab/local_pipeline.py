@@ -16,6 +16,7 @@ from src.utils.fileops.file_handle import ensure_directory, write_to_file, appen
 from src.utils.encryption.handle import encrypt_file, decrypt_file, generate_key
 from src.core.dashboard.pipeline_dash_tab.pipeline_args import PipelineArgsDialog
 from src.core.dashboard.pipeline_dash_tab.pipeline_card import PipelineCard
+from src.assets.stylesheet import close_btn_red_bg
 
 logger = OmixForgeLogger.get_logger()
 
@@ -154,6 +155,7 @@ class PipelineLocal(QWidget):
         # DETAILS BOX
         self.details_box = QFrame()
         self.details_box.hide()
+        self.details_box.setObjectName("pipeline_info_box")
         self.details_layout = QVBoxLayout(self.details_box)
         main_layout.addWidget(self.details_box)
 
@@ -296,7 +298,19 @@ class PipelineLocal(QWidget):
         content = ''
         for key, value in info.items():
             content += f"{key}: {value}\n\n"
-        
+
+        self.action_items_top = QHBoxLayout()
+
+        close_btn = QPushButton("X", parent=self.details_box)
+        close_btn.setObjectName("close_pipeline_details")
+        close_btn.setStyleSheet(close_btn_red_bg())
+        close_btn.setFixedSize(40,30)
+        close_btn.clicked.connect(self._on_close_button_click)
+        self.action_items_top.addStretch()
+        self.action_items_top.addWidget(close_btn)
+
+        self.details_layout.addLayout(self.action_items_top)
+
         self._details_content_label = QLabel(content)
         self._details_content_label.setWordWrap(True)
         self._details_content_label.setFont(QFont("Courier New", 10))
@@ -313,16 +327,19 @@ class PipelineLocal(QWidget):
         self.action_section = QHBoxLayout()
         
         delete_btn = QPushButton("Delete", parent=self.details_box)
-        delete_btn.setFixedSize(60, 30)
+        delete_btn.setObjectName("pipeline_delete_btn")
+        delete_btn.setFixedSize(70, 30)
         delete_btn.clicked.connect(self.on_delete_clicked)
 
         # Run and Cancel buttons
         self.run_btn = QPushButton("Run", parent=self.details_box)
+        self.run_btn.setObjectName("pipeline_run_btn")
         self.run_btn.setFixedSize(60, 30)
         self.run_btn.clicked.connect(self.on_run_clicked)
 
         self.cancel_btn = QPushButton("Cancel", parent=self.details_box)
-        self.cancel_btn.setFixedSize(60, 30)
+        self.cancel_btn.setObjectName("pipeline_cancel_btn")
+        self.cancel_btn.setFixedSize(70, 30)
         self.cancel_btn.clicked.connect(self.on_cancel_clicked)
 
         # If this pipeline already has a running process, reflect that in the UI
@@ -341,7 +358,28 @@ class PipelineLocal(QWidget):
         self.action_section.addWidget(self.cancel_btn)
         self.action_section.addWidget(delete_btn)
         self.details_layout.addLayout(self.action_section)
-    
+
+    def clear_layout(self, layout):
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                child_layout = item.layout()
+
+                if widget is not None:
+                    widget.deleteLater()
+
+                elif child_layout is not None:
+                    self.clear_layout(child_layout)
+
+    def _on_close_button_click(self):
+        self.details_box.hide()
+
+        try:
+            self.clear_layout(self.details_layout)
+        except:
+            pass
+
     def _on_pipeline_info_error(self, error_msg, spinner):
         """Handle pipeline info error - show error message."""
         # Stop spinner
@@ -678,19 +716,20 @@ class PipelineLocal(QWidget):
 
             try:
                 app = QApplication.instance()
-                if app.cred:
-                    zip_name = f"{self.RUN_DIR}/{run_name.replace('.txt', '.tar.gz')}"
-                    run_dir = f"{self.RUN_DIR}/{run_name.replace('.txt','')}"
+                try:
+                    if app.cred:
+                        zip_name = f"{self.RUN_DIR}/{run_name.replace('.txt', '.tar.gz')}"
+                        run_dir = f"{self.RUN_DIR}/{run_name.replace('.txt','')}"
 
-                    worker = ZipEncryptWorker(run_name, run_dir, zip_name, app.cred, exitCode)
+                        worker = ZipEncryptWorker(run_name, run_dir, zip_name, app.cred, exitCode)
 
-                    # Connect callbacks
-                    worker.signals.finished.connect(self._on_zip_encrypt_done)
-                    worker.signals.error.connect(self._on_zip_encrypt_error)
+                        # Connect callbacks
+                        worker.signals.finished.connect(self._on_zip_encrypt_done)
+                        worker.signals.error.connect(self._on_zip_encrypt_error)
 
-                    # Start async
-                    QThreadPool.globalInstance().start(worker)
-                else:
+                        # Start async
+                        QThreadPool.globalInstance().start(worker)
+                except AttributeError:
                     append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{exitCode}>>.\n")
                     logger.info(f"Pipeline {run_name} finished (code={exitCode})")
             except Exception as e:
@@ -734,7 +773,6 @@ class PipelineLocal(QWidget):
         logger.info(f"Zip/encrypt cleanup completed for run: {run_name}")
         append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{exitCode}>>.\n")
         logger.info(f"Pipeline {run_name} finished (code={exitCode})")
-        # optionally update UI here
 
 
     def _on_zip_encrypt_error(self, run_name, err, exitCode):
