@@ -10,7 +10,9 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QDockWidget,
     QPushButton,
-    QStackedWidget
+    QStackedWidget,
+    QListWidgetItem
+
 )
 
 from src.utils.resource import resource_path
@@ -21,6 +23,8 @@ from src.core.sample.sample_prep import SamplePrepPage
 from src.core.profile_page.profile import ProfilePage
 from src.core.profile_page.startup_page import AccessModePage
 from src.core.initiate import InitiateApp
+from src.core.plugin_manager.plugin_page import PluginsPage
+from src.core.plugin_manager.manager import PluginManager
 from src.assets.stylesheet import global_style_sheet
 
 
@@ -116,16 +120,29 @@ class MainWindow(QMainWindow):
         self.sidebar.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
         self.sidebar.setMaximumWidth(200)
 
-        sidebar_list = QListWidget()
-        sidebar_list.addItems([
+        
+
+        self.sidebar_list = QListWidget()
+        self.menu_items_head = QListWidgetItem("Menu\n")
+        self.menu_items_head.setFlags(Qt.ItemFlag.NoItemFlags) 
+        self.sidebar_list.addItem(self.menu_items_head)
+        self.sidebar_list.addItems([
             "Pipeline Dashboard",
             "Sample Prep",
             "Pipeline Status",
             "Settings"
         ])
-        sidebar_list.itemClicked.connect(self.list_item_clicked)
 
-        self.sidebar.setWidget(sidebar_list)
+        self.plugin_header = QListWidgetItem("\nPlugins\n")
+        self.plugin_header.setFlags(Qt.ItemFlag.NoItemFlags) 
+        self.sidebar_list.addItem(self.plugin_header)
+
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.sidebar)
+
+        self.plugin_insert_row = self.sidebar_list.row(self.plugin_header) + 1
+        self.sidebar_list.itemClicked.connect(self.list_item_clicked)
+
+        self.sidebar.setWidget(self.sidebar_list)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.sidebar)
 
         
@@ -137,13 +154,30 @@ class MainWindow(QMainWindow):
         self.pipeline_status = PipelineStatus()
         self.settings_page = SettingsPage()
 
+        self.plugin_manager = PluginManager()
+
+        self.plugins_page = PluginsPage(self.plugin_manager)
+
         self.stack = QStackedWidget()
         self.stack.addWidget(self.pipeline_dashboard.widget)
         self.stack.addWidget(self.sample_prep_page.widget)
         self.stack.addWidget(self.pipeline_status.widget)
+        self.stack.addWidget(self.plugins_page)     # plugin page in stack
         self.stack.addWidget(self.settings_page.widget)
 
         self.setCentralWidget(self.stack)
+
+        self.plugin_manager.load_all(self)
+
+    def closeEvent(self, e):
+        self.plugin_manager.unload_all()
+        super().closeEvent(e)
+
+    def add_plugin_sidebar_item(self, name: str):
+        item = QListWidgetItem(f"  {name}")
+        item.setData(Qt.ItemDataRole.UserRole, ("plugin", name))
+        self.sidebar_list.insertItem(self.plugin_insert_row, item)
+        self.plugin_insert_row += 1
 
 
     def toggle_sidebar(self, checked: bool):
@@ -151,17 +185,23 @@ class MainWindow(QMainWindow):
             self.sidebar.setVisible(checked)
 
     def list_item_clicked(self, item):
-        page = item.text()
+        role = item.data(Qt.ItemDataRole.UserRole)
 
-        if page == "Pipeline Dashboard":
-            self.stack.setCurrentWidget(self.pipeline_dashboard.widget)
-        elif page == "Sample Prep":
-            self.stack.setCurrentWidget(self.sample_prep_page.widget)
-        elif page == "Pipeline Status":
-            self.stack.setCurrentWidget(self.pipeline_status.widget)
-        elif page == "Settings":
-            self.stack.setCurrentWidget(self.settings_page.widget)
-
+        if not role:
+            page = item.text()
+            if page == "Pipeline Dashboard":
+                self.stack.setCurrentWidget(self.pipeline_dashboard.widget)
+            elif page == "Sample Prep":
+                self.stack.setCurrentWidget(self.sample_prep_page.widget)
+            elif page == "Pipeline Status":
+                self.stack.setCurrentWidget(self.pipeline_status.widget)
+            elif page == "Settings":
+                self.stack.setCurrentWidget(self.settings_page.widget)
+        else:
+            role_type, plugin_name = role
+            if role_type == "plugin":
+                self.stack.setCurrentWidget(self.plugins_page)
+                self.plugins_page.show_plugin(plugin_name)
 
 
 if __name__ == "__main__":
