@@ -290,7 +290,7 @@ class PipelineResultsPage(QWidget):
                 "password": password
             }
             if app.cred == cred:
-                tar_name = f"{self.RUN_DIR}{name}"
+                tar_name = f"{self.RUN_DIR}/{name}"
                 run_dir = f"{self.RUN_DIR}/{name.replace('.tar.gz.enc','')}"
 
                 self.loading_dialog = LoadingDialog(
