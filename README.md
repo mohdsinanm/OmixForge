@@ -25,6 +25,7 @@ OmixForge comes packed with features to streamline your bioinformatics workflows
 ### Plugin System
 -   **Extensible Architecture**: Enhance OmixForge's capabilities with plugins.
 -   **Plugin Store**: Browse and install plugins to add new tools or visualizations.
+- Refer the repo Please refer this repo for more details [OmixForge-plugins](https://github.com/mohdsinanm/OmixForge-plugins)
 
 ### Access Modes
 -   **Public Mode**: Use without restrictions for general pipeline execution.
