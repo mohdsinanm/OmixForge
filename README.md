@@ -1,6 +1,7 @@
 # OmixForge
 
-OmixForge is a comprehensive, offline-capable bioinformatics workflow manager designed to simplify the execution and management of Nextflow pipelines (nf-core). It provides a user-friendly desktop interface for researchers and bioinformaticians to orchestrate complex data analysis pipelines without needing extensive command-line expertise.
+OmixForge is a comprehensive, offline-capable bioinformatics workflow manager designed to simplify the execution and management of Nextflow pipelines (nf-core). It provides a user-friendly desktop interface for researchers and bioinformaticians to orchestrate complex data analysis pipelines without needing extensive command-line expertise 
+[User guide](https://github.com/mohdsinanm/OmixForge/wiki).
 
 
 ## Features
@@ -44,7 +45,7 @@ Before running OmixForge, ensure you have the following installed:
 1.  Download the latest `.deb` package from the [Releases](#) page (or build it yourself).
 2.  Install the package:
     ```bash
-    sudo dpkg -i omixforge_1.0.0_amd64.deb
+    sudo dpkg -i omixforge_x.y.z_amd64.deb
     ```
 3.  Launch OmixForge from your application menu.
 
