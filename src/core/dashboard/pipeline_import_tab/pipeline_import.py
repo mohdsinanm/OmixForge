@@ -41,6 +41,13 @@ class PipelineImport(QWidget):
     import_successful = pyqtSignal()  # Emitted when a pipeline is successfully imported
 
     def __init__(self, parent=None):
+        """Initialize the pipeline import tab.
+        
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget for this tab.
+        """
         super().__init__(parent)
 
         self.pipelines = []

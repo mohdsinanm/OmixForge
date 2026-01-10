@@ -88,6 +88,15 @@ def json_write(file_path: str, data: dict) -> None:
         json.dump(data, f, indent=4)
 
 def zip_folder(folder_path, zip_path):
+    """Create a ZIP archive of a directory.
+    
+    Parameters
+    ----------
+    folder_path : str
+        Path to the folder to zip.
+    zip_path : str
+        Path where the ZIP file will be saved.
+    """
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(folder_path):
             for file in files:

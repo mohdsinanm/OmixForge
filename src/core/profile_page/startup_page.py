@@ -10,6 +10,15 @@ class AccessModePage(QWidget):
     private_selected = pyqtSignal()
 
     def __init__(self, docker_installed :bool, nextflow_installed: bool):
+        """Initialize the access mode selection page.
+        
+        Parameters
+        ----------
+        docker_installed : bool
+            Whether Docker is installed on the system.
+        nextflow_installed : bool
+            Whether Nextflow is installed on the system.
+        """
         super().__init__()
 
         main_layout = QVBoxLayout(self)
@@ -33,11 +42,22 @@ class AccessModePage(QWidget):
             self.show_requirements_not_satisfied(main_layout, docker_installed, nextflow_installed)
 
     def show_requirements_not_satisfied(self, main_layout, docker_installed, nextflow_installed):
+        """Display error message for unsatisfied system requirements.
+        
+        Parameters
+        ----------
+        main_layout : QVBoxLayout
+            The main layout to add the requirements widget to.
+        docker_installed : bool
+            Docker installation status.
+        nextflow_installed : bool
+            Nextflow installation status.
+        """
         self.req_page = RequirementsNotSatisfied(main_layout, docker_installed, nextflow_installed)
         self.setStyleSheet(self.stylesheet())
 
     def show_access_modes(self, main_layout):
-
+        """Display available access mode selection cards."""
         # CARD CONTAINER
         card_layout = QHBoxLayout()
         card_layout.setSpacing(40)
@@ -61,6 +81,24 @@ class AccessModePage(QWidget):
 
     
     def create_card(self, title, subtitle, svg_path=None, info_text=None):
+        """Create a styled card widget for access mode selection.
+        
+        Parameters
+        ----------
+        title : str
+            The title text for the card.
+        subtitle : str
+            The subtitle/description text.
+        svg_path : str, optional
+            Path to an SVG icon file.
+        info_text : str, optional
+            Tooltip text for the info button.
+        
+        Returns
+        -------
+        QFrame
+            The constructed card widget.
+        """
         card = QFrame()
         card.setObjectName("accessCard")
         card.setFixedSize(300, 200)
@@ -126,6 +164,7 @@ class AccessModePage(QWidget):
         return card
 
     def stylesheet(self):
+        """Return CSS stylesheet for the access mode selection page."""
         return """
         QLabel#titleLabel {
             font-size: 40px;

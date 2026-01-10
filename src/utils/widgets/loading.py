@@ -4,6 +4,15 @@ from PyQt6.QtCore import Qt
 
 class LoadingDialog(QDialog):
     def __init__(self, message="Processing...", parent=None):
+        """Initialize the loading dialog widget.
+        
+        Parameters
+        ----------
+        message : str, optional
+            Message to display while processing. Default is "Processing...".
+        parent : QWidget, optional
+            Parent widget for this dialog.
+        """
         super().__init__(parent)
 
         self.setWindowTitle("Please wait")

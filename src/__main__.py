@@ -31,6 +31,13 @@ from src.assets.stylesheet import global_style_sheet
 
 class MainWindow(QMainWindow):
     def __init__(self, initiate : InitiateApp):
+        """Initialize the MainWindow with configuration and UI setup.
+        
+        Parameters
+        ----------
+        initiate : InitiateApp
+            Application initialization handler with system configuration.
+        """
         super().__init__()
 
         self.initiate = initiate
@@ -71,6 +78,7 @@ class MainWindow(QMainWindow):
 
     
     def show_access_page(self):
+        """Display the access mode selection page (public or private)."""
         self.cleanup_main_ui()
 
         self.access_page = AccessModePage(self.initiate.docker_installed , self.initiate.nextflow_installed)
@@ -80,6 +88,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.access_page)
 
     def show_login(self):
+        """Display the login/signup page for private access mode."""
         self.cleanup_main_ui()
 
         self.profile = ProfilePage()
@@ -90,6 +99,7 @@ class MainWindow(QMainWindow):
 
    
     def load_main_app(self):
+        """Initialize and load the main application UI with all components and plugins."""
         if self._main_ui_loaded:
             return 
 
@@ -175,16 +185,37 @@ class MainWindow(QMainWindow):
         self.plugin_manager.load_all(self)
 
     def closeEvent(self, e):
+        """Handle window close event and perform plugin cleanup.
+        
+        Parameters
+        ----------
+        e : QCloseEvent
+            The close event object.
+        """
         self.plugin_manager.unload_all()
         super().closeEvent(e)
 
     def add_plugin_sidebar_item(self, name: str):
+        """Add a plugin item to the sidebar menu.
+        
+        Parameters
+        ----------
+        name : str
+            The display name of the plugin.
+        """
         item = QListWidgetItem(f"  {name}")
         item.setData(Qt.ItemDataRole.UserRole, ("plugin", name))
         self.sidebar_list.insertItem(self.plugin_insert_row, item)
         self.plugin_insert_row += 1
 
     def remove_plugin_sidebar_item(self, plugin_display_name: str):
+        """Remove a plugin item from the sidebar menu.
+        
+        Parameters
+        ----------
+        plugin_display_name : str
+            The display name of the plugin to remove.
+        """
         sidebar = self.sidebar_list
         for i in range(sidebar.count()):
             item = sidebar.item(i)
@@ -195,10 +226,24 @@ class MainWindow(QMainWindow):
 
 
     def toggle_sidebar(self, checked: bool):
+        """Toggle the visibility of the sidebar dock widget.
+        
+        Parameters
+        ----------
+        checked : bool
+            True to show sidebar, False to hide it.
+        """
         if self.sidebar:
             self.sidebar.setVisible(checked)
 
     def list_item_clicked(self, item):
+        """Handle sidebar menu item selection and switch pages accordingly.
+        
+        Parameters
+        ----------
+        item : QListWidgetItem
+            The clicked menu item.
+        """
         role = item.data(Qt.ItemDataRole.UserRole)
 
         if not role:

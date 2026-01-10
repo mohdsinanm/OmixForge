@@ -22,6 +22,7 @@ class ProfilePage(QWidget):
     go_back = pyqtSignal() 
 
     def __init__(self):
+        """Initialize the profile page with login or signup form."""
         super().__init__()
 
         # MAIN CENTER LAYOUT
@@ -46,7 +47,7 @@ class ProfilePage(QWidget):
         self.setStyleSheet(self.stylesheet())
 
     def attempt_login(self):
-
+        """Attempt to authenticate user with provided credentials."""
         app = QApplication.instance()
         
         try:
@@ -67,6 +68,7 @@ class ProfilePage(QWidget):
             return
 
     def attempt_signup(self):
+        """Create a new user account with provided credentials."""
         if self.username_input.text() and self.password_input.text():
             ensure_directory(AUTH_DIR)
             generate_encrypted_file(
@@ -79,6 +81,7 @@ class ProfilePage(QWidget):
             
 
     def toggle_password(self):
+        """Toggle password visibility in the input field."""
         if self.password_input.echoMode() == QLineEdit.EchoMode.Password:
             self.password_input.setEchoMode(QLineEdit.EchoMode.Normal)
         else:
@@ -90,6 +93,7 @@ class ProfilePage(QWidget):
     
     # ----- MODERN STYLES -----
     def stylesheet(self):
+        """Return CSS stylesheet for the profile page widget."""
         return """
         QWidget {
 

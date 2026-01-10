@@ -9,17 +9,9 @@ from src.utils.logger_module.omix_logger import OmixForgeLogger
 
 logger = OmixForgeLogger.get_logger()
 
-class Color(QWidget):
-    def __init__(self, color):
-        super().__init__()
-        self.setAutoFillBackground(True)
-
-        palette = self.palette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(color))
-        self.setPalette(palette)
-
 class PipelineStatus(QWidget):
     def __init__(self):
+        """Initialize the pipeline status widget with status and results tabs."""
         super().__init__()
 
         layout = QVBoxLayout()
