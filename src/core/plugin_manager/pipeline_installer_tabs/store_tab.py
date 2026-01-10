@@ -6,6 +6,7 @@ from src.utils.resource import get_plugins_dir
 import requests
 from PyQt6.QtCore import Qt
 from src.utils.logger_module.omix_logger import OmixForgeLogger
+from src.core.plugin_manager.pipeline_installer_tabs.lib_imports import *
 from src.utils.constants import PLUGINS_API_URL
 
 logger = OmixForgeLogger.get_logger()
