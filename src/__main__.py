@@ -26,6 +26,7 @@ from src.core.initiate import InitiateApp
 from src.core.plugin_manager.plugin_page import PluginsPage
 from src.core.plugin_manager.manager import PluginManager
 from src.core.plugin_manager.plugin_installer import PluginStore
+from src.core.about_page.about import AboutPage
 from src.assets.stylesheet import global_style_sheet
 
 
@@ -143,7 +144,8 @@ class MainWindow(QMainWindow):
             "Sample Prep",
             "Pipeline Status",
             "Plugin Store",
-            "Settings"
+            "Settings",
+            "About"
         ])
 
         self.plugin_header = QListWidgetItem("\nPlugins\n")
@@ -166,6 +168,7 @@ class MainWindow(QMainWindow):
         self.sample_prep_page = SamplePrepPage()
         self.pipeline_status = PipelineStatus()
         self.settings_page = SettingsPage()
+        self.about_page = AboutPage()
 
         self.plugin_manager = PluginManager()
 
@@ -179,6 +182,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.plugins_page)     # plugin page in stack
         self.stack.addWidget(self.settings_page.widget)
         self.stack.addWidget(self.plugin_store.widget)
+        self.stack.addWidget(self.about_page.widget)
 
         self.setCentralWidget(self.stack)
 
@@ -258,6 +262,9 @@ class MainWindow(QMainWindow):
                 self.stack.setCurrentWidget(self.settings_page.widget)
             elif page == "Plugin Store":
                 self.stack.setCurrentWidget(self.plugin_store.widget)
+            elif page == "About":
+                self.stack.setCurrentWidget(self.about_page.widget)
+
         else:
             role_type, plugin_name = role
             if role_type == "plugin":

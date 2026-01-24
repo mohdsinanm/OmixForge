@@ -1,5 +1,5 @@
 APP_NAME = omixforge
-VERSION = 1.0.0
+VERSION = 1.0.5
 ARCH = amd64
 BUILD_DIR = $(APP_NAME)_$(VERSION)_$(ARCH)
 ENTRY_POINT = src/__main__.py
@@ -13,6 +13,7 @@ all: remove-omix build-bin build-deb build-debian install-omix
 
 build-bin:
 	@echo "Building PyInstaller executable..."
+	sed -i "s/APP_VERSION = .*/APP_VERSION = \"$(VERSION)\"/g" src/utils/version.py
 	poetry run pyinstaller --name $(BIN_NAME) --onefile --noconsole $(ENTRY_POINT) --add-data "src/assets/omixforge.png:src/assets" --add-data "src/assets/users-alt.svg:src/assets" --add-data "src/assets/lock.svg:src/assets"
 	@echo "Executable built at dist/$(BIN_NAME)"
 
@@ -22,6 +23,8 @@ build-deb:
 	mkdir -p $(BUILD_DIR)/usr/bin
 	mkdir -p $(BUILD_DIR)/usr/share/applications
 	mkdir -p $(BUILD_DIR)/usr/share/icons
+
+	cp src/assets/omixforge.png .
 
 	@echo "Copying executable..."
 	cp dist/$(BIN_NAME) $(BUILD_DIR)/usr/bin/$(APP_NAME)
@@ -58,6 +61,7 @@ remove-omix:
 	sudo apt remove omixforge --purge -y || true
 
 dev:
+	sed -i "s/APP_VERSION = .*/APP_VERSION = \"$(VERSION)\"/g" src/utils/version.py
 	cp src/__main__.py __main__.py
 	python3 __main__.py
 
