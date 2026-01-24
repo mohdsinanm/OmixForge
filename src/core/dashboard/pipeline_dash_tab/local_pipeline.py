@@ -129,6 +129,7 @@ class PipelineLocal(QWidget):
         # Worker thread and spinner for async pipeline info fetch
         self.info_worker = None
         self.info_worker_thread = None
+        self.active_spinner = None  # Track the active spinner to prevent accessing deleted ones
         
         self.pipelines = []
         self.pipeline_info_lines = {}
@@ -233,19 +234,24 @@ class PipelineLocal(QWidget):
         # Store the current pipeline name for use in on_run_clicked
         self.current_pipeline_name = name
         
-        # Clear old details
-        for i in reversed(range(self.details_layout.count())):
-            item = self.details_layout.takeAt(i)
-            if item.widget():
-                item.widget().deleteLater()
+        # Clear old details (includes nested layouts and widgets)
+        self.clear_layout(self.details_layout)
+        # Clear the old spinner reference so signals from old workers are ignored
+        self.active_spinner = None
         
-        # Stop any existing worker thread
+        # Stop any existing worker thread - ensure it fully stops before proceeding
         if self.info_worker_thread is not None:
             try:
                 # Check if thread is still alive before quitting
                 if self.info_worker_thread.isRunning():
                     self.info_worker_thread.quit()
-                    self.info_worker_thread.wait(1000)
+                    # Wait up to 3 seconds for graceful shutdown
+                    if not self.info_worker_thread.wait(3000):
+                        # If thread didn't stop gracefully, force kill it
+                        logger.warning("Worker thread didn't stop gracefully, forcing termination")
+                        # Note: terminate() is more forceful than quit()
+                        # We already called quit(), so just wait a bit longer
+                        self.info_worker_thread.wait(1000)
             except (RuntimeError, AttributeError):
                 # Thread was already deleted or is invalid
                 pass
@@ -256,6 +262,7 @@ class PipelineLocal(QWidget):
         # Create and show spinner
         spinner = WaitingSpinner(self.details_box)
         spinner.start()
+        self.active_spinner = spinner  # Store reference to active spinner
         spinner_label = QLabel("Loading pipeline info...")
         spinner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
@@ -282,8 +289,18 @@ class PipelineLocal(QWidget):
     
     def _on_pipeline_info_ready(self, info, name, spinner):
         """Handle pipeline info ready signal - replace spinner with info."""
+        # Ignore signal if this spinner is no longer active (user clicked another card)
+        if spinner is not self.active_spinner:
+            logger.debug(f"Ignoring info_ready signal for stale spinner (current pipeline: {self.current_pipeline_name})")
+            return
+        
         # Stop spinner
-        spinner.stop()
+        try:
+            spinner.stop()
+        except RuntimeError:
+            # Spinner was already deleted
+            logger.debug("Spinner already deleted, skipping stop()")
+            return
         
         # Update stored info
         self.pipeline_info_lines = info
@@ -382,8 +399,18 @@ class PipelineLocal(QWidget):
 
     def _on_pipeline_info_error(self, error_msg, spinner):
         """Handle pipeline info error - show error message."""
+        # Ignore signal if this spinner is no longer active (user clicked another card)
+        if spinner is not self.active_spinner:
+            logger.debug(f"Ignoring info_error signal for stale spinner (current pipeline: {self.current_pipeline_name})")
+            return
+        
         # Stop spinner
-        spinner.stop()
+        try:
+            spinner.stop()
+        except RuntimeError:
+            # Spinner was already deleted
+            logger.debug("Spinner already deleted, skipping stop()")
+            return
         
         # Clear spinner and label
         for i in reversed(range(self.details_layout.count())):
@@ -800,26 +827,31 @@ class PipelineLocal(QWidget):
             except Exception:
                 pass
             self.processes.pop(rn, None)
+        
         # Stop any worker threads cleanly
         try:
             if getattr(self, 'info_worker_thread', None) is not None:
-                try:
+                if self.info_worker_thread.isRunning():
                     self.info_worker_thread.quit()
-                    self.info_worker_thread.wait(1000)
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                    # Wait longer to ensure thread stops
+                    if not self.info_worker_thread.wait(3000):
+                        logger.warning("Info worker thread didn't stop in time during closeEvent")
+                self.info_worker_thread = None
+                self.info_worker = None
+        except Exception as e:
+            logger.error(f"Error stopping info worker thread: {e}")
 
         try:
             if getattr(self, 'delete_thread', None) is not None:
-                try:
+                if self.delete_thread.isRunning():
                     self.delete_thread.quit()
-                    self.delete_thread.wait(1000)
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                    # Wait longer to ensure thread stops
+                    if not self.delete_thread.wait(3000):
+                        logger.warning("Delete worker thread didn't stop in time during closeEvent")
+                self.delete_thread = None
+                self.delete_worker = None
+        except Exception as e:
+            logger.error(f"Error stopping delete worker thread: {e}")
 
         super().closeEvent(event)
 
