@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,QToolButton
 from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QPixmap
 
 from src.core.profile_page.requirements import RequirementsNotSatisfied
 from src.utils.resource import resource_path
@@ -24,6 +25,20 @@ class AccessModePage(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.setSpacing(25)
+
+         # Logo section
+        logo_layout = QHBoxLayout()
+        logo_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        try:
+            logo_path = resource_path("src/assets/omixforge.png")
+            logo_label = QLabel()
+            pixmap = QPixmap(logo_path)
+            scaled_pixmap = pixmap.scaledToWidth(100, Qt.TransformationMode.SmoothTransformation)
+            logo_label.setPixmap(scaled_pixmap)
+            logo_layout.addWidget(logo_label)
+        except Exception:
+            pass
+        main_layout.addLayout(logo_layout)
 
         # TITLE
         title = QLabel("OmixForge")

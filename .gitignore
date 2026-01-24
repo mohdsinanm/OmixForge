@@ -2,4 +2,7 @@
 *build
 *dist
 src/utils/version.py
+omixforge_*_amd64*
+omixforge.spec
+omixforge.png
 
