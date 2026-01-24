@@ -16,6 +16,17 @@ class FilesTreeWidget(QWidget):
     """
 
     def __init__(self, root_dir: str, allowed_exts: list[str], parent=None):
+        """Initialize the file tree widget with a root directory.
+        
+        Parameters
+        ----------
+        root_dir : str
+            Root directory path to display.
+        allowed_exts : list[str]
+            List of file extensions to include (e.g., ['.txt', '.csv']).
+        parent : QWidget, optional
+            Parent widget for this widget.
+        """
         super().__init__(parent)
 
         self.root_dir = os.path.abspath(root_dir)
@@ -34,6 +45,7 @@ class FilesTreeWidget(QWidget):
 
 
     def _populate_tree(self):
+        """Populate file tree widget with directory structure."""
         self.tree.clear()
 
         root_item = QTreeWidgetItem([os.path.basename(self.root_dir)])
@@ -46,6 +58,15 @@ class FilesTreeWidget(QWidget):
     # ------------------------------------------------------------------
 
     def _add_children(self, parent_item, path):
+        """Recursively add child items to file tree.
+        
+        Parameters
+        ----------
+        parent_item : QTreeWidgetItem
+            The parent tree item to add children to.
+        path : str
+            The directory path to list files from.
+        """
         try:
             for name in sorted(os.listdir(path)):
                 full_path = os.path.join(path, name)
@@ -70,6 +91,15 @@ class FilesTreeWidget(QWidget):
     # ------------------------------------------------------------------
 
     def _on_item_double_clicked(self, item, column):
+        """Handle file tree item double-click event.
+        
+        Parameters
+        ----------
+        item : QTreeWidgetItem
+            The clicked tree item.
+        column : int
+            The column index of the click.
+        """
         path = item.data(0, Qt.ItemDataRole.UserRole)
 
         if not os.path.isfile(path):

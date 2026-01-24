@@ -8,7 +8,7 @@ logger = OmixForgeLogger.get_logger()
 
 class InitiateApp:
     def __init__(self):
-
+        """Initialize the application with system checks and configuration loading."""
         self.load_json_data() 
         self.docker_installed = self.check_docker_installed()
         self.nextflow_installed = self.check_nextflow_installed()     
@@ -16,6 +16,7 @@ class InitiateApp:
 
     
     def load_json_data(self):
+        """Load and cache JSON pipeline data from nfcore API."""
         logger.info("Loading initiate cache JSON data.")
         self.nfcore_utils = NfcoreUtils()
         self.cache_json_data = self.nfcore_utils.get_pipelines_json()
@@ -50,6 +51,17 @@ class InitiateApp:
             return False
                 
     def generate_encrypted_file(self, data: str, filepath: str, key: bytes):
+        """Encrypt and save data to a file using Fernet encryption.
+        
+        Parameters
+        ----------
+        data : str
+            The plaintext data to encrypt.
+        filepath : str
+            Path where the encrypted file will be saved.
+        key : bytes
+            Fernet encryption key for encryption.
+        """
         from cryptography.fernet import Fernet
         fernet = Fernet(key)
         encrypted_data = fernet.encrypt(data.encode())

@@ -13,15 +13,30 @@ logger  = OmixForgeLogger.get_logger()
 class PluginManager:
 
     def __init__(self):
+        """Initialize the PluginManager and discover plugins directory."""
         self.plugins_dir = self.get_plugins_dir()
         self.loaded_plugins: List[PluginBase] = []
 
         self.plugins = {}
 
     def discover_plugin_files(self):
+        """Discover all plugin Python files in the plugins directory.
+        
+        Returns
+        -------
+        list
+            List of Path objects to plugin files.
+        """
         return list(self.plugins_dir.glob("*.py"))
 
     def load_all(self, window):
+        """Load all available plugins and register them with the main window.
+        
+        Parameters
+        ----------
+        window : MainWindow
+            The main application window to register plugins with.
+        """
         self.window = window
         self.plugins_page = window.plugins_page
 
@@ -48,6 +63,23 @@ class PluginManager:
 
 
     def _load_plugin_file(self, path: Path) -> PluginBase:
+        """Dynamically load a plugin module from file path.
+        
+        Parameters
+        ----------
+        path : Path
+            Path to the plugin Python file.
+        
+        Returns
+        -------
+        PluginBase
+            Instantiated plugin object.
+        
+        Raises
+        ------
+        RuntimeError
+            If plugin class is missing or doesn't inherit PluginBase.
+        """
         spec = importlib.util.spec_from_file_location(path.stem, path)
         module = importlib.util.module_from_spec(spec)
         sys.modules[path.stem] = module
@@ -67,6 +99,7 @@ class PluginManager:
         return instance
 
     def unload_all(self):
+        """Unload all loaded plugins and perform cleanup."""
         for plugin in self.loaded_plugins:
             try:
                 plugin.unload()
@@ -76,7 +109,13 @@ class PluginManager:
         self.loaded_plugins.clear()
 
     def get_plugins_dir(self) -> Path:
-
+        """Get or create the plugins directory path.
+        
+        Returns
+        -------
+        Path
+            Path object to the plugins directory.
+        """
         plugins = PLUGIN_DIR
         plugins.mkdir(parents=True, exist_ok=True)
         return plugins

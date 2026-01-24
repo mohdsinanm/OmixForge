@@ -3,8 +3,8 @@ from PyQt6.QtWidgets import (
 )
 from src.core.plugin_manager.manager import PluginManager
 from src.utils.logger_module.omix_logger import OmixForgeLogger
-from src.core.plugin_manager.pipeline_installer_tabs.manage_tab import ManageTab
-from src.core.plugin_manager.pipeline_installer_tabs.store_tab import StoreTab
+from src.core.plugin_manager.plugin_installer_tabs.manage_tab import ManageTab
+from src.core.plugin_manager.plugin_installer_tabs.store_tab import StoreTab
 
 logger = OmixForgeLogger.get_logger()
 

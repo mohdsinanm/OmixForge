@@ -11,26 +11,6 @@ from src.core.dashboard.pipeline_import_tab.refresh_worker import PipelineRefres
 logger = OmixForgeLogger.get_logger()
 
 
-class PipelineRefreshWorker(QObject):
-    """Worker thread to fetch pipeline list without blocking UI."""
-    
-    finished = pyqtSignal()
-    error = pyqtSignal(str)
-    pipelines_ready = pyqtSignal(list)
-    
-    def run(self):
-        """Fetch pipelines from nf-core."""
-        try:
-            utils = NfcoreUtils()
-            pipelines = utils.get_pipelines()
-            self.pipelines_ready.emit(pipelines)
-        except Exception as e:
-            logger.error(f"Error refreshing pipelines: {e}")
-            self.error.emit(str(e))
-        finally:
-            self.finished.emit()
-
-
 
 class PipelineImport(QWidget):
     """Pipeline import tab implemented as a QWidget with a vertical
@@ -41,6 +21,13 @@ class PipelineImport(QWidget):
     import_successful = pyqtSignal()  # Emitted when a pipeline is successfully imported
 
     def __init__(self, parent=None):
+        """Initialize the pipeline import tab.
+        
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget for this tab.
+        """
         super().__init__(parent)
 
         self.pipelines = []
@@ -52,6 +39,8 @@ class PipelineImport(QWidget):
         self.import_worker_thread = None
         self.refresh_spinner = None
         self.import_spinner = None
+        self.active_refresh_spinner = None  # Track active refresh spinner
+        self.active_import_spinner = None   # Track active import spinner
 
         # Main layout for this widget (contains the scroll area)
         self.main_layout = QVBoxLayout(self)
@@ -95,14 +84,31 @@ class PipelineImport(QWidget):
         self.btn.setText("Refreshing...")
         self.btn.setEnabled(False)
         
-        # Stop any existing worker thread
+        # Mark old spinner as inactive
+        self.active_refresh_spinner = None
+        
+        # Stop any existing worker thread and disconnect its signals
         if self.refresh_worker_thread is not None:
-            self.refresh_worker_thread.quit()
-            self.refresh_worker_thread.wait()
+            if self.refresh_worker_thread.isRunning():
+                try:
+                    # Disconnect all signals from old worker to prevent interference
+                    if self.refresh_worker is not None:
+                        self.refresh_worker.pipelines_ready.disconnect()
+                        self.refresh_worker.error.disconnect()
+                        self.refresh_worker.finished.disconnect()
+                except (RuntimeError, TypeError):
+                    # Signals already disconnected or worker deleted
+                    pass
+                
+                self.refresh_worker_thread.quit()
+                # Wait longer to ensure thread stops
+                if not self.refresh_worker_thread.wait(5000):
+                    logger.warning("Refresh worker thread didn't stop gracefully")
         
         # Create and show spinner
         self.refresh_spinner = WaitingSpinner(self.content)
         self.refresh_spinner.start()
+        self.active_refresh_spinner = self.refresh_spinner  # Track as active
         self.content_layout.insertWidget(3, self.refresh_spinner)
         
         # Create worker thread
@@ -121,14 +127,24 @@ class PipelineImport(QWidget):
     
     def _on_pipelines_ready(self, pipelines):
         """Handle pipelines ready signal."""
+        # Ignore signal if this spinner is no longer active
+        if self.refresh_spinner is not self.active_refresh_spinner:
+            logger.debug("Ignoring pipelines_ready signal for stale spinner")
+            return
+        
         self.pipelines = pipelines
         
         # Stop spinner
         if self.refresh_spinner:
-            self.refresh_spinner.stop()
+            try:
+                self.refresh_spinner.stop()
+            except RuntimeError:
+                logger.debug("Spinner already deleted, skipping stop()")
+                return
             self.content_layout.removeWidget(self.refresh_spinner)
             self.refresh_spinner.deleteLater()
             self.refresh_spinner = None
+            self.active_refresh_spinner = None
         
         # Update combo
         self.combobox.clear()
@@ -141,12 +157,22 @@ class PipelineImport(QWidget):
     
     def _on_refresh_error(self, error_msg):
         """Handle refresh error."""
+        # Ignore signal if this spinner is no longer active
+        if self.refresh_spinner is not self.active_refresh_spinner:
+            logger.debug("Ignoring refresh_error signal for stale spinner")
+            return
+        
         # Stop spinner
         if self.refresh_spinner:
-            self.refresh_spinner.stop()
+            try:
+                self.refresh_spinner.stop()
+            except RuntimeError:
+                logger.debug("Spinner already deleted, skipping stop()")
+                return
             self.content_layout.removeWidget(self.refresh_spinner)
             self.refresh_spinner.deleteLater()
             self.refresh_spinner = None
+            self.active_refresh_spinner = None
         
         self.btn.setText("Refresh Pipelines")
         self.btn.setEnabled(True)
@@ -207,15 +233,34 @@ class PipelineImport(QWidget):
         logger.info(f"Importing nf-core/{pipeline_name}")
         
         self.import_btn.setEnabled(False)
+        self.combobox.setEnabled(False)  # Disable dropdown while importing
+        self.btn.setEnabled(False)  # Disable refresh button while importing
         
-        # Stop any existing worker thread
+        # Mark old spinner as inactive
+        self.active_import_spinner = None
+        
+        # Stop any existing worker thread and disconnect its signals
         if self.import_worker_thread is not None:
-            self.import_worker_thread.quit()
-            self.import_worker_thread.wait()
+            if self.import_worker_thread.isRunning():
+                try:
+                    # Disconnect all signals from old worker to prevent interference
+                    if self.import_worker is not None:
+                        self.import_worker.import_ready.disconnect()
+                        self.import_worker.error.disconnect()
+                        self.import_worker.finished.disconnect()
+                except (RuntimeError, TypeError):
+                    # Signals already disconnected or worker deleted
+                    pass
+                
+                self.import_worker_thread.quit()
+                # Wait longer to ensure thread stops
+                if not self.import_worker_thread.wait(5000):
+                    logger.warning("Import worker thread didn't stop gracefully")
         
         # Create and show spinner
         self.import_spinner = WaitingSpinner(self.content)
         self.import_spinner.start()
+        self.active_import_spinner = self.import_spinner  # Track as active
         spinner_label = QLabel("Importing pipeline...")
         spinner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.content_layout.addWidget(self.import_spinner)
@@ -238,9 +283,20 @@ class PipelineImport(QWidget):
     
     def _on_import_ready(self, success, message):
         """Handle import completion."""
+        # Ignore signal if this spinner is no longer active
+        if self.import_spinner is not self.active_import_spinner:
+            logger.debug("Ignoring import_ready signal for stale spinner")
+            return
+        
         # Stop spinner
         if self.import_spinner:
-            self.import_spinner.stop()
+            try:
+                self.import_spinner.stop()
+            except RuntimeError:
+                logger.debug("Spinner already deleted, skipping stop()")
+                # Continue cleanup even if spinner is already deleted
+        
+        self.active_import_spinner = None
         
         # Remove spinner widgets from detail_widgets
         for w in [self.import_spinner] + [w for w in self.detail_widgets if isinstance(w, QLabel) and "Importing" in (w.text() if hasattr(w, 'text') else "")]:
@@ -250,6 +306,8 @@ class PipelineImport(QWidget):
                 w.deleteLater()
         
         self.import_btn.setEnabled(True)
+        self.combobox.setEnabled(True)  # Re-enable dropdown after import
+        self.btn.setEnabled(True)  # Re-enable refresh button
         
         if success:
             logger.info(f"Successfully imported pipeline: {message}")
@@ -262,9 +320,20 @@ class PipelineImport(QWidget):
     
     def _on_import_error(self, error_msg):
         """Handle import error."""
+        # Ignore signal if this spinner is no longer active
+        if self.import_spinner is not self.active_import_spinner:
+            logger.debug("Ignoring import_error signal for stale spinner")
+            return
+        
         # Stop spinner
         if self.import_spinner:
-            self.import_spinner.stop()
+            try:
+                self.import_spinner.stop()
+            except RuntimeError:
+                logger.debug("Spinner already deleted, skipping stop()")
+                # Continue cleanup even if spinner is already deleted
+        
+        self.active_import_spinner = None
         
         # Remove spinner widgets
         for w in [self.import_spinner] + [w for w in self.detail_widgets if isinstance(w, QLabel) and "Importing" in (w.text() if hasattr(w, 'text') else "")]:
@@ -274,5 +343,7 @@ class PipelineImport(QWidget):
                 w.deleteLater()
         
         self.import_btn.setEnabled(True)
+        self.combobox.setEnabled(True)  # Re-enable dropdown on error
+        self.btn.setEnabled(True)  # Re-enable refresh button
         logger.error(f"Error importing pipeline: {error_msg}")
         self.import_btn.setText("Import Failed")

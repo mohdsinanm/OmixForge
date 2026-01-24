@@ -6,6 +6,13 @@ from PyQt6.QtWidgets import (
 
 class CredentialsDialog(QDialog):
     def __init__(self, parent=None):
+        """Initialize the credentials dialog widget.
+        
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget for this dialog.
+        """
         super().__init__(parent)
 
         self.setWindowTitle("Decrypt Pipeline")
@@ -40,6 +47,13 @@ class CredentialsDialog(QDialog):
         layout.addLayout(buttons)
 
     def get_credentials(self):
+        """Display credential input dialog and return username and password.
+        
+        Returns
+        -------
+        tuple
+            (username, password) from the input fields.
+        """
         return (
             self.username_input.text().strip(),
             self.password_input.text()

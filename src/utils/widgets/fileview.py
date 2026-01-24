@@ -10,6 +10,15 @@ from PyQt6.QtCore import QUrl
 
 class FileViewerWindow(QMainWindow):
     def __init__(self, file_path: str, parent=None):
+        """Initialize the file viewer window.
+        
+        Parameters
+        ----------
+        file_path : str
+            Path to the file to display.
+        parent : QWidget, optional
+            Parent widget for this window.
+        """
         super().__init__(parent)
 
         self.file_path = file_path
@@ -21,6 +30,7 @@ class FileViewerWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _load_file(self):
+        """Load and display file content based on file type."""
         ext = os.path.splitext(self.file_path)[1].lower()
 
         if ext == ".txt":
@@ -33,6 +43,7 @@ class FileViewerWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _load_text(self):
+        """Load and display plain text file content."""
         editor = QTextEdit()
         editor.setReadOnly(True)
         editor.setFont(QFont("Courier New", 10))
@@ -47,11 +58,13 @@ class FileViewerWindow(QMainWindow):
 
 
     def _load_web(self):
+        """Load and display HTML/web content in a browser view."""
         QDesktopServices.openUrl(QUrl.fromLocalFile(self.file_path))
         return
 
 
     def _load_svg(self):
+        """Load and display SVG content."""
         svg = QSvgWidget(self.file_path)
         scroll = QScrollArea()
         scroll.setWidget(svg)
