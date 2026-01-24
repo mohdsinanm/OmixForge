@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,QToolButton
 from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QPixmap
 
 from src.core.profile_page.requirements import RequirementsNotSatisfied
 from src.utils.resource import resource_path
@@ -10,11 +11,34 @@ class AccessModePage(QWidget):
     private_selected = pyqtSignal()
 
     def __init__(self, docker_installed :bool, nextflow_installed: bool):
+        """Initialize the access mode selection page.
+        
+        Parameters
+        ----------
+        docker_installed : bool
+            Whether Docker is installed on the system.
+        nextflow_installed : bool
+            Whether Nextflow is installed on the system.
+        """
         super().__init__()
 
         main_layout = QVBoxLayout(self)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.setSpacing(25)
+
+         # Logo section
+        logo_layout = QHBoxLayout()
+        logo_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        try:
+            logo_path = resource_path("src/assets/omixforge.png")
+            logo_label = QLabel()
+            pixmap = QPixmap(logo_path)
+            scaled_pixmap = pixmap.scaledToWidth(100, Qt.TransformationMode.SmoothTransformation)
+            logo_label.setPixmap(scaled_pixmap)
+            logo_layout.addWidget(logo_label)
+        except Exception:
+            pass
+        main_layout.addLayout(logo_layout)
 
         # TITLE
         title = QLabel("OmixForge")
@@ -33,11 +57,22 @@ class AccessModePage(QWidget):
             self.show_requirements_not_satisfied(main_layout, docker_installed, nextflow_installed)
 
     def show_requirements_not_satisfied(self, main_layout, docker_installed, nextflow_installed):
+        """Display error message for unsatisfied system requirements.
+        
+        Parameters
+        ----------
+        main_layout : QVBoxLayout
+            The main layout to add the requirements widget to.
+        docker_installed : bool
+            Docker installation status.
+        nextflow_installed : bool
+            Nextflow installation status.
+        """
         self.req_page = RequirementsNotSatisfied(main_layout, docker_installed, nextflow_installed)
         self.setStyleSheet(self.stylesheet())
 
     def show_access_modes(self, main_layout):
-
+        """Display available access mode selection cards."""
         # CARD CONTAINER
         card_layout = QHBoxLayout()
         card_layout.setSpacing(40)
@@ -61,6 +96,24 @@ class AccessModePage(QWidget):
 
     
     def create_card(self, title, subtitle, svg_path=None, info_text=None):
+        """Create a styled card widget for access mode selection.
+        
+        Parameters
+        ----------
+        title : str
+            The title text for the card.
+        subtitle : str
+            The subtitle/description text.
+        svg_path : str, optional
+            Path to an SVG icon file.
+        info_text : str, optional
+            Tooltip text for the info button.
+        
+        Returns
+        -------
+        QFrame
+            The constructed card widget.
+        """
         card = QFrame()
         card.setObjectName("accessCard")
         card.setFixedSize(300, 200)
@@ -126,6 +179,7 @@ class AccessModePage(QWidget):
         return card
 
     def stylesheet(self):
+        """Return CSS stylesheet for the access mode selection page."""
         return """
         QLabel#titleLabel {
             font-size: 40px;

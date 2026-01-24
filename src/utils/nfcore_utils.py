@@ -15,6 +15,13 @@ class RemoteWorkflowList:
     """
 
     def __init__(self, data):
+        """Initialize RemoteWorkflowList with GitHub API workflow data.
+        
+        Parameters
+        ----------
+        data : dict
+            Workflow information from GitHub repository REST API.
+        """
         # Vars from the initial data payload
         self.name = data.get("name")
         self.full_name = data.get("full_name")
@@ -43,6 +50,7 @@ class RemoteWorkflowList:
 class NfcoreUtils:
 
     def __init__(self):
+        """Initialize NfcoreUtils with empty workflow list and retry settings."""
         self.wf_list = []
         self.max_retry = 3
 

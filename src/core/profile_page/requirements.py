@@ -4,7 +4,7 @@ from PyQt6.QtGui import QDesktopServices, QFont
 
 class RequirementsNotSatisfied():
     def __init__(self, main_layout, docker_installed, nextflow_installed):
-        
+        """Initialize the requirements not satisfied widget with status indicators."""
         # --- Title ---
         title = QLabel("Oops — Requirements Missing")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -35,6 +35,20 @@ class RequirementsNotSatisfied():
         main_layout.addLayout(btn_row)
 
     def requirement_row(self, name, installed):
+        """Create a requirement status row with label and status indicator.
+        
+        Parameters
+        ----------
+        name : str
+            Name of the requirement (e.g., 'Docker', 'Nextflow').
+        installed : bool
+            Whether the requirement is installed.
+        
+        Returns
+        -------
+        QHBoxLayout
+            Layout containing requirement label and status indicator.
+        """
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
 
@@ -58,6 +72,7 @@ class RequirementsNotSatisfied():
         return row
     
     def open_docs(self):
+        """Open the documentation URL in the default web browser."""
         QDesktopServices.openUrl(
             QUrl("https://github.com/mohdsinanm/OmixForge/wiki/Dependency-installation")
         )

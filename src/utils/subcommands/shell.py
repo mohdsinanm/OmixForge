@@ -29,6 +29,13 @@ def run_shell_command_stream(command: str):
         )
 
         def stream():
+            """Stream output from a shell command to logger.
+            
+            Yields
+            ------
+            str
+                Each line of command output.
+            """
             for line in iter(process.stdout.readline, ''):
                 yield line.strip()
             process.stdout.close()

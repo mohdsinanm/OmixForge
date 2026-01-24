@@ -21,6 +21,18 @@ INITIATE_CACHE_JSON = CONFIG_DIR / "nfcore_cache.json"
 CONFIG_FILE = CONFIG_DIR / "app.config"
 
 def populate_constants(config_path):
+    """Read or create application configuration file with default settings.
+    
+    Parameters
+    ----------
+    config_path : str
+        Path to the configuration file.
+    
+    Returns
+    -------
+    dict
+        Configuration dictionary with folders, profile, and app settings.
+    """
     try:
         global DATA_DIR 
         global RUN_DIR 

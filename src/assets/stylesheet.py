@@ -1,4 +1,11 @@
 def global_style_sheet():
+    """Return global CSS stylesheet for the application.
+    
+    Returns
+    -------
+    str
+        CSS stylesheet string for buttons and UI elements.
+    """
     return """
     QPushButton {
         color: palette(ButtonText);          /* adapts */
@@ -23,6 +30,13 @@ def global_style_sheet():
     }
     """
 def close_btn_red_bg():
+    """Return CSS stylesheet for red close button.
+    
+    Returns
+    -------
+    str
+        CSS stylesheet string for close button styling.
+    """
     return """
     QPushButton {
         color: palette(ButtonText);          /* adapts automatically */

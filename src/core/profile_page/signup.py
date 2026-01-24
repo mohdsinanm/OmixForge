@@ -9,6 +9,15 @@ from PyQt6.QtGui import QIcon, QAction
 class SignUp():
 
     def __init__(self, main_layout, parent_page):
+        """Initialize the signup widget.
+        
+        Parameters
+        ----------
+        main_layout : QVBoxLayout
+            The main layout to add signup form to.
+        parent_page : ProfilePage
+            Reference to the parent profile page.
+        """
         self.parent = parent_page
         
         # CARD CONTAINER

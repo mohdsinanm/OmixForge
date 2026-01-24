@@ -12,6 +12,15 @@ logger = OmixForgeLogger.get_logger()
 class Login():
 
     def __init__(self, main_layout, parent_page):
+        """Initialize the login widget.
+        
+        Parameters
+        ----------
+        main_layout : QVBoxLayout
+            The main layout to add login form to.
+        parent_page : ProfilePage
+            Reference to the parent profile page.
+        """
         self.parent = parent_page
         
         # CARD CONTAINER

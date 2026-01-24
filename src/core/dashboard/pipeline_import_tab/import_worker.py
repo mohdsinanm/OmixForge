@@ -12,11 +12,17 @@ class PipelineImportWorker(QObject):
     import_ready = pyqtSignal(bool, str)  # (success, message)
     
     def __init__(self, pipeline_name):
+        """Initialize the import worker for a specific pipeline.
+        
+        Parameters
+        pipeline_name : str
+            Name of the pipeline to import from nf-core.
+        """
         super().__init__()
         self.pipeline_name = pipeline_name
     
     def run(self):
-        """Import pipeline from nf-core."""
+        """Import pipeline from nf-core repository."""
         try:
             # Check if pipeline already exists
             pipeline_exist  = run_shell_command("nextflow list")

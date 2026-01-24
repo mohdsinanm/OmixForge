@@ -13,6 +13,13 @@ class ManageTab(QWidget):
     """Show installed plugins and allow removing them"""
 
     def __init__(self, store: "PluginStore"):
+        """Initialize the manage plugins tab.
+        
+        Parameters
+        ----------
+        store : PluginStore
+            The plugin store instance for accessing plugins.
+        """
         super().__init__()
         self.store = store
         self.plugin_manager: PluginManager = store.plugin_manager
@@ -30,11 +37,13 @@ class ManageTab(QWidget):
         self.plugins_dir = get_plugins_dir()
 
     def refresh_installed_plugins(self):
+        """Refresh the list of installed plugins in the manage tab."""
         self.list_widget.clear()
         installed = [f.name for f in self.plugins_dir.glob("*.py")]
         self.list_widget.addItems(installed)
 
     def remove_selected(self):
+        """Remove the selected plugin from the installed plugins list."""
         selected = self.list_widget.currentItem()
         if not selected:
             return
