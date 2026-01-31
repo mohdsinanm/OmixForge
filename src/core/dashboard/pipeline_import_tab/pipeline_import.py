@@ -1,8 +1,7 @@
 from PyQt6.QtWidgets import QLabel, QWidget, QVBoxLayout, QComboBox, QScrollArea, QSizePolicy, QPushButton
 from PyQt6.QtCore import QThread, QObject, pyqtSignal, Qt
 from pyqtwaitingspinner import WaitingSpinner
-from src.utils.nfcore_utils import NfcoreUtils
-import os, subprocess
+
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.core.dashboard.pipeline_import_tab.import_worker import PipelineImportWorker

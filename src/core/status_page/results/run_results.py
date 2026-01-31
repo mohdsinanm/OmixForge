@@ -135,12 +135,12 @@ class PipelineResultsPage(QWidget):
         scroll_widget.setLayout(self.cards_grid)
         scroll.setWidget(scroll_widget)
 
-        main_layout.addWidget(scroll)
+        main_layout.addWidget(scroll, 1)
 
         self.details_box = QFrame()
         self.details_box.hide()
         self.details_layout = QVBoxLayout(self.details_box)
-        main_layout.addWidget(self.details_box)
+        main_layout.addWidget(self.details_box, 1)
 
         self.render_cards()
 
@@ -263,8 +263,9 @@ class PipelineResultsPage(QWidget):
 
         self.files_tree_window = FilesTreeWidget(
             root_dir=run_dir,
-            allowed_exts=[".pdf", ".html", ".svg", ".txt"],
-            parent=self.details_box
+            allowed_exts=[".md", ".MD", ".txt", ".json", ".csv", ".config", ".yaml", ".yml"],
+            parent=self.details_box,
+            exclude_dirs=[".nextflow", "work",]
         )
 
         self.details_layout.addWidget(self.files_tree_window)
