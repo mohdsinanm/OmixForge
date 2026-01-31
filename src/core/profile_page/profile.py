@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit,
     QPushButton
 )
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import pyqtSignal, Qt, QTimer
 from PyQt6.QtWidgets import QApplication
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
@@ -11,6 +11,7 @@ from src.core.profile_page.signup import SignUp
 from src.utils.encryption.handle import generate_encrypted_file, decrypt_file, generate_key
 from src.utils.constants import AUTH_DIR ,  AUTH_JSON
 from src.utils.fileops.file_handle import ensure_directory, file_exists
+from src.utils.widgets.loading_spinner import LoadingSpinner
 
 
 logger = OmixForgeLogger.get_logger()
@@ -43,6 +44,10 @@ class ProfilePage(QWidget):
         else:
             SignUp(main_layout, self)
 
+        # Add loading spinner widget (initially hidden)
+        self.loading_spinner = LoadingSpinner("Loading OmixForge...", parent=self)
+        main_layout.addWidget(self.loading_spinner, alignment=Qt.AlignmentFlag.AlignCenter)
+
 
         self.setStyleSheet(self.stylesheet())
 
@@ -57,8 +62,9 @@ class ProfilePage(QWidget):
                     key = generate_key((f"{self.username_input.text()}:{self.password_input.text()}" )),
                     need_data=True) 
                 app.cred = json.loads("{" + cred + "}")
+                self.loading_spinner.start_loading()
+                QTimer.singleShot(100, lambda: self.login_success.emit())  
 
-                self.login_success.emit()
         except Exception as e:
             logger.error(f"Failed to login {e}")
             self.login_error_label.setText("Invalid username or password")
@@ -75,8 +81,10 @@ class ProfilePage(QWidget):
                 data = f'"user":"{self.username_input.text()}","password":"{self.password_input.text()}"',
                 filepath = AUTH_JSON,
                 key = generate_key((f"{self.username_input.text()}:{self.password_input.text()}" ))) # Replace with your actual
-        
-            self.login_success.emit()
+            
+            self.loading_spinner.start_loading()
+            QTimer.singleShot(100, lambda: self.login_success.emit())
+            
             logger.info("User signed up and encrypted auth file created.")
             
 
