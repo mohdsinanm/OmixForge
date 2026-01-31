@@ -65,7 +65,7 @@ class NfcoreUtils:
         while retry > 0:
             try: 
                 nfcore_url = "https://nf-co.re/pipelines.json"
-                response = requests.get(nfcore_url, timeout=100)
+                response = requests.get(nfcore_url, timeout=20)
                 if response.status_code == 200:
                     return response.json()
                 else:

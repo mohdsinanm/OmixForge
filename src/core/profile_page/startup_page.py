@@ -1,10 +1,11 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,QToolButton
 from PyQt6.QtSvgWidgets import QSvgWidget
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QPixmap
 
 from src.core.profile_page.requirements import RequirementsNotSatisfied
 from src.utils.resource import resource_path
+from src.utils.widgets.loading_spinner import LoadingSpinner
 
 class AccessModePage(QWidget):
     public_selected = pyqtSignal()
@@ -21,6 +22,9 @@ class AccessModePage(QWidget):
             Whether Nextflow is installed on the system.
         """
         super().__init__()
+
+        self.loading_dialog = None
+        self._selected_mode = None
 
         main_layout = QVBoxLayout(self)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -80,7 +84,7 @@ class AccessModePage(QWidget):
 
         # PUBLIC MODE
         public_card = self.create_card("Public Mode", "Run without login", resource_path("src/assets/users-alt.svg"), "The run data will be stored locally on your machine without any encryption.")
-        public_card.mousePressEvent = lambda e: self.public_selected.emit()
+        public_card.mousePressEvent = lambda e: self._on_card_clicked("public")
         card_layout.addWidget(public_card)
         public_card.setObjectName("public_access_card")
 
@@ -91,10 +95,35 @@ class AccessModePage(QWidget):
         card_layout.addWidget(private_card)
         private_card.setObjectName("private_access_card")
 
+        # Add loading spinner widget (initially hidden)
+        self.loading_spinner = LoadingSpinner("Loading OmixForge...", parent=self)
+        main_layout.addWidget(self.loading_spinner, alignment=Qt.AlignmentFlag.AlignCenter)
+
         self.setStyleSheet(self.stylesheet())
 
-
+    def _on_card_clicked(self, mode: str):
+        """Show loading spinner and emit the appropriate signal.
+        
+        Parameters
+        ----------
+        mode : str
+            The access mode selected ("public" or "private").
+        """
+        # Store the mode for later emission
+        self._selected_mode = mode
+        
+        # Show loading spinner
+        self.loading_spinner.start_loading()
+        
+        # Delay signal emission to allow spinner to render
+        QTimer.singleShot(100, self._emit_selected_signal)
     
+    def _emit_selected_signal(self):
+        """Emit the selected signal after a delay to allow dialog to render."""
+        if self._selected_mode == "public":
+            self.public_selected.emit()
+        elif self._selected_mode == "private":
+            self.private_selected.emit()
     def create_card(self, title, subtitle, svg_path=None, info_text=None):
         """Create a styled card widget for access mode selection.
         

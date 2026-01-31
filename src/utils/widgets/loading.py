@@ -34,3 +34,10 @@ class LoadingDialog(QDialog):
         self.progress = QProgressBar()
         self.progress.setRange(0, 0)
         layout.addWidget(self.progress)
+        
+    def close_dialog(self):
+        """Safely close the loading dialog."""
+        try:
+            self.accept()
+        except RuntimeError:
+            pass

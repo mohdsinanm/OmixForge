@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import QWidget
 
 from src.core.dashboard.pipeline_import_tab.pipeline_import import PipelineImport
 from src.core.dashboard.pipeline_dash_tab.local_pipeline import PipelineLocal
+from src.core.dashboard.pipeline_editor_tab.pipeline_editor import PipelineEditorTab
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 
@@ -21,12 +22,15 @@ class PipelineDashboard(QWidget):
 
         pipeline_import_tab = PipelineImport()
         local_pipeline_tab = PipelineLocal()
+        pipeline_editor_tab = PipelineEditorTab()
         
         # Connect import success signal to refresh local pipelines
         pipeline_import_tab.import_successful.connect(local_pipeline_tab.refresh_pipelines)
 
         tab_widget.addTab(local_pipeline_tab, "Pipeline")
         tab_widget.addTab(pipeline_import_tab, "Import")
+        tab_widget.addTab(pipeline_editor_tab, "Pipeline Editor")
+
 
         layout.addWidget(tab_widget)
 

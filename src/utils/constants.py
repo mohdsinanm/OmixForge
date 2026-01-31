@@ -6,6 +6,7 @@ APP_DIR = Path(f"/home/{os.getenv("USER")}/OmxiForge")
 LOG_DIR = APP_DIR /  "OmixForge_logs"
 DATA_DIR = APP_DIR / "OmixForge_data"
 RUN_DIR = APP_DIR / "OmixForge_run"
+PIPELINE_DIR = Path(f"/home/{os.getenv("USER")}/.nextflow/assets/nf-core")
 PIPELINES_RUNS = DATA_DIR / "pipelines_runs"
 CONFIG_DIR = APP_DIR / ".omixforge"
 AUTH_DIR = CONFIG_DIR / "auth"
@@ -38,13 +39,17 @@ def populate_constants(config_path):
         global RUN_DIR 
         global PIPELINES_RUNS 
         global SAMPLE_PREP_DIR 
+        global PLUGIN_DIR 
+        global PIPELINE_DIR
 
         data = {
                 "folders": {
                     "DATA_DIR": str(DATA_DIR),
                     "RUN_DIR": str(RUN_DIR),
                     "PIPELINES_RUNS": str(PIPELINES_RUNS),
-                    "SAMPLE_PREP_DIR": str(SAMPLE_PREP_DIR)
+                    "SAMPLE_PREP_DIR": str(SAMPLE_PREP_DIR),
+                    "PLUGIN_DIR": str(PLUGIN_DIR),
+                    "PIPELINE_DIR": str(PIPELINE_DIR)
                 },
                 "profile": {},
                 "app": {}

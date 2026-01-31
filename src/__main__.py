@@ -1,5 +1,5 @@
 import sys
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QSize, Qt, QTimer
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
@@ -187,6 +187,19 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.stack)
 
         self.plugin_manager.load_all(self)
+        
+        # Hide loading dialog after main app finishes loading
+        QTimer.singleShot(500, self._hide_loading_spinner)
+
+    def _hide_loading_spinner(self):
+        """Hide the loading spinner after main app has loaded."""
+        try:
+            if hasattr(self, 'access_page') and self.access_page:
+                if hasattr(self.access_page, 'loading_spinner'):
+                    self.access_page.loading_spinner.stop_loading()
+        except RuntimeError:
+            # Widget may have been deleted
+            pass
 
     def closeEvent(self, e):
         """Handle window close event and perform plugin cleanup.
