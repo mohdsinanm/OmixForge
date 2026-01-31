@@ -15,7 +15,7 @@ class FilesTreeWidget(QWidget):
     Double-clicking a file opens it in a FileViewerWindow.
     """
 
-    def __init__(self, root_dir: str, allowed_exts: list[str], parent=None):
+    def __init__(self, root_dir: str, allowed_exts: list[str], parent=None, exclude_dirs: list[str] = None):
         """Initialize the file tree widget with a root directory.
         
         Parameters
@@ -32,6 +32,7 @@ class FilesTreeWidget(QWidget):
         self.root_dir = os.path.abspath(root_dir)
         self.allowed_exts = allowed_exts
         self._viewer_windows = []  # prevent GC
+        self.exclude_dirs = exclude_dirs if exclude_dirs else []
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -71,7 +72,7 @@ class FilesTreeWidget(QWidget):
             for name in sorted(os.listdir(path)):
                 full_path = os.path.join(path, name)
 
-                if any(skip in full_path for skip in ("work", ".nextflow")):
+                if any(skip in full_path for skip in self.exclude_dirs):
                     continue
 
                 if os.path.isdir(full_path):
