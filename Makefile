@@ -1,5 +1,5 @@
 APP_NAME = omixforge
-VERSION = 1.0.6
+VERSION = 1.0.8
 ARCH = amd64
 BUILD_DIR = $(APP_NAME)_$(VERSION)_$(ARCH)
 ENTRY_POINT = src/__main__.py

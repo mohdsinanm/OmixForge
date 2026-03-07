@@ -19,7 +19,7 @@ from src.utils.resource import resource_path
 from src.core.dashboard.pipeline_dashboard import PipelineDashboard
 from src.core.status_page.pipeline_status import PipelineStatus
 from src.core.settings_page.settings import SettingsPage
-from src.core.sample.sample_prep import SamplePrepPage
+from src.core.sample.sample_page import Sample
 from src.core.profile_page.profile import ProfilePage
 from src.core.profile_page.startup_page import AccessModePage
 from src.core.initiate import InitiateApp
@@ -165,7 +165,7 @@ class MainWindow(QMainWindow):
 
         
         self.pipeline_dashboard = PipelineDashboard()
-        self.sample_prep_page = SamplePrepPage()
+        self.sample_prep_page = Sample()
         self.pipeline_status = PipelineStatus()
         self.settings_page = SettingsPage()
         self.about_page = AboutPage()
