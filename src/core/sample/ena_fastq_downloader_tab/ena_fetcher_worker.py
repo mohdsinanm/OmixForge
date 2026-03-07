@@ -4,11 +4,9 @@ import requests
 import json
 from PyQt6.QtCore import QObject, pyqtSignal
 from src.utils.logger_module.omix_logger import OmixForgeLogger
+from src.utils.constants import BASE_EBI_URL, FIELDS
 
 logger = OmixForgeLogger.get_logger()
-
-BASE_URL = "https://www.ebi.ac.uk/ena/portal/api/filereport"
-FIELDS = "study_accession,sample_accession,experiment_accession,run_accession,tax_id,scientific_name,fastq_ftp,submitted_ftp,sra_ftp,bam_ftp"
 
 
 class ENAFetcherWorker(QObject):
@@ -43,7 +41,7 @@ class ENAFetcherWorker(QObject):
                     self.fetch_progress.emit(idx + 1, total)
                     
                     # Build URL with single accession
-                    url = f"{BASE_URL}?accession={accession}&result=read_run&fields={FIELDS}&format=json&download=true&limit=0"
+                    url = f"{BASE_EBI_URL}?accession={accession}&result=read_run&fields={FIELDS}&format=json&download=true&limit=0"
                     
                     logger.info(f"Fetching data for accession: {accession}")
                     response = requests.get(url, timeout=30)

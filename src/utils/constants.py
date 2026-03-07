@@ -15,6 +15,10 @@ PLUGIN_DIR = CONFIG_DIR / "plugins"
 
 PLUGINS_API_URL = "https://api.github.com/repos/mohdsinanm/OmixForge-plugins/contents"
 
+BASE_EBI_URL = "https://www.ebi.ac.uk/ena/portal/api/filereport"
+FIELDS = "study_accession,sample_accession,experiment_accession,run_accession,tax_id,scientific_name,fastq_ftp,submitted_ftp,sra_ftp,bam_ftp"
+
+
 
 ## Files
 AUTH_JSON = AUTH_DIR / "auth_data.json.enc"
