@@ -148,11 +148,13 @@ class PipelineRunStatus(QWidget):
 
     def on_card_clicked(self, name):
         # Clear previous details
+
+        self.clear_layout(self.details_layout)
         
-        for i in reversed(range(self.details_layout.count())):
-            item = self.details_layout.takeAt(i)
-            if item.widget():
-                item.widget().deleteLater()
+        # for i in reversed(range(self.details_layout.count())):
+        #     item = self.details_layout.takeAt(i)
+        #     if item.widget():
+        #         item.widget().deleteLater()
 
 
         self.action_items_top = QHBoxLayout()

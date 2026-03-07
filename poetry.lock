@@ -3280,4 +3280,4 @@ ubiquerg = ">=0.7.0"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<3.14"
-content-hash = "9a758edf836fa76c6cd73bf73e85f013cea23d63fc5d685d1e7a6a2a23bf090e"
+content-hash = "bf64c0187a53ba213b48808858797fa82a95fb7f0125afcfe30161552b0a7813"
