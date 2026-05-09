@@ -147,14 +147,23 @@ class PipelineRunStatus(QWidget):
     
 
     def on_card_clicked(self, name):
-        # Clear previous details
+        # if same card selected again, do nothing (avoid rebuild / duplicate buttons)
+        if hasattr(self, '_selected_run') and self._selected_run == name and self.details_box.isVisible():
+            return
 
+        self._selected_run = name
+
+        # Clear previous details completely
         self.clear_layout(self.details_layout)
+        self.details_box.hide()
         
-        # for i in reversed(range(self.details_layout.count())):
-        #     item = self.details_layout.takeAt(i)
-        #     if item.widget():
-        #         item.widget().deleteLater()
+        # Reset any existing timers
+        if self._details_timer:
+            try:
+                self._details_timer.stop()
+            except Exception:
+                pass
+            self._details_timer = None
 
 
         self.action_items_top = QHBoxLayout()
@@ -196,88 +205,95 @@ class PipelineRunStatus(QWidget):
         self._details_timer.timeout.connect(lambda: self._refresh_details_content(name))
         self._details_timer.start()
 
-        # Action section
-        self.action_section = QHBoxLayout()
+        # Action section - create fresh layout each time
+        action_section = QHBoxLayout()
 
         delete_btn = QPushButton("Delete", parent=self.details_box)
         delete_btn.setFixedSize(70, 30)
         delete_btn.clicked.connect(lambda: self.on_delete_clicked(name))
 
-        self.action_section.addWidget(delete_btn)
-        self.details_layout.addLayout(self.action_section)
+        action_section.addWidget(delete_btn)
+        self.details_layout.addLayout(action_section)
 
         self.details_box.show()
 
     
-    def clear_layout(self, layout):
-        if layout is not None:
-            while layout.count():
-                item = layout.takeAt(0)
-                widget = item.widget()
-                child_layout = item.layout()
-
-                if widget is not None:
-                    widget.deleteLater()
-
-                elif child_layout is not None:
-                    self.clear_layout(child_layout)
-
-    def _on_close_button_click(self):
-        self.details_box.hide()
-
-        try:
-            self.clear_layout(self.details_layout)
-        except:
-            pass
-
-        
     def on_delete_clicked(self,file_name):
         try:
-            try:
-                app = QApplication.instance()
-                if app.cred:
-                    delete_file(f'{self.RUN_DIR}/{file_name.replace(".txt",".zip.enc")}')
-                    delete_file(f"{self.PIPELINES_RUNS}/{file_name}")
-                    
-                logger.info(f"Successfully deleted run: {file_name}")
-
-
-            except Exception as e:
+            # Stop any running details refresh timer
+            if self._details_timer:
                 try:
-                    delete_file(f"{self.PIPELINES_RUNS}/{file_name}")
-                    delete_directory(f'{self.RUN_DIR}/{file_name.replace(".txt","")}')
-                    logger.info(f"Successfully deleted run: {file_name}")
-                except Exception as e:
-                    logger.error(f"Failed to delete run {file_name} - {e}")
-                
-            # Clear the grid layout
-            for i in reversed(range(self.cards_grid.count())):
-                item = self.cards_grid.takeAt(i)
-                if item.widget():
-                    item.widget().deleteLater()
-                # Refresh the local pipelines list and UI
-                self.clear_details_layout()
-                self.details_box.hide()
-                if self._details_timer:
-                    try:
-                        self._details_timer.stop()
-                    except Exception:
-                        pass
-                    self._details_timer = None
-                self.pipeline_runs = []
-                self.get_local_pipelines_status()
-                # Re-render the cards   
-            # Here you can add logic to delete the pipeline
+                    self._details_timer.stop()
+                except Exception:
+                    pass
+                self._details_timer = None
+
+            # Hide and clear the details view
+            self.details_box.hide()
+            self.clear_details_layout()
+
+            app = QApplication.instance()
+            if getattr(app, "cred", False):
+                try:
+                    delete_file(f'{self.RUN_DIR}/{file_name.replace(".txt", ".zip.enc")}')
+                except Exception:
+                    pass
+
+            # Delete the run files/directories if present
+            try:
+                delete_file(f"{self.PIPELINES_RUNS}/{file_name}")
+            except Exception:
+                pass
+
+            try:
+                delete_directory(f'{self.RUN_DIR}/{file_name.replace(".txt", "")}')
+            except Exception:
+                pass
+
+            logger.info(f"Successfully deleted run: {file_name}")
         except Exception as e:
             logger.error(f"Error deleting pipeline: {e}")
+
+        # Refresh pipeline list and UI state
+        self.pipeline_runs = []
+        self.get_local_pipelines_status()
         self.render_cards()
 
     def clear_details_layout(self):
-        while self.details_layout.count():
-            item = self.details_layout.takeAt(0)
+        # Fully clear widgets and nested layouts from the details area.
+        self.clear_layout(self.details_layout)
+
+    def _on_close_button_click(self):
+        self.details_box.hide()
+        self._selected_run = None
+
+        if self._details_timer:
+            try:
+                self._details_timer.stop()
+            except Exception:
+                pass
+            self._details_timer = None
+
+        try:
+            self.clear_details_layout()
+        except Exception:
+            pass
+
+    def clear_layout(self, layout):
+        if layout is None:
+            return
+
+        while layout.count():
+            item = layout.takeAt(0)
             widget = item.widget()
-            if widget:
+            child_layout = item.layout()
+
+            if widget is not None:
+                widget.setParent(None)
                 widget.deleteLater()
+            elif child_layout is not None:
+                self.clear_layout(child_layout)
+                child_layout.deleteLater()
 
     def _periodic_refresh(self):
         # Called by timer to refresh list and cards

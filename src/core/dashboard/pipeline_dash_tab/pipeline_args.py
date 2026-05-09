@@ -92,6 +92,19 @@ class PipelineArgsDialog(QDialog):
         
         layout.addLayout(args_layout)
         
+        # Submit to remote server option
+        self.submit_to_server_checkbox = QCheckBox("Submit to server")
+        self.submit_to_server_checkbox.stateChanged.connect(self.on_submit_to_server_toggled)
+        layout.addWidget(self.submit_to_server_checkbox)
+
+        layout.addWidget(QLabel("Select SSH Server:"))
+        self.server_selector = QComboBox()
+        self.server_selector.setEnabled(False)
+        layout.addWidget(self.server_selector)
+
+        self.server_list = []
+        self.load_server_list()
+
         # Optional args section
         opt_label = QLabel("Additional Arguments :")
         opt_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
@@ -280,8 +293,34 @@ class PipelineArgsDialog(QDialog):
                 logger.error(f"Error retrieving value for {k}: {e}")
                 continue
 
+        # server submit options
+        config["submit_to_server"] = self.submit_to_server_checkbox.isChecked()
+        if config["submit_to_server"] and self.server_selector.currentText():
+            server_name = self.server_selector.currentText()
+            config["ssh_server"] = next((s for s in self.server_list if s.get("name") == server_name), None)
+
         return config
     
+    def load_server_list(self):
+        data = self.constants.get("server", []) if isinstance(self.constants, dict) else []
+        self.server_list = [s for s in data if isinstance(s, dict)]
+        self.server_selector.clear()
+        if not self.server_list:
+            self.server_selector.addItem("No servers configured")
+            self.server_selector.setEnabled(False)
+            return
+
+        self.server_selector.addItem("-- Select server --")
+        for server in self.server_list:
+            self.server_selector.addItem(server.get("name", server.get("host", "unnamed")))
+
+    def on_submit_to_server_toggled(self, state):
+        is_on = state == 2  # Qt.Checked
+        if self.server_list:
+            self.server_selector.setEnabled(is_on)
+        else:
+            self.server_selector.setEnabled(False)
+
     def params_extraction(self):
         """Extract parameters into a list of command-line arguments."""
         try:

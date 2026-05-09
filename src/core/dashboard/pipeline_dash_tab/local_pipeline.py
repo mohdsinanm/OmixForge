@@ -1,5 +1,10 @@
 from datetime import datetime
 import json
+import subprocess
+import csv
+import time
+import tempfile
+from pathlib import Path
 from pyqtwaitingspinner import WaitingSpinner
 
 from PyQt6.QtWidgets import (
@@ -617,7 +622,34 @@ class PipelineLocal(QWidget):
         if not config.get("input"):
             QMessageBox.warning(self, "Missing Argument", "Please specify the input (sample sheet) file.")
             return
-        
+
+        if config.get("submit_to_server"):
+            ssh_server = config.get("ssh_server")
+            if not ssh_server:
+                QMessageBox.warning(self, "SSH config", "Please select a valid configured SSH server.")
+                return
+
+            # Create worker and thread for remote submission
+            self.remote_worker = RemotePipelineWorker(pipeline, run_dir, config, ssh_server, run_name, self.PIPELINES_RUNS, self.RUN_DIR)
+            self.remote_thread = QThread()
+            self.remote_worker.moveToThread(self.remote_thread)
+
+            # Connect signals
+            self.remote_worker.progress.connect(self._on_remote_progress)
+            self.remote_worker.finished.connect(self._on_remote_finished)
+            self.remote_worker.error.connect(self._on_remote_error)
+            self.remote_thread.started.connect(self.remote_worker.run)
+            self.remote_worker.finished.connect(self.remote_thread.quit)
+            self.remote_worker.error.connect(self.remote_thread.quit)
+            self.remote_worker.finished.connect(self.remote_worker.deleteLater)
+            self.remote_worker.error.connect(self.remote_worker.deleteLater)
+            self.remote_thread.finished.connect(self.remote_thread.deleteLater)
+
+            # Start the thread
+            self.remote_thread.start()
+            QMessageBox.information(self, "Pipeline Submitted", f"Submitting pipeline to {ssh_server.get('name', ssh_server.get('host'))}...")
+            return
+
         ensure_directory([str(run_dir), self.PIPELINES_RUNS ])
 
         logger.info(f"Starting pipeline: {pipeline}")
@@ -738,6 +770,27 @@ class PipelineLocal(QWidget):
             self.current_run_name = None
             self.current_pipeline = None
 
+    def _on_remote_progress(self, message):
+        logger.info(f"Remote pipeline progress: {message}")
+
+    def _on_remote_finished(self, success, message):
+        if success:
+            logger.info(f"Remote pipeline finished: {message}")
+            QMessageBox.information(self, "Remote Pipeline", message)
+        else:
+            logger.error(f"Remote pipeline failed: {message}")
+            QMessageBox.critical(self, "Remote Pipeline Error", message)
+        # Clean up references
+        self.remote_worker = None
+        self.remote_thread = None
+
+    def _on_remote_error(self, error_msg):
+        logger.error(f"Remote pipeline error: {error_msg}")
+        QMessageBox.critical(self, "Remote Pipeline Error", f"Remote submission failed: {error_msg}")
+        # Clean up references
+        self.remote_worker = None
+        self.remote_thread = None
+
     def _proc_finished(self, run_name, exitCode, exitStatus):
         try:
 
@@ -853,5 +906,452 @@ class PipelineLocal(QWidget):
         except Exception as e:
             logger.error(f"Error stopping delete worker thread: {e}")
 
+        try:
+            if getattr(self, 'remote_thread', None) is not None:
+                if self.remote_thread.isRunning():
+                    self.remote_thread.quit()
+                    # Wait longer to ensure thread stops
+                    if not self.remote_thread.wait(3000):
+                        logger.warning("Remote worker thread didn't stop in time during closeEvent")
+                self.remote_thread = None
+                self.remote_worker = None
+        except Exception as e:
+            logger.error(f"Error stopping remote worker thread: {e}")
+
         super().closeEvent(event)
 
+class RemotePipelineWorker(QObject):
+    """Worker to run pipeline on remote server asynchronously."""
+    
+    progress = pyqtSignal(str)
+    finished = pyqtSignal(bool, str)  # success, message
+    error = pyqtSignal(str)
+    
+    def __init__(self, pipeline, run_dir, config, ssh_server, run_name, pipelines_runs_dir, run_dir_base):
+        super().__init__()
+        self.pipeline = pipeline
+        self.run_dir = run_dir
+        self.config = config
+        self.ssh_server = ssh_server
+        self.run_name = run_name
+        self.pipelines_runs_dir = pipelines_runs_dir
+        self.run_dir_base = run_dir_base
+    
+    def run(self):
+        try:
+            # build paths - remove .txt extension from run_name for remote directory
+            remote_base = f"/tmp/omixforge_runs/{self.run_name.replace(' ', '_').replace('.txt', '')}"
+            host = self.ssh_server.get('host')
+            user = self.ssh_server.get('username')
+            port = self.ssh_server.get('port', "")
+            if port == "":
+                port = None
+            key_path = self.ssh_server.get('key_path')
+            if not all([host, user, key_path]):
+                raise ValueError("Incomplete SSH server configuration")
+
+            # ensure local run_dir exists and config stored
+            ensure_directory([str(self.run_dir), self.pipelines_runs_dir])
+            config_file = f"{self.run_dir}/params.json"
+            with open(config_file, 'w') as f:
+                json.dump(self.config, f, indent=2)
+
+            # Create initial log file
+            local_log = f"{self.pipelines_runs_dir}/{self.run_name}"
+            write_to_file(local_log, f"Remote pipeline submission started for {self.pipeline} on {self.ssh_server.get('host')}\n")
+
+            sample_sheet = self.config.get('input')
+            if not sample_sheet:
+                raise ValueError("Sample sheet path missing")
+
+            self.progress.emit("Creating remote directory...")
+            append_to_file(local_log, "Creating remote directory...\n")
+            # create remote directory
+            if port is None:
+                proc = subprocess.run(["ssh", "-i", key_path, f"{user}@{host}", f"mkdir -p {remote_base}"], 
+                                    capture_output=True, text=True)
+            else:
+                proc = subprocess.run(["ssh", "-i", key_path, "-p", str(port), f"{user}@{host}", f"mkdir -p {remote_base}"], 
+                                    capture_output=True, text=True)
+            if proc.returncode != 0:
+                append_to_file(local_log, f"Error: Failed to create remote directory <<exit-code:1>>: {proc.stderr}\n")
+                raise RuntimeError(f"Failed to create remote dir: {proc.stderr}")
+
+            self.progress.emit("Copying sample sheet...")
+            append_to_file(local_log, "Copying sample sheet...\n")
+            # copy sample sheet
+            sample_sheet_name = Path(sample_sheet).name
+            remote_sample_sheet = f"{remote_base}/{sample_sheet_name}"
+            if port is None:
+                proc = subprocess.run(["scp", "-i", key_path, sample_sheet, f"{user}@{host}:{remote_sample_sheet}"], 
+                                capture_output=True, text=True)
+            else:
+                proc = subprocess.run(["scp", "-i", key_path, "-P", str(port), sample_sheet, f"{user}@{host}:{remote_sample_sheet}"], 
+                                capture_output=True, text=True)
+            if proc.returncode != 0:
+                append_to_file(local_log, f"Error: Failed to copy sample sheet <<exit-code:1>>: {proc.stderr}\n")
+                raise RuntimeError(f"Failed to copy sample sheet: {proc.stderr}")
+
+            # Copy data files and collect filenames for remote path replacement
+            self.progress.emit("Copying data files to remote...")
+            append_to_file(local_log, "Copying data files to remote...\n")
+            data_files_copied = []
+            with open(sample_sheet, 'r') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    for key, value in row.items():
+                        if key.startswith('fastq') and value:
+                            file_path = Path(value).expanduser()
+                            if file_path.exists():
+                                filename = file_path.name
+                                remote_file = f"{remote_base}/{filename}"
+                                append_to_file(local_log, f"Copying data file: {file_path} -> {remote_file}\n")
+                                if port is None:
+                                    proc = subprocess.run(["scp", "-i", key_path, str(file_path), f"{user}@{host}:{remote_file}"], 
+                                                        capture_output=True, text=True)
+                                else:
+                                    proc = subprocess.run(["scp", "-i", key_path, "-P", str(port), str(file_path), f"{user}@{host}:{remote_file}"], 
+                                                        capture_output=True, text=True)
+                                if proc.returncode != 0:
+                                    error_msg = f"Failed to copy data file {file_path}: {proc.stderr}"
+                                    append_to_file(local_log, f"Error: {error_msg}\n")
+                                    raise RuntimeError(error_msg)
+                                data_files_copied.append((str(file_path), remote_file))
+                            else:
+                                error_msg = f"Data file not found: {file_path}"
+                                append_to_file(local_log, f"Warning: {error_msg}\n")
+                                logger.warning(error_msg)
+
+            # Create remote script to update sample sheet paths on the server
+            self.progress.emit("Updating sample sheet paths on remote server...")
+            append_to_file(local_log, "Updating sample sheet paths on remote server...\n")
+            remote_script = f"{remote_base}/update_samplesheet.py"
+            script_content = f"""#!/usr/bin/env python3
+import csv
+import sys
+
+sample_sheet = "{remote_sample_sheet}"
+remote_base = "{remote_base}"
+
+# Mapping of original paths to remote paths
+path_mapping = {{
+{chr(10).join([f'    "{local}": "{remote}",' for local, remote in data_files_copied])}
+}}
+
+try:
+    # Read sample sheet
+    with open(sample_sheet, 'r') as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+        fieldnames = reader.fieldnames
+    
+    # Update paths
+    for row in rows:
+        for key in row:
+            if key.startswith('fastq') and row[key]:
+                if row[key] in path_mapping:
+                    row[key] = path_mapping[row[key]]
+    
+    # Write updated sample sheet back
+    with open(sample_sheet, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    
+    print(f"Updated sample sheet: {{sample_sheet}}")
+except Exception as e:
+    print(f"Error updating sample sheet: {{e}}", file=sys.stderr)
+    sys.exit(1)
+"""
+            
+            # Write script to local temp location and copy to remote
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.py') as tmp:
+                tmp.write(script_content)
+                tmp_script_path = tmp.name
+            
+            try:
+                if port is None:
+                    proc = subprocess.run(["scp", "-i", key_path, tmp_script_path, f"{user}@{host}:{remote_script}"], 
+                                        capture_output=True, text=True)
+                else:
+                    proc = subprocess.run(["scp", "-i", key_path, "-P", str(port), tmp_script_path, f"{user}@{host}:{remote_script}"], 
+                                        capture_output=True, text=True)
+                if proc.returncode != 0:
+                    append_to_file(local_log, f"Error: Failed to copy update script <<exit-code:1>>: {proc.stderr}\n")
+                    raise RuntimeError(f"Failed to copy update script: {proc.stderr}")
+                
+                # Execute remote script
+                if port is None:
+                    proc = subprocess.run(["ssh", "-i", key_path, f"{user}@{host}", f"python3 {remote_script}"], 
+                                        capture_output=True, text=True)
+                else:
+                    proc = subprocess.run(["ssh", "-i", key_path, "-p", str(port), f"{user}@{host}", f"python3 {remote_script}"], 
+                                            capture_output=True, text=True)
+                if proc.returncode != 0:
+                    error_msg = f"Failed to update sample sheet on remote: {proc.stderr}"
+                    append_to_file(local_log, f"Error: <<exit-code:1>> {error_msg}\n")
+                    raise RuntimeError(error_msg)
+                append_to_file(local_log, f"Remote script output: {proc.stdout}\n")
+            finally:
+                # Clean up temp script
+                try:
+                    Path(tmp_script_path).unlink()
+                except Exception:
+                    pass
+
+            # Update config with remote paths
+            self.config['input'] = remote_sample_sheet
+            if 'outdir' in self.config:
+                self.config['outdir'] = remote_base
+
+            self.progress.emit("Copying pipeline config...")
+            append_to_file(local_log, "Copying pipeline config...\n")
+            # rewrite config with updated paths and copy to remote
+            with open(config_file, 'w') as f:
+                json.dump(self.config, f, indent=2)
+            if port is None:
+                proc = subprocess.run(["scp", "-i", key_path, config_file, f"{user}@{host}:{remote_base}/params.json"], 
+                                    capture_output=True, text=True)
+            else:
+                proc = subprocess.run(["scp", "-i", key_path, "-P", str(port), config_file, f"{user}@{host}:{remote_base}/params.json"], 
+                                    capture_output=True, text=True)
+            if proc.returncode != 0:
+                append_to_file(local_log, f"Error: Failed to copy updated config <<exit-code:1>>: {proc.stderr}\n")
+                raise RuntimeError(f"Failed to copy updated config: {proc.stderr}")
+
+            # Copy pipeline directory to remote nextflow assets
+            pipeline_local_dir = Path.home() / ".nextflow" / "assets" / self.pipeline
+            logger.info(f"Looking for local pipeline directory at: {pipeline_local_dir}")
+            if pipeline_local_dir.exists():
+                self.progress.emit("Copying pipeline directory...")
+                append_to_file(local_log, "Copying pipeline directory...\n")
+
+                # Get the assets base directory
+                assets_base = Path.home() / ".nextflow" / "assets"
+                
+                # Remote paths - use explicit expansion
+                remote_assets_base = f"/home/{user}/.nextflow/assets"
+                remote_pipeline_dir = f"{remote_assets_base}/{self.pipeline}"
+                
+                # Create remote directory structure
+                if port is None:
+                    proc = subprocess.run(["ssh", "-i", key_path, f"{user}@{host}", 
+                                          f"mkdir -p {remote_assets_base}"],
+                                        capture_output=True, text=True)
+                else:
+                    proc = subprocess.run(["ssh", "-i", key_path, "-p", str(port), f"{user}@{host}", 
+                                          f"mkdir -p {remote_assets_base}"],
+                                        capture_output=True, text=True)
+                if proc.returncode != 0:
+                    append_to_file(local_log, f"Warning: Failed to create remote nextflow assets dir : {proc.stderr}\n")
+
+                try:
+                    # Use tar to copy with git directory preserved
+                    # Tar from assets base directory to preserve the full pipeline path (e.g., nf-core/demo)
+                    tar_proc = subprocess.run(
+                        ["tar", "-C", str(assets_base), "-czf", "-", self.pipeline],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                    )
+                    if tar_proc.returncode != 0:
+                        raise RuntimeError(tar_proc.stderr.decode("utf-8", errors="ignore") or "tar failed")
+
+                    # Extract on remote in assets base directory to recreate full structure
+                    if port is None:
+                        ssh_cmd = ["ssh", "-i", key_path, f"{user}@{host}", 
+                                   f"mkdir -p {remote_assets_base} && cd {remote_assets_base} && tar -xzf -"]
+                    else:
+                        ssh_cmd = ["ssh", "-i", key_path, "-p", str(port), f"{user}@{host}", 
+                                   f"mkdir -p {remote_assets_base} && cd {remote_assets_base} && tar -xzf -"]
+                    ssh_proc = subprocess.run(
+                        ssh_cmd,
+                        input=tar_proc.stdout,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                    )
+                    if ssh_proc.returncode != 0:
+                        raise RuntimeError(ssh_proc.stderr.decode("utf-8", errors="ignore") or "remote tar extract failed")
+                    
+                    logger.info(f"Successfully copied pipeline to {remote_pipeline_dir} via tar/ssh")
+                    append_to_file(local_log, f"Successfully copied pipeline to {remote_pipeline_dir} via tar/ssh\n")
+                except Exception as exc:
+                    append_to_file(local_log, f"Warning: Failed to copy pipeline dir: {exc}\n")
+                    logger.warning(f"Failed to copy pipeline dir: {exc}")
+
+            self.progress.emit("Starting remote pipeline...")
+            append_to_file(local_log, "Starting remote pipeline...\n")
+            # run pipeline remotely and save remote logs
+            remote_log = f"{remote_base}/run.log"
+            nextflow_cmd = f"cd {remote_base} && bash -l -c 'nextflow run {self.pipeline} -profile docker -params-file params.json > run.log 2>&1'"
+            
+            # Start the pipeline process
+            if port is None:
+                ssh_proc = subprocess.Popen(
+                    ["ssh", "-i", key_path, f"{user}@{host}", nextflow_cmd],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+            else:
+                ssh_proc = subprocess.Popen(
+                    ["ssh", "-i", key_path, "-p", str(port), f"{user}@{host}", nextflow_cmd],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+
+            # Poll the remote log file every 30 seconds while the process runs
+            last_fetched_size = 0
+            poll_interval = 30  # seconds
+            
+            while ssh_proc.poll() is None:  # While process is still running
+                time.sleep(poll_interval)
+                
+                # Fetch new content from remote log using tail
+                try:
+                    tail_cmd = f"tail -c +{last_fetched_size + 1} {remote_log} 2>/dev/null || true"
+                    if port is None:
+                        tail_proc = subprocess.run(
+                            ["ssh", "-i", key_path, f"{user}@{host}", tail_cmd],
+                            capture_output=True,
+                            text=True,
+                            timeout=10
+                        )
+                    else:
+                        tail_proc = subprocess.run(
+                            ["ssh", "-i", key_path, "-p", str(port), f"{user}@{host}", tail_cmd],
+                            capture_output=True,
+                            text=True,
+                            timeout=10
+                        )
+                    
+                    if tail_proc.returncode == 0 and tail_proc.stdout:
+                        new_content = tail_proc.stdout
+                        # Emit progress with new log lines
+                        for line in new_content.splitlines():
+                            if line.strip():
+                                self.progress.emit(f"Remote: {line}")
+                        append_to_file(local_log, f"[Remote log update] {new_content}\n")
+                        last_fetched_size += len(new_content.encode('utf-8'))
+                except Exception as poll_exc:
+                    logger.warning(f"Error polling remote log: {poll_exc}")
+                    append_to_file(local_log, f"Warning: Error polling remote log: {poll_exc}\n")
+            
+            # Process has finished, get final return code
+            return_code = ssh_proc.wait()
+            
+            # Fetch any remaining log content
+            try:
+                if port is None:
+                    final_log_proc = subprocess.run(
+                        ["ssh", "-i", key_path, f"{user}@{host}", f"cat {remote_log}"],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+                else:
+                    final_log_proc = subprocess.run(
+                        ["ssh", "-i", key_path, "-p", str(port), f"{user}@{host}", f"cat {remote_log}"],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+                if final_log_proc.returncode == 0:
+                    final_content = final_log_proc.stdout
+                    append_to_file(local_log, f"\n--- Final Remote Pipeline Log ---\n{final_content}\n")
+            except Exception as final_exc:
+                logger.warning(f"Error fetching final log: {final_exc}")
+            
+            # Check if pipeline succeeded
+            if return_code != 0:
+                error_msg = f"Remote run failed <<exit-code:{return_code}>>"
+                append_to_file(local_log, f"Error: {error_msg}\n")
+                raise RuntimeError(error_msg)
+
+            self.progress.emit("Syncing results back to local...")
+            append_to_file(local_log, "Syncing results back to local...\n")
+            # sync the entire remote run directory back to local
+            if port is None:
+                proc = subprocess.run(["scp", "-i", key_path, "-r", f"{user}@{host}:{remote_base}", str(Path(self.run_dir).parent)], 
+                                    capture_output=True, text=True)
+            else:
+                proc = subprocess.run(["scp", "-i", key_path, "-P", str(port), "-r", f"{user}@{host}:{remote_base}", str(Path(self.run_dir).parent)], 
+                                    capture_output=True, text=True)
+            if proc.returncode != 0:
+                append_to_file(local_log, f"Warning: Failed to sync results: {proc.stderr}\n")
+                logger.warning(f"Failed to sync remote results: {proc.stderr}")
+
+            self.progress.emit("Fetching remote log...")
+            append_to_file(local_log, "Fetching remote log...\n")
+            # pull log to local run registry for visibility (now from synced directory)
+            local_run_log = Path(self.run_dir) / "run.log"
+            if local_run_log.exists():
+                try:
+                    with open(local_run_log, 'r') as f:
+                        remote_content = f.read()
+                    append_to_file(local_log, f"\n--- Remote Pipeline Output ---\n{remote_content}\n")
+                except Exception as e:
+                    append_to_file(local_log, f"Error reading synced remote log: {e}\n")
+            else:
+                append_to_file(local_log, "Warning: Remote log not found in synced results.\n")
+
+            append_to_file(local_log, f"Remote job finished, log fetched from {host}:{remote_log} <<exit-code:{proc.returncode}>>\n")
+            self.finished.emit(True, f"Pipeline submitted successfully to {host}")
+            
+        except Exception as e:
+            self.error.emit(str(e))
+
+    def _proc_stdout(self, run_name):
+        # lookup the live process by run_name (proc may have been deleted)
+        entry = self.processes.get(run_name)
+        if not entry:
+            return
+        proc = entry.get('proc')
+        if not proc:
+            return
+        try:
+            out = proc.readAllStandardOutput().data().decode('utf-8', errors='ignore')
+            if out:
+                for line in out.splitlines():
+                    append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", line + "\n")
+                    logger.info(line)
+        except Exception as e:
+            logger.error(f"Error reading stdout for {run_name}: {e}")
+
+    def _proc_stderr(self, run_name):
+        entry = self.processes.get(run_name)
+        if not entry:
+            return
+        proc = entry.get('proc')
+        if not proc:
+            return
+        try:
+            err = proc.readAllStandardError().data().decode('utf-8', errors='ignore')
+            if err:
+                for line in err.splitlines():
+                    append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", line + "\n")
+                    logger.error(line)
+        except Exception as e:
+            logger.error(f"Error reading stderr for {run_name}: {e}")
+
+    def _on_remote_progress(self, message):
+        logger.info(f"Remote pipeline progress: {message}")
+
+    def _on_remote_finished(self, success, message):
+        if success:
+            logger.info(f"Remote pipeline finished: {message}")
+            QMessageBox.information(self, "Remote Pipeline", message)
+        else:
+            logger.error(f"Remote pipeline failed: {message}")
+            QMessageBox.critical(self, "Remote Pipeline Error", message)
+        # Clean up references
+        self.remote_worker = None
+        self.remote_thread = None
+
+    def _on_remote_error(self, error_msg):
+        logger.error(f"Remote pipeline error: {error_msg}")
+        QMessageBox.critical(self, "Remote Pipeline Error", f"Remote submission failed: {error_msg}")
+        # Clean up references
+        self.remote_worker = None
+        self.remote_thread = None
