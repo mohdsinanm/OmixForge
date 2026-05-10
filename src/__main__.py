@@ -52,6 +52,7 @@ class MainWindow(QMainWindow):
         self.toolbar = None
         self.sidebar = None
         self.stack = None
+        self.plugin_manager = None
 
         self.show_access_page()
 
@@ -209,7 +210,8 @@ class MainWindow(QMainWindow):
         e : QCloseEvent
             The close event object.
         """
-        self.plugin_manager.unload_all()
+        if self.plugin_manager:
+            self.plugin_manager.unload_all()
         super().closeEvent(e)
 
     def add_plugin_sidebar_item(self, name: str):

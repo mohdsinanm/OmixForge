@@ -71,4 +71,7 @@ configure:
 test: configure
 	QT_QPA_PLATFORM=offscreen poetry run pytest -q -k utils
 
+test-all: configure
+	QT_QPA_PLATFORM=offscreen poetry run pytest 
+	
 package: build-bin build-deb build-debian

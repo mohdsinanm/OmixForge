@@ -1297,7 +1297,7 @@ except Exception as e:
                 append_to_file(local_log, "Warning: Remote log not found in synced results.\n")
 
             append_to_file(local_log, f"Remote job finished, log fetched from {host}:{remote_log} <<exit-code:{proc.returncode}>>\n")
-            self.finished.emit(True, f"Pipeline submitted successfully to {host}")
+            self.finished.emit(True, f"Pipeline finished successfully on {host}")
             
         except Exception as e:
             self.error.emit(str(e))
