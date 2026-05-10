@@ -1,5 +1,5 @@
 APP_NAME = omixforge
-VERSION = 1.0.8
+VERSION = 1.0.9
 ARCH = amd64
 BUILD_DIR = $(APP_NAME)_$(VERSION)_$(ARCH)
 ENTRY_POINT = src/__main__.py
@@ -71,4 +71,7 @@ configure:
 test: configure
 	QT_QPA_PLATFORM=offscreen poetry run pytest -q -k utils
 
+test-all: configure
+	QT_QPA_PLATFORM=offscreen poetry run pytest 
+	
 package: build-bin build-deb build-debian

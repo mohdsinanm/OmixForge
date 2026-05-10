@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
 from src.core.settings_page.sections.folder_path_section import FolderPathsSection
 from src.core.settings_page.sections.profile_section import ProfileSettingsSection
 from src.core.settings_page.sections.app_settings_section import AppSettingsSection
+from src.core.settings_page.sections.server_setting_section import ServerSettingsSection
 from src.utils.constants import CONFIG_DIR, CONFIG_FILE, populate_constants
 from src.utils.fileops.file_handle import ensure_directory, json_read, json_write, file_exists
 import json
@@ -19,10 +20,12 @@ class SettingsPage(QWidget):
         self.folder_section = FolderPathsSection()
         self.profile_section = ProfileSettingsSection()
         self.app_section = AppSettingsSection()
+        self.server_section = ServerSettingsSection()
 
         layout = QVBoxLayout(self)
 
         layout.addWidget(self.folder_section)
+        layout.addWidget(self.server_section)
         # TBD
         # layout.addWidget(self.profile_section)
         # layout.addWidget(self.app_section)
@@ -47,6 +50,7 @@ class SettingsPage(QWidget):
             "folders": self.folder_section.get_settings(),
             "profile": self.profile_section.get_settings(),
             "app": self.app_section.get_settings(),
+            "server": self.server_section.get_settings(),
         }
 
         ensure_directory(CONFIG_DIR)
@@ -63,4 +67,5 @@ class SettingsPage(QWidget):
         self.folder_section.load_settings(data.get("folders", {}))
         self.profile_section.load_settings(data.get("profile", {}))
         self.app_section.load_settings(data.get("app", {}))
+        self.server_section.load_settings(data.get("server", []))
 

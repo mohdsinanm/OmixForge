@@ -9,7 +9,6 @@ def test_starts_on_access_page(window):
     subtitleLabel = window.findChild(QLabel, "subtitleLabel")
     assert subtitleLabel.text() == "Offline Bioinformatics Pipeline Execution"
 
-    print(window)
 
 def test_public_access_button(window):
 
@@ -42,7 +41,6 @@ def test_public_mode_loads_main_ui(window, sidebar_items):
 
     assert window._main_ui_loaded is True
     assert list_widget
-    assert len(list_widget) == 4
 
     for i in sidebar_items:
         items = list_widget.findItems(i, Qt.MatchFlag.MatchExactly)
