@@ -10,12 +10,13 @@ fi
 
 UPSTREAM_VERSION=$(dpkg-parsechangelog --show-field Version | cut -d'-' -f1)
 ORIG_TARBALL="omixforge_${UPSTREAM_VERSION}.orig.tar.gz"
+ORIG_TARBALL_PATH="$(pwd)/../$ORIG_TARBALL"
 
-if [ ! -f "$ORIG_TARBALL" ]; then
-  echo "Creating upstream tarball $ORIG_TARBALL"
+if [ ! -f "$ORIG_TARBALL_PATH" ]; then
+  echo "Creating upstream tarball $ORIG_TARBALL_PATH"
   tmpdir=$(mktemp -d)
   git archive --format=tar HEAD | tar -x -C "$tmpdir"
-  tar czf "$ORIG_TARBALL" --transform "s,^,omixforge-${UPSTREAM_VERSION}/," -C "$tmpdir" .
+  tar czf "$ORIG_TARBALL_PATH" --transform "s,^,omixforge-${UPSTREAM_VERSION}/," -C "$tmpdir" .
   rm -rf "$tmpdir"
 fi
 
