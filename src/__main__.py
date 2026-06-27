@@ -1,6 +1,6 @@
 import sys
 from PyQt6.QtCore import QSize, Qt, QTimer
-from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtGui import QAction, QIcon, QFont
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -11,8 +11,9 @@ from PyQt6.QtWidgets import (
     QDockWidget,
     QPushButton,
     QStackedWidget,
-    QListWidgetItem
-
+    QListWidgetItem,
+    QHBoxLayout,
+    QLabel
 )
 
 from src.utils.resource import resource_path
@@ -140,14 +141,52 @@ class MainWindow(QMainWindow):
         self.menu_items_head = QListWidgetItem("Menu\n")
         self.menu_items_head.setFlags(Qt.ItemFlag.NoItemFlags) 
         self.sidebar_list.addItem(self.menu_items_head)
-        self.sidebar_list.addItems([
-            "Pipeline Dashboard",
-            "Sample Prep",
-            "Pipeline Status",
-            "Plugin Store",
-            "Settings",
-            "About"
-        ])
+        
+        # Add items one by one to handle custom widgets
+        self.sidebar_list.addItem("Pipeline Dashboard")
+        self.sidebar_list.addItem("Sample Prep")
+        
+        # Pipeline Status with custom badge widget
+        self.pipeline_status_item = QListWidgetItem("Pipeline Status")
+        self.sidebar_list.addItem(self.pipeline_status_item)
+        
+        # Create custom widget for Pipeline Status badge
+        pipeline_status_widget = QWidget()
+        pipeline_status_widget.setStyleSheet("background: transparent;")
+        pipeline_status_widget.setFixedHeight(24)
+
+        layout = QHBoxLayout(pipeline_status_widget)
+        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setSpacing(4)
+        
+        # status_label = QLabel("Pipeline Status")
+        # status_label.setFont(QFont("Arial", 10, QFont.Weight.DemiBold))
+        # status_label.setStyleSheet("color: #333333;")
+        # layout.addWidget(status_label)
+        
+        self.badge_label = QLabel()
+        self.badge_label.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+        self.badge_label.setStyleSheet("""
+            QLabel {
+                background-color: #dc3545;
+                color: white;
+                border-radius: 8px;
+                padding: 2px 6px;
+                min-width: 18px;
+                qproperty-alignment: AlignCenter;
+            }
+        """)
+        self.badge_label.hide()  # Initially hidden
+        
+        layout.addStretch()
+        layout.addWidget(self.badge_label)
+        
+        self.sidebar_list.setItemWidget(self.pipeline_status_item, pipeline_status_widget)
+        self.pipeline_status_item.setSizeHint(QSize(0, 24))
+        
+        self.sidebar_list.addItem("Plugin Store")
+        self.sidebar_list.addItem("Settings")
+        self.sidebar_list.addItem("About")
 
         self.plugin_header = QListWidgetItem("\nPlugins\n")
         self.plugin_header.setFlags(Qt.ItemFlag.NoItemFlags) 
@@ -175,6 +214,11 @@ class MainWindow(QMainWindow):
 
         self.plugins_page = PluginsPage(self.plugin_manager)
         self.plugin_store = PluginStore(self)
+
+        self.pipeline_status.run_status.running_jobs_count_changed.connect(self.update_pipeline_status_badge)
+
+        # Initialize the badge
+        self.update_pipeline_status_badge(self.pipeline_status.run_status.get_running_jobs_count())
 
         self.stack = QStackedWidget()
         self.stack.addWidget(self.pipeline_dashboard.widget)
@@ -227,21 +271,13 @@ class MainWindow(QMainWindow):
         self.sidebar_list.insertItem(self.plugin_insert_row, item)
         self.plugin_insert_row += 1
 
-    def remove_plugin_sidebar_item(self, plugin_display_name: str):
-        """Remove a plugin item from the sidebar menu.
-        
-        Parameters
-        ----------
-        plugin_display_name : str
-            The display name of the plugin to remove.
-        """
-        sidebar = self.sidebar_list
-        for i in range(sidebar.count()):
-            item = sidebar.item(i)
-            role = item.data(Qt.ItemDataRole.UserRole)
-            if role and role[1] == plugin_display_name:
-                sidebar.takeItem(i)
-                break
+    def update_pipeline_status_badge(self, count):
+        """Update the Pipeline Status sidebar badge."""
+        if count > 0:
+            self.badge_label.setText(str(count))
+            self.badge_label.show()
+        else:
+            self.badge_label.hide()
 
 
     def toggle_sidebar(self, checked: bool):
@@ -271,7 +307,7 @@ class MainWindow(QMainWindow):
                 self.stack.setCurrentWidget(self.pipeline_dashboard.widget)
             elif page == "Sample Prep":
                 self.stack.setCurrentWidget(self.sample_prep_page.widget)
-            elif page == "Pipeline Status":
+            elif page.startswith("Pipeline Status"):
                 self.stack.setCurrentWidget(self.pipeline_status.widget)
             elif page == "Settings":
                 self.stack.setCurrentWidget(self.settings_page.widget)
@@ -287,7 +323,7 @@ class MainWindow(QMainWindow):
                 self.plugins_page.show_plugin(plugin_name)
 
 
-if __name__ == "__main__":
+def main():
     app = QApplication(sys.argv)
 
     app.setStyleSheet(global_style_sheet())
@@ -297,3 +333,7 @@ if __name__ == "__main__":
     window.showMaximized()
 
     sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()

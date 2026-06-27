@@ -52,10 +52,14 @@ def test_sidebar_navigation_pipeline_status(window, qtbot):
 
     list_widget = window.sidebar.widget()
 
-    # Find the target list item
-    items = list_widget.findItems("Pipeline Status", Qt.MatchFlag.MatchExactly)
-    assert items, "Pipeline Status item not found in sidebar"
-    pipeline_status_item = items[0]
+    # Find the target list item (may have badge)
+    pipeline_status_item = None
+    for i in range(list_widget.count()):
+        item = list_widget.item(i)
+        if item.text().startswith("Pipeline Status"):
+            pipeline_status_item = item
+            break
+    assert pipeline_status_item, "Pipeline Status item not found in sidebar"
 
     # Click the item visually where it is rendered
     rect = list_widget.visualItemRect(pipeline_status_item)
