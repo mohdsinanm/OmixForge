@@ -6,6 +6,7 @@ ENTRY_POINT = src/__main__.py
 BIN_NAME = $(APP_NAME)
 DESKTOP_FILE = $(APP_NAME).desktop
 ICON_NAME = $(APP_NAME).png
+ICON_SOURCE = src/assets/$(ICON_NAME)
 
 .PHONY: all clean build-deb build-bin
 
@@ -24,15 +25,13 @@ build-deb:
 	mkdir -p $(BUILD_DIR)/usr/share/applications
 	mkdir -p $(BUILD_DIR)/usr/share/icons
 
-	cp src/assets/omixforge.png .
-
 	@echo "Copying executable..."
 	cp dist/$(BIN_NAME) $(BUILD_DIR)/usr/bin/$(APP_NAME)
 	chmod +x $(BUILD_DIR)/usr/bin/$(APP_NAME)
 
 	@echo "Copying desktop and icon files..."
 	cp $(DESKTOP_FILE) $(BUILD_DIR)/usr/share/applications/
-	cp $(ICON_NAME) $(BUILD_DIR)/usr/share/icons/
+	cp $(ICON_SOURCE) $(BUILD_DIR)/usr/share/icons/
 
 	@echo "Creating control file..."
 	echo "Package: $(APP_NAME)" > $(BUILD_DIR)/DEBIAN/control
@@ -52,7 +51,9 @@ build-debian:
 
 clean:
 	@echo "Cleaning build artifacts..."
-	rm -rf build dist __pycache__ *.spec $(BUILD_DIR)
+	rm -rf build dist __pycache__ *.spec $(BUILD_DIR) omixforge.png omixforge_*_amd64*.deb __main__.py
+	find . -type d -name '__pycache__' -prune -exec rm -rf {} +
+	find . -type f -name '*.pyc' -delete
 
 install-omix:
 	sudo dpkg -i $(BUILD_DIR).deb
@@ -62,8 +63,7 @@ remove-omix:
 
 dev:
 	sed -i "s/APP_VERSION = .*/APP_VERSION = \"$(VERSION)\"/g" src/utils/version.py
-	cp src/__main__.py __main__.py
-	python3 __main__.py
+	python3 $(ENTRY_POINT)
 
 configure:
 	poetry install --no-root
