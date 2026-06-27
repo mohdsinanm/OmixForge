@@ -1,3 +1,13 @@
 #!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+
 %:
-	dh $@ --with python3
+	dh $@
+
+override_dh_auto_build:
+	# No-op: the package is built and installed by dh_python3/pybuild.
+
+override_dh_auto_install:
+	dh_auto_install
+	install -D -m 0755 debian/omixforge-wrapper debian/omixforge/usr/bin/omixforge

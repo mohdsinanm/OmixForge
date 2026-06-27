@@ -22,7 +22,7 @@ fi
 OUTPUT_DIR="$(pwd)"
 rm -f ../omixforge_*_source.changes ../omixforge_*_1.debian.tar.xz ../omixforge_*_1.dsc
 
-debuild -S -sa -us -uc
+yes | debuild -S -sa -us -uc
 
 mv ../omixforge_*_source.changes "$OUTPUT_DIR/" 2>/dev/null || true
 mv ../omixforge_*_1.debian.tar.xz "$OUTPUT_DIR/" 2>/dev/null || true
