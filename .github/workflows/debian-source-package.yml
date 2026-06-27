@@ -1,0 +1,68 @@
+name: Debian source package
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  build-source-package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.5"
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git \
+            python3-dev \
+            python3-venv \
+            build-essential \
+            dpkg-dev \
+            debhelper \
+            dh-python \
+            python3-all \
+            pybuild-plugin-pyproject \
+            python3-setuptools \
+            python3-wheel \
+            python3-poetry-core \
+            python3-pyqt6 \
+            python3-pandas \
+            python3-numpy \
+            python3-matplotlib \
+            python3-bs4 \
+            python3-biopython \
+            python3-requests \
+            devscripts
+
+      - name: Install Python deps
+        run: make configure
+
+      - name: Build Debian source package
+        run: |
+          chmod +x scripts/build-debian-source.sh
+          scripts/build-debian-source.sh
+
+      - name: Upload source package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: omixforge-debian-source
+          path: |
+            omixforge_*_source.changes
+            omixforge_*_1.debian.tar.xz
+            omixforge_*_1.dsc
+            omixforge_*_orig.tar.gz
+          if-no-files-found: error
