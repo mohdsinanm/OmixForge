@@ -10,8 +10,10 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea,
     QHBoxLayout, QGridLayout, QPushButton, QApplication
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QThreadPool
 from PyQt6.QtGui import QFont
+
+from src.core.dashboard.pipeline_dash_tab.local_pipeline import PipelineLocal
 
 
 class PipelineCard(QFrame):
@@ -55,6 +57,8 @@ class PipelineCard(QFrame):
 
 
 class PipelineRunStatus(QWidget):
+
+    running_jobs_count_changed = pyqtSignal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -106,6 +110,11 @@ class PipelineRunStatus(QWidget):
 
         items_collected = list_files_in_directory(self.PIPELINES_RUNS )
         self.pipeline_runs = items_collected
+
+
+    def get_running_jobs_count(self):
+        # Get the number of running pipeline jobs from PipelineLocal
+        return len(PipelineLocal.active_runs)
 
 
     def render_cards(self):
@@ -300,6 +309,7 @@ class PipelineRunStatus(QWidget):
         try:
             self.get_local_pipelines_status()
             self.render_cards()
+            self.running_jobs_count_changed.emit(self.get_running_jobs_count())
         except Exception:
             pass
 

@@ -18,10 +18,10 @@ class PipelineStatus(QWidget):
 
         tab_widget = QTabWidget()
 
-        pipeline_status_tab = PipelineRunStatus()
+        self.run_status = PipelineRunStatus()
         pipeline_result_tab = PipelineResultsPage()
 
-        tab_widget.addTab(pipeline_status_tab, "Status")
+        tab_widget.addTab(self.run_status, "Status")
         tab_widget.addTab(pipeline_result_tab, "Results")
 
         layout.addWidget(tab_widget)

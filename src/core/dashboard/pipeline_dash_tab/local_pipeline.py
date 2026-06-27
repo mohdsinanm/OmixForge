@@ -119,6 +119,8 @@ class PipelineDeleteWorker(QObject):
 
 class PipelineLocal(QWidget):
 
+    active_runs = set()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         # keep references to running processes so they are not GC'd
@@ -135,6 +137,7 @@ class PipelineLocal(QWidget):
         self.info_worker = None
         self.info_worker_thread = None
         self.active_spinner = None  # Track the active spinner to prevent accessing deleted ones
+        self.remote_run_name = None
         
         self.pipelines = []
         self.pipeline_info_lines = {}
@@ -634,6 +637,10 @@ class PipelineLocal(QWidget):
             self.remote_thread = QThread()
             self.remote_worker.moveToThread(self.remote_thread)
 
+            # Track remote submission as an active run for badge counting
+            self.remote_run_name = run_name
+            PipelineLocal.active_runs.add(run_name)
+
             # Connect signals
             self.remote_worker.progress.connect(self._on_remote_progress)
             self.remote_worker.finished.connect(self._on_remote_finished)
@@ -671,6 +678,7 @@ class PipelineLocal(QWidget):
 
             # keep proc referenced
             self.processes[run_name] = {"proc": proc, "pipeline": pipeline}
+            PipelineLocal.active_runs.add(run_name)
 
             # mark current run/pipeline
             self.current_run_name = run_name
@@ -759,6 +767,7 @@ class PipelineLocal(QWidget):
             except Exception:
                 pass
             self.processes.pop(rn, None)
+            PipelineLocal.active_runs.discard(rn)
             try:
                 self.run_btn.setEnabled(True)
             except Exception:
@@ -780,6 +789,11 @@ class PipelineLocal(QWidget):
         else:
             logger.error(f"Remote pipeline failed: {message}")
             QMessageBox.critical(self, "Remote Pipeline Error", message)
+
+        if getattr(self, 'remote_run_name', None):
+            PipelineLocal.active_runs.discard(self.remote_run_name)
+            self.remote_run_name = None
+
         # Clean up references
         self.remote_worker = None
         self.remote_thread = None
@@ -787,6 +801,11 @@ class PipelineLocal(QWidget):
     def _on_remote_error(self, error_msg):
         logger.error(f"Remote pipeline error: {error_msg}")
         QMessageBox.critical(self, "Remote Pipeline Error", f"Remote submission failed: {error_msg}")
+
+        if getattr(self, 'remote_run_name', None):
+            PipelineLocal.active_runs.discard(self.remote_run_name)
+            self.remote_run_name = None
+
         # Clean up references
         self.remote_worker = None
         self.remote_thread = None
@@ -820,6 +839,7 @@ class PipelineLocal(QWidget):
         finally:
             # Clean up stored process
             entry = self.processes.pop(run_name, None)
+            PipelineLocal.active_runs.discard(run_name)
             proc = None
             if entry:
                 proc = entry.get('proc')
@@ -1345,6 +1365,11 @@ except Exception as e:
         else:
             logger.error(f"Remote pipeline failed: {message}")
             QMessageBox.critical(self, "Remote Pipeline Error", message)
+
+        if getattr(self, 'remote_run_name', None):
+            PipelineLocal.active_runs.discard(self.remote_run_name)
+            self.remote_run_name = None
+
         # Clean up references
         self.remote_worker = None
         self.remote_thread = None
@@ -1352,6 +1377,8 @@ except Exception as e:
     def _on_remote_error(self, error_msg):
         logger.error(f"Remote pipeline error: {error_msg}")
         QMessageBox.critical(self, "Remote Pipeline Error", f"Remote submission failed: {error_msg}")
-        # Clean up references
-        self.remote_worker = None
-        self.remote_thread = None
+
+        if getattr(self, 'remote_run_name', None):
+            PipelineLocal.active_runs.discard(self.remote_run_name)
+            self.remote_run_name = None
+
