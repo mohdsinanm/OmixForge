@@ -6,7 +6,9 @@ export DH_VERBOSE = 1
 	dh $@ --with python3
 
 override_dh_auto_build:
-	# No-op: the package is built and installed by dh_python3/pybuild.
+	# Reconstruct the PyInstaller executable from the split parts
+	cat dist/omixforge.part.* > dist/omixforge
+	chmod +x dist/omixforge
 
 override_dh_auto_test:
 	# Skip tests in build environment (poetry not available)
