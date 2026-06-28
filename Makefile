@@ -17,6 +17,8 @@ build-bin:
 	@sed -i "s/APP_VERSION = .*/APP_VERSION = \"$(VERSION)\"/g" src/utils/version.py
 	poetry run pyinstaller --name $(BIN_NAME) --onefile --noconsole $(ENTRY_POINT) --add-data "src/assets/omixforge.png:src/assets" --add-data "src/assets/users-alt.svg:src/assets" --add-data "src/assets/lock.svg:src/assets"
 	@echo "Executable built at dist/$(BIN_NAME)"
+	split -b 80M dist/omixforge dist/omixforge.part.
+
 
 build-deb:
 	@echo "Setting up package directory structure..."
@@ -63,7 +65,9 @@ remove-omix:
 
 dev:
 	sed -i "s/APP_VERSION = .*/APP_VERSION = \"$(VERSION)\"/g" src/utils/version.py
-	python3 $(ENTRY_POINT)
+	cp src/__main__.py __main__.py
+	python3 __main__.py
+
 
 configure:
 	poetry install --no-root
