@@ -4,7 +4,7 @@
 .nextflow.log
 /build/
 /dist/*
-!/dist/omixforge
+!/dist/omixforge.part.*
 src/utils/version.py
 omixforge_*_amd64*
 omixforge.spec
