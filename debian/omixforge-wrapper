@@ -1,2 +1,3 @@
 #!/bin/sh
+export PYTHONPATH="/usr/share/omixforge:$PYTHONPATH"
 exec python3 -m src.__main__ "$@"
