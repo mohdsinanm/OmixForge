@@ -43,6 +43,15 @@ Before running OmixForge, ensure you have the following installed:
 
 ### For Users (Debian/Ubuntu)
 
+### Option-a
+```
+sudo add-apt-repository ppa:mohdsinanm/ppa
+sudo apt update 
+sudo apt install omixforge
+```
+
+### Option-b
+
 1.  Download the latest `.deb` package from the [Releases](https://github.com/mohdsinanm/OmixForge/releases/) page (or build it yourself).
 2.  Install the package:
     ```bash
