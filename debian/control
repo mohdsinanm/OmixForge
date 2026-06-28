@@ -2,12 +2,12 @@ Source: omixforge
 Section: science
 Priority: optional
 Maintainer: Sinan <mohamedysf@bicpu.edu.in>
-Build-Depends: debhelper-compat (= 13), dh-python, python3-all, pybuild-plugin-pyproject, python3-setuptools, python3-wheel, python3-poetry-core, python3-pyqt6, python3-pandas, python3-numpy, python3-matplotlib, python3-bs4, python3-biopython, python3-requests
+Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.8.0
 Rules-Requires-Root: no
 
 Package: omixforge
 Architecture: amd64
-Depends: ${python3:Depends}, ${misc:Depends}
+Depends: ${misc:Depends}
 Description: OmixForge - offline bioinformatics workflow manager
  A desktop application for managing bioinformatics pipelines locally.

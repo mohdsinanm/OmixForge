@@ -1,3 +1,4 @@
+dist/omixforge usr/bin/
 omixforge.desktop usr/share/applications/
 src/assets/omixforge.png usr/share/icons/
-src/ usr/share/omixforge/
+

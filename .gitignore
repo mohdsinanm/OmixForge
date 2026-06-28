@@ -2,8 +2,9 @@
 .pytest_cache/
 .vscode/
 .nextflow.log
-*build
-*dist
+/build/
+/dist/*
+!/dist/omixforge
 src/utils/version.py
 omixforge_*_amd64*
 omixforge.spec

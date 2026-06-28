@@ -65,7 +65,9 @@ remove-omix:
 
 dev:
 	sed -i "s/APP_VERSION = .*/APP_VERSION = \"$(VERSION)\"/g" src/utils/version.py
-	python3 $(ENTRY_POINT)
+	cp src/__main__.py __main__.py
+	python3 __main__.py
+
 
 configure:
 	poetry install --no-root
