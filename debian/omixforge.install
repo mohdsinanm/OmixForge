@@ -1,5 +1,3 @@
 omixforge.desktop usr/share/applications/
 src/assets/omixforge.png usr/share/icons/
-src/assets/omixforge.png usr/share/omixforge/src/assets/
-src/assets/users-alt.svg usr/share/omixforge/src/assets/
-src/assets/lock.svg usr/share/omixforge/src/assets/
+src/ usr/share/omixforge/
