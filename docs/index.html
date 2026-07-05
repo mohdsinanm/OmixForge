@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmixForge | Offline Bioinformatics Workflow Manager</title>
+    <meta name="description" content="OmixForge is a comprehensive, offline-capable bioinformatics workflow manager for Nextflow (nf-core) pipelines. Simplify complex data analysis with a user-friendly desktop interface.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+    <!-- Header -->
+    <header class="site-header">
+        <div class="container header-container">
+            <a href="#" class="logo-area">
+                <img src="assets/logo.png" alt="OmixForge Logo" class="logo-img" id="site-logo">
+                <span class="logo-text">OmixForge</span>
+            </a>
+            
+            <nav class="nav-menu" id="nav-menu">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#quickstart" class="nav-link">Quick Start</a>
+                <a href="#docs" class="nav-link">Documentation</a>
+                <a href="https://github.com/mohdsinanm/OmixForge" target="_blank" rel="noopener" class="nav-link github-link">
+                    <svg viewBox="0 0 24 24" class="icon-svg"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+                    GitHub
+                </a>
+            </nav>
+
+            <div class="header-actions">
+                <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle dark/light mode">
+                    <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </button>
+
+                <button class="mobile-nav-toggle" id="mobile-menu-btn" aria-label="Open navigation menu">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container hero-container">
+            <div class="hero-content">
+                <div class="badge-pill">Version 1.1.0 Available</div>
+                <h1>Bioinformatics Workflows,<br><span class="gradient-text">Forged with Simplicity</span></h1>
+                <p class="hero-description">
+                    OmixForge is a comprehensive, offline-capable bioinformatics desktop application that simplifies the orchestration of Nextflow (nf-core) pipelines. Manage, configure, and execute workflows without command-line complexities.
+                </p>
+                <div class="hero-ctas">
+                    <a href="#quickstart" class="btn btn-primary" id="hero-cta-get-started">Get Started</a>
+                    <a href="https://github.com/mohdsinanm/OmixForge/releases" target="_blank" rel="noopener" class="btn btn-secondary" id="hero-cta-download">
+                        <svg class="btn-icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Download .deb
+                    </a>
+                </div>
+            </div>
+
+            <!-- Simulated UI Mockup -->
+            <div class="hero-media">
+                <div class="mockup-window">
+                    <div class="window-header">
+                        <div class="window-dots">
+                            <span class="dot close"></span>
+                            <span class="dot minimize"></span>
+                            <span class="dot maximize"></span>
+                        </div>
+                        <div class="window-title">OmixForge - Pipeline Dashboard</div>
+                    </div>
+                    <div class="window-body">
+                        <!-- Mock Sidebar -->
+                        <aside class="mock-sidebar">
+                            <div class="mock-profile">
+                                <div class="mock-avatar"></div>
+                                <div class="mock-user-info">
+                                    <div class="mock-username">Sinan</div>
+                                    <div class="mock-badge">Public Mode</div>
+                                </div>
+                            </div>
+                            <nav class="mock-nav">
+                                <span class="mock-nav-item active"><span class="mock-nav-icon">📊</span> Dashboard</span>
+                                <span class="mock-nav-item"><span class="mock-nav-icon">🧪</span> Sample Prep</span>
+                                <span class="mock-nav-item"><span class="mock-nav-icon">📥</span> ENA Downloader</span>
+                                <span class="mock-nav-item"><span class="mock-nav-icon">📈</span> Pipeline Status</span>
+                                <span class="mock-nav-item"><span class="mock-nav-icon">🔌</span> Plugin Store</span>
+                                <span class="mock-nav-item"><span class="mock-nav-icon">⚙️</span> Settings</span>
+                            </nav>
+                        </aside>
+                        <!-- Mock Content -->
+                        <main class="mock-content">
+                            <div class="mock-dashboard-header">
+                                <h3>Local Pipelines</h3>
+                                <button class="mock-btn-sm">+ Import Pipeline</button>
+                            </div>
+                            <div class="mock-stats-grid">
+                                <div class="mock-stat-card">
+                                    <div class="stat-label">Active Runs</div>
+                                    <div class="stat-value">1 Running</div>
+                                </div>
+                                <div class="mock-stat-card">
+                                    <div class="stat-label">Local Pipelines</div>
+                                    <div class="stat-value">3 Pipelines</div>
+                                </div>
+                            </div>
+                            <div class="mock-pipeline-list">
+                                <div class="mock-pipeline-card">
+                                    <div class="pipeline-card-left">
+                                        <div class="pipeline-icon">🧬</div>
+                                        <div class="pipeline-info">
+                                            <div class="pipeline-name">rnaseq</div>
+                                            <div class="pipeline-desc">RNA-sequencing analysis pipeline</div>
+                                        </div>
+                                    </div>
+                                    <span class="mock-badge-success">Running...</span>
+                                </div>
+                                <div class="mock-pipeline-card">
+                                    <div class="pipeline-card-left">
+                                        <div class="pipeline-icon">🧬</div>
+                                        <div class="pipeline-info">
+                                            <div class="pipeline-name">sarek</div>
+                                            <div class="pipeline-desc">Somatic and germline variant calling</div>
+                                        </div>
+                                    </div>
+                                    <span class="mock-badge-ready">Ready</span>
+                                </div>
+                            </div>
+                            <!-- Mock Console -->
+                            <div class="mock-console">
+                                <div class="console-header">Live Nextflow Execution Logs</div>
+                                <div class="console-body">
+                                    <div>[info] Launching nextflow run nf-core/rnaseq -profile docker...</div>
+                                    <div>[info] N E X T F L O W  ~  version 23.10.0</div>
+                                    <div class="typing-animation">[work] [53/de48a1] submitted > NFCORE_RNASEQ:RNASEQ:FASTQC (1)</div>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Designed for High-Performance Workflows</h2>
+                <p>Orchestrate complex pipelines with absolute ease and visual confidence.</p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">
+                        <svg viewBox="0 0 24 24" class="feature-icon"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M9 17V9l6 4-6 4z" fill="currentColor"/></svg>
+                    </div>
+                    <h3>One-Click Launch</h3>
+                    <p>Reads Nextflow JSON/YAML schemas dynamically to build user-friendly input forms. No more editing manual configs.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">
+                        <svg viewBox="0 0 24 24" class="feature-icon"><path d="M3 3h18v18H3zm3 6h12M6 14h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+                    </div>
+                    <h3>Smart Data Sheet</h3>
+                    <p>Excel-like sample prep tool with auto-discovery. Scans directories, groups paired-end FASTQ reads automatically, and exports pipeline-ready CSVs.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">
+                        <svg viewBox="0 0 24 24" class="feature-icon"><path d="M12 2v20M17 5l-5-5-5 5M5 19l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+                    </div>
+                    <h3>ENA Downloader</h3>
+                    <p>Built-in parallel downloader for ENA accessions (SRR, ERR, DRR). Fetch accession metadata and pull raw FASTQ data in PyQt6 background threads.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">
+                        <svg viewBox="0 0 24 24" class="feature-icon"><rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                    </div>
+                    <h3>Secure Private Mode</h3>
+                    <p>Enforce AES-128 Fernet encryption on application run outputs and authentication credentials in sensitive or shared compute environments.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">
+                        <svg viewBox="0 0 24 24" class="feature-icon"><path d="M12 3v18M3 12h18M12 3l4 4M12 21l-4-4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                    </div>
+                    <h3>Plugin Ecosystem</h3>
+                    <p>Extend OmixForge directly through the internal Plugin Store. Build custom pipeline configurations, modules, and data visualization plugins.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">
+                        <svg viewBox="0 0 24 24" class="feature-icon"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14h-2v-2h2zm0-4h-2V7h2z" fill="currentColor"/></svg>
+                    </div>
+                    <h3>Live Status Monitoring</h3>
+                    <p>Real-time visual monitoring of pipeline runs. Mimics live command terminal output and keeps raw output directories accessible locally.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start Section -->
+    <section class="quickstart-section" id="quickstart">
+        <div class="container">
+            <div class="section-header">
+                <h2>Get Started in Minutes</h2>
+                <p>Deploy OmixForge on your Debian-based system or configure it from source.</p>
+            </div>
+
+            <div class="quickstart-wrapper">
+                <div class="tabs-header">
+                    <button class="tab-btn active" id="tab-btn-deb">Debian / Ubuntu Package</button>
+                    <button class="tab-btn" id="tab-btn-source">From Source</button>
+                </div>
+                
+                <!-- Debian Tab Content -->
+                <div class="tab-content active" id="tab-content-deb">
+                    <div class="step-list">
+                        <div class="step-item">
+                            <span class="step-num">1</span>
+                            <div class="step-info">
+                                <h4>Download Installer</h4>
+                                <p>Get the latest <code>.deb</code> package from the releases page.</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <span class="step-num">2</span>
+                            <div class="step-info">
+                                <h4>Install dependencies and application</h4>
+                                <div class="code-block-container">
+                                    <pre><code id="code-deb-install">sudo dpkg -i omixforge_1.1.0_amd64.deb</code></pre>
+                                    <button class="copy-btn" data-target="code-deb-install" aria-label="Copy code">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <span class="step-num">3</span>
+                            <div class="step-info">
+                                <h4>Launch Application</h4>
+                                <p>Open OmixForge from your application menu or dashboard.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Source Tab Content -->
+                <div class="tab-content" id="tab-content-source">
+                    <div class="step-list">
+                        <div class="step-item">
+                            <span class="step-num">1</span>
+                            <div class="step-info">
+                                <h4>Clone the Repository</h4>
+                                <div class="code-block-container">
+                                    <pre><code id="code-src-clone">git clone https://github.com/mohdsinanm/OmixForge.git
+cd OmixForge</code></pre>
+                                    <button class="copy-btn" data-target="code-src-clone" aria-label="Copy code">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <span class="step-num">2</span>
+                            <div class="step-info">
+                                <h4>Install dependencies via Poetry</h4>
+                                <div class="code-block-container">
+                                    <pre><code id="code-src-poetry">poetry install
+poetry shell</code></pre>
+                                    <button class="copy-btn" data-target="code-src-poetry" aria-label="Copy code">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <span class="step-num">3</span>
+                            <div class="step-info">
+                                <h4>Run Development Server</h4>
+                                <div class="code-block-container">
+                                    <pre><code id="code-src-run">make dev</code></pre>
+                                    <button class="copy-btn" data-target="code-src-run" aria-label="Copy code">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Documentation Section -->
+    <section class="docs-section" id="docs">
+        <div class="container">
+            <div class="section-header">
+                <h2>Documentation Hub</h2>
+                <p>Complete setup, configuration, and feature guides imported straight from our wiki.</p>
+            </div>
+
+            <div class="docs-wrapper">
+                <!-- Sidebar navigation -->
+                <aside class="docs-sidebar">
+                    <ul class="docs-nav-list" role="tablist">
+                        <li><button class="docs-nav-btn active" data-doc="requirements" role="tab" aria-selected="true" aria-controls="panel-requirements">System Requirements</button></li>
+                        <li><button class="docs-nav-btn" data-doc="install-deps" role="tab" aria-selected="false" aria-controls="panel-install-deps">Dependency Installation</button></li>
+                        <li><button class="docs-nav-btn" data-doc="setup" role="tab" aria-selected="false" aria-controls="panel-setup">First Launch & Modes</button></li>
+                        <li><button class="docs-nav-btn" data-doc="dashboards" role="tab" aria-selected="false" aria-controls="panel-dashboards">Pipeline Dashboard</button></li>
+                        <li><button class="docs-nav-btn" data-doc="samples" role="tab" aria-selected="false" aria-controls="panel-samples">Sample Preparation</button></li>
+                        <li><button class="docs-nav-btn" data-doc="ena-download" role="tab" aria-selected="false" aria-controls="panel-ena-download">ENA Downloader</button></li>
+                        <li><button class="docs-nav-btn" data-doc="workflows" role="tab" aria-selected="false" aria-controls="panel-workflows">Running Workflows</button></li>
+                        <li><button class="docs-nav-btn" data-doc="private-mode" role="tab" aria-selected="false" aria-controls="panel-private-mode">Private Mode & Security</button></li>
+                        <li><button class="docs-nav-btn" data-doc="plugins" role="tab" aria-selected="false" aria-controls="panel-plugins">Plugins Ecosystem</button></li>
+                        <li><button class="docs-nav-btn" data-doc="troubleshooting" role="tab" aria-selected="false" aria-controls="panel-troubleshooting">Troubleshooting</button></li>
+                    </ul>
+                </aside>
+
+                <!-- Document reader body -->
+                <article class="docs-content">
+                    
+                    <!-- requirements -->
+                    <div class="doc-panel active" id="panel-requirements" role="tabpanel">
+                        <h3>System Requirements & Prerequisites</h3>
+                        <hr>
+                        <p>OmixForge orchestrates advanced bioinformatic computations offline. Ensure your machine meets the minimum resources required for workflow containerization.</p>
+                        
+                        <h4>Hardware Specifications</h4>
+                        <ul>
+                            <li><strong>Operating System:</strong> Linux (Ubuntu 20.04+ or Debian 11+ recommended).</li>
+                            <li><strong>System Memory (RAM):</strong> Minimum 8GB (16GB+ recommended for running multiple heavy pipelines).</li>
+                            <li><strong>Disk Space:</strong> Adequate space for raw FASTQ inputs, Docker container layers, and nextflow outputs.</li>
+                        </ul>
+
+                        <h4>Core System Dependencies</h4>
+                        <p>Before launching OmixForge, the system requires the following runtime dependencies:</p>
+                        <ol>
+                            <li><strong>Docker Engine:</strong> Used for containerized execution of pipeline steps to preserve software environments.</li>
+                            <li><strong>Nextflow Engine:</strong> The pipeline runner engine. Requires Nextflow in the system <code>$PATH</code>.</li>
+                            <li><strong>Java Runtime Environment (JRE):</strong> Nextflow requires OpenJDK 11 or later.</li>
+                        </ol>
+                    </div>
+
+                    <!-- install-deps -->
+                    <div class="doc-panel" id="panel-install-deps" role="tabpanel">
+                        <h3>Installing Nextflow and Docker on Debian/Ubuntu</h3>
+                        <hr>
+                        <p>Follow these standard steps to configure your system for local pipeline runs.</p>
+
+                        <h4>Part A: Installing Docker Engine</h4>
+                        <div class="code-block-container">
+                            <pre><code># 1. Update Package Index
+sudo apt update
+
+# 2. Install Required Dependencies
+sudo apt install -y ca-certificates curl gnupg lsb-release
+
+# 3. Add Docker's Official GPG Key
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+# 4. Set Up the Docker Repository
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# 5. Install Docker Engine
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin</code></pre>
+                        </div>
+                        
+                        <div class="alert alert-note">
+                            <p><strong>Note for Debian users:</strong> Replace the repository URL in Step 4 with <code>https://download.docker.com/linux/debian</code>.</p>
+                        </div>
+
+                        <h4>Part B: User Permissions (Recommended)</h4>
+                        <p>To let OmixForge invoke Docker containers without requiring administrator privileges (sudo), run:</p>
+                        <div class="code-block-container">
+                            <pre><code>sudo usermod -aG docker $USER
+newgrp docker</code></pre>
+                        </div>
+
+                        <h4>Part C: Installing Nextflow</h4>
+                        <p>Nextflow requires Java 11+. Use the following configuration steps:</p>
+                        <div class="code-block-container">
+                            <pre><code># 1. Install Java
+sudo apt update
+sudo apt install -y openjdk-11-jre-headless
+
+# 2. Download and install Nextflow
+curl -s https://get.nextflow.io | bash
+
+# 3. Make Nextflow globally available
+sudo mv nextflow /usr/local/bin/</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- setup -->
+                    <div class="doc-panel" id="panel-setup" role="tabpanel">
+                        <h3>First Launch & Access Modes</h3>
+                        <hr>
+                        <p>On launching OmixForge, you are greeted with the profile configuration screen. You can select between two access modes:</p>
+                        
+                        <h4>1. Public Mode</h4>
+                        <p>The standard operation mode for standard environments. Requires no setup passwords or access keys. Highly recommended for personal workstations and general workflows.</p>
+
+                        <h4>2. Private Mode</h4>
+                        <p>Designed for shared server environments, sensitive data hubs, or clinical computing layouts. On first launch, you are asked to register a username and passphrase.</p>
+                        
+                        <div class="alert alert-warning">
+                            <p><strong>Important:</strong> Passwords cannot be recovered under Private Mode. All run parameters, log headers, and output file assets are encrypted using Fernet (AES-128) logic. Losing your credentials results in permanent loss of output access.</p>
+                        </div>
+
+                        <h4>Interface Layout</h4>
+                        <ul>
+                            <li><strong>Sidebar:</strong> Collapsible navigation to hop between Dashboard, Sample Prep, Downloader, Pipeline Status, and Plugin Store.</li>
+                            <li><strong>Main Frame:</strong> Displays the controls, charts, and tables for the active panel.</li>
+                            <li><strong>Quick Controls:</strong> Bottom status indicators and header menus.</li>
+                        </ul>
+                    </div>
+
+                    <!-- dashboards -->
+                    <div class="doc-panel" id="panel-dashboards" role="tabpanel">
+                        <h3>Pipeline Dashboard</h3>
+                        <hr>
+                        <p>The dashboard acts as your main bioinformatics cockpit to manage local pipelines and fetch new configurations.</p>
+                        
+                        <h4>Importing Pipelines</h4>
+                        <ol>
+                            <li>Navigate to the <strong>Import</strong> tab.</li>
+                            <li>Click <strong>Refresh Pipelines</strong> to query index schemas directly from the global <code>nf-core</code> database.</li>
+                            <li>Select your desired pipeline (e.g., <code>rnaseq</code>, <code>sarek</code>, <code>ampliseq</code>) from the dropdown list.</li>
+                            <li>Verify description details, release headers, and click <strong>Import Pipelines</strong> to pull config assets locally.</li>
+                        </ol>
+
+                        <h4>Managing Local Workflows</h4>
+                        <ul>
+                            <li>Click the <strong>Pipelines</strong> tab to inspect downloaded environments.</li>
+                            <li>Select a local workflow card to review installation paths, metadata, and deletion buttons.</li>
+                        </ul>
+                    </div>
+
+                    <!-- samples -->
+                    <div class="doc-panel" id="panel-samples" role="tabpanel">
+                        <h3>Sample Preparation & Sheets</h3>
+                        <hr>
+                        <p>Bioinformatics pipelines require metadata sheets linking sample tags to sequence files. OmixForge includes an interactive grid editor.</p>
+
+                        <h4>Grid Features</h4>
+                        <ul>
+                            <li><strong>Interactive Spreadsheet:</strong> Double-click cells to modify paths, names, and strand metrics.</li>
+                            <li><strong>Row/Column Management:</strong> Add or remove columns/rows on the fly using header click modifiers.</li>
+                            <li><strong>Header Customization:</strong> Click column headers to adjust structural labels matching nextflow expectancies.</li>
+                        </ul>
+
+                        <h4>Auto-Discovery (Magic Loader)</h4>
+                        <p>Instead of typing folder pathways manually, use the automated scanner:</p>
+                        <ol>
+                            <li>Click <strong>Load files from Dir</strong>.</li>
+                            <li>Browse and select a folder containing sequence outputs (e.g., FASTQ, FASTA, or BAM).</li>
+                            <li>OmixForge recursively parses files. It intelligently identifies pairing suffixes (e.g. <code>_R1</code>/<code>_R2</code>, <code>_1</code>/<code>_2</code>) and populates the CSV rows accordingly.</li>
+                        </ol>
+                    </div>
+
+                    <!-- ena-download -->
+                    <div class="doc-panel" id="panel-ena-download" role="tabpanel">
+                        <h3>ENA Fastq Downloader</h3>
+                        <hr>
+                        <p>A built-in utility to download run read files from the European Nucleotide Archive (ENA) API directly.</p>
+
+                        <h4>Accession Types Supported</h4>
+                        <ul>
+                            <li><strong>SRR:</strong> NCBI Sequence Read Archive runs.</li>
+                            <li><strong>ERR:</strong> ENA Run accessions.</li>
+                            <li><strong>DRR:</strong> DDBJ Run accessions.</li>
+                        </ul>
+
+                        <h4>How to Retrieve Records</h4>
+                        <ol>
+                            <li>Go to <strong>Samples → ENA Fastq Downloader</strong> tab.</li>
+                            <li>Paste space-separated accession identifiers (e.g., <code>SRR10376955 SRR10376956</code>) or upload a <code>.txt</code> file lists containing one accession per line.</li>
+                            <li>Click <strong>Fetch Accessions</strong> to query ENA metadata.</li>
+                            <li>Review success/failure records in the results tables.</li>
+                            <li>Select download path and click <strong>Download All Files</strong> to pull fastq files in background worker pools.</li>
+                        </ol>
+                    </div>
+
+                    <!-- workflows -->
+                    <div class="doc-panel" id="panel-workflows" role="tabpanel">
+                        <h3>Running Workflows</h3>
+                        <hr>
+                        <p>Executing bioinformatics steps is rendered simple through visual schema translation.</p>
+
+                        <h4>Dynamic Configuration Generation</h4>
+                        <p>When selecting <strong>Run</strong> on a local pipeline, OmixForge parses its <code>nextflow_schema.json</code> file to render form fields dynamically. You configure settings (e.g., trimmers, genome assembly version) using toggles and dropdown inputs rather than text files.</p>
+
+                        <h4>Executing Pipelines</h4>
+                        <ol>
+                            <li><strong>Input Sheet:</strong> Click browse to target the CSV metadata sheet created in Sample Prep.</li>
+                            <li><strong>Output Folder:</strong> Select target directory to write processed datasets.</li>
+                            <li><strong>Profile Choice:</strong> Choose runtime environment profiles:
+                                <ul>
+                                    <li><code>docker</code>: Uses local docker engine (default).</li>
+                                    <li><code>singularity</code>: For shared high-performance computing centers (HPC).</li>
+                                    <li><code>test</code>: Runs standard mock files.</li>
+                                </ul>
+                            </li>
+                            <li>Click <strong>Launch</strong>. Active execution status locks duplicate pipeline starts.</li>
+                        </ol>
+                    </div>
+
+                    <!-- private-mode -->
+                    <div class="doc-panel" id="panel-private-mode" role="tabpanel">
+                        <h3>Private Mode & Output Encryption</h3>
+                        <hr>
+                        <p>In data-sensitive environments, pipeline assets must be protected against local snooping.</p>
+
+                        <h4>Fernet AES-128 Encryption</h4>
+                        <p>If Private profile is enabled, OmixForge automatically encrypts nextflow result streams and generated CSV matrices into <code>.enc</code> formats. These files are unreadable by standard file explorers.</p>
+
+                        <h4>Decrypting Assets</h4>
+                        <p>To decrypt outputs for downstream presentation:</p>
+                        <ol>
+                            <li>Open the <strong>Results</strong> panel.</li>
+                            <li>Locate and select the target encrypted file (<code>.enc</code>).</li>
+                            <li>Click the <strong>Decrypt</strong> button. Input your session password. Decrypted results write to target paths.</li>
+                        </ol>
+                    </div>
+
+                    <!-- plugins -->
+                    <div class="doc-panel" id="panel-plugins" role="tabpanel">
+                        <h3>Plugins & Extensibility</h3>
+                        <hr>
+                        <p>OmixForge features a modular codebase allowing developers to add plugins for extra visual analytics or calculations.</p>
+                        
+                        <h4>Finding and Installing Plugins</h4>
+                        <ol>
+                            <li>Open the <strong>Plugin Store</strong> tab in the sidebar.</li>
+                            <li>Browse the community collection of visualization templates or analysis wrappers.</li>
+                            <li>Click <strong>Install</strong>. Once fetched, plugin routes show inside the sidebar.</li>
+                        </ol>
+
+                        <h4>Uninstalling Plugins</h4>
+                        <p>Go to the <strong>Manage</strong> section inside the Plugin Store, select the active extension, and press <strong>Remove</strong> to delete code assets clean.</p>
+                        
+                        <div class="alert alert-note">
+                            <p>Review the <a href="https://github.com/mohdsinanm/OmixForge-plugins" target="_blank" rel="noopener">OmixForge Plugins repository</a> for developer templates and guides.</p>
+                        </div>
+                    </div>
+
+                    <!-- troubleshooting -->
+                    <div class="doc-panel" id="panel-troubleshooting" role="tabpanel">
+                        <h3>Troubleshooting Common Issues</h3>
+                        <hr>
+                        
+                        <h4>1. "Docker not found" or permission failures</h4>
+                        <ul>
+                            <li>Ensure the docker daemon is active: <code>sudo systemctl start docker</code></li>
+                            <li>Confirm user permissions: <code>groups</code> must list <code>docker</code>. Log out and log back in to activate groups.</li>
+                        </ul>
+
+                        <h4>2. Pipelines fail instantly</h4>
+                        <ul>
+                            <li>Check status logs: Common error includes missing input files or directory discrepancies. Verify that the absolute file paths inside your sample CSV exist on disk.</li>
+                        </ul>
+
+                        <h4>3. Application interface freeze or unresponsive widgets</h4>
+                        <ul>
+                            <li>Bioinformatics pipelines are heavily memory-bound. If your workstation runs out of RAM, the user interface thread may lag. Restrict CPUs and memory limits inside nextflow configs or the settings panel.</li>
+                        </ul>
+                    </div>
+
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container footer-container">
+            <div class="footer-left">
+                <p>&copy; 2026 OmixForge. Released under the MIT License.</p>
+            </div>
+            <div class="footer-right">
+                <a href="https://github.com/mohdsinanm/OmixForge" target="_blank" rel="noopener">GitHub Repository</a>
+                <span class="bullet">&bull;</span>
+                <a href="https://github.com/mohdsinanm/OmixForge/issues" target="_blank" rel="noopener">Report an Issue</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Main JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
