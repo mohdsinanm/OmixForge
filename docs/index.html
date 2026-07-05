@@ -78,68 +78,62 @@
                     <div class="window-body">
                         <!-- Mock Sidebar -->
                         <aside class="mock-sidebar">
-                            <div class="mock-profile">
-                                <div class="mock-avatar"></div>
-                                <div class="mock-user-info">
-                                    <div class="mock-username">Sinan</div>
-                                    <div class="mock-badge">Public Mode</div>
-                                </div>
+                            <div class="mock-header-icon">⚙️</div>
+                            <div class="mock-sidebar-group">
+                                <span class="mock-group-title">Menu</span>
+                                <nav class="mock-nav">
+                                    <span class="mock-nav-item">Pipeline Dashboard</span>
+                                    <span class="mock-nav-item">Sample Prep</span>
+                                    <span class="mock-nav-item active">Pipeline Status</span>
+                                    <span class="mock-nav-item">Plugin Store</span>
+                                    <span class="mock-nav-item">Settings</span>
+                                    <span class="mock-nav-item">About</span>
+                                </nav>
                             </div>
-                            <nav class="mock-nav">
-                                <span class="mock-nav-item active"><span class="mock-nav-icon">📊</span> Dashboard</span>
-                                <span class="mock-nav-item"><span class="mock-nav-icon">🧪</span> Sample Prep</span>
-                                <span class="mock-nav-item"><span class="mock-nav-icon">📥</span> ENA Downloader</span>
-                                <span class="mock-nav-item"><span class="mock-nav-icon">📈</span> Pipeline Status</span>
-                                <span class="mock-nav-item"><span class="mock-nav-icon">🔌</span> Plugin Store</span>
-                                <span class="mock-nav-item"><span class="mock-nav-icon">⚙️</span> Settings</span>
-                            </nav>
+                            <div class="mock-sidebar-group">
+                                <span class="mock-group-title">Plugins</span>
+                                <nav class="mock-nav">
+                                    <span class="mock-nav-item">Charts Display</span>
+                                    <span class="mock-nav-item">Calculator</span>
+                                    <span class="mock-nav-item">Tabbed Plugin</span>
+                                </nav>
+                            </div>
                         </aside>
                         <!-- Mock Content -->
                         <main class="mock-content">
-                            <div class="mock-dashboard-header">
-                                <h3>Local Pipelines</h3>
-                                <button class="mock-btn-sm">+ Import Pipeline</button>
+                            <!-- Mock Tab Bar -->
+                            <div class="mock-tab-bar">
+                                <span class="mock-tab active">Status</span>
+                                <span class="mock-tab">Results</span>
                             </div>
-                            <div class="mock-stats-grid">
-                                <div class="mock-stat-card">
-                                    <div class="stat-label">Active Runs</div>
-                                    <div class="stat-value">1 Running</div>
+                            <!-- Mock Status View -->
+                            <div class="mock-runs-container">
+                                <div class="mock-run-card orange">
+                                    <span class="mock-run-title">demo_2026-03-07_14-47-59_run.txt</span>
                                 </div>
-                                <div class="mock-stat-card">
-                                    <div class="stat-label">Local Pipelines</div>
-                                    <div class="stat-value">3 Pipelines</div>
+                                <div class="mock-run-card green">
+                                    <span class="mock-run-title">demo_2026-03-07_14-36-17_run.txt</span>
                                 </div>
                             </div>
-                            <div class="mock-pipeline-list">
-                                <div class="mock-pipeline-card">
-                                    <div class="pipeline-card-left">
-                                        <div class="pipeline-icon">🧬</div>
-                                        <div class="pipeline-info">
-                                            <div class="pipeline-name">rnaseq</div>
-                                            <div class="pipeline-desc">RNA-sequencing analysis pipeline</div>
-                                        </div>
-                                    </div>
-                                    <span class="mock-badge-success">Running...</span>
-                                </div>
-                                <div class="mock-pipeline-card">
-                                    <div class="pipeline-card-left">
-                                        <div class="pipeline-icon">🧬</div>
-                                        <div class="pipeline-info">
-                                            <div class="pipeline-name">sarek</div>
-                                            <div class="pipeline-desc">Somatic and germline variant calling</div>
-                                        </div>
-                                    </div>
-                                    <span class="mock-badge-ready">Ready</span>
-                                </div>
+                            <!-- Mock Details Header -->
+                            <div class="mock-details-header">
+                                <span>Details for pipeline: demo_2026-03-07_14-47-59_run.txt</span>
+                                <span class="mock-close-btn">X</span>
                             </div>
                             <!-- Mock Console -->
                             <div class="mock-console">
-                                <div class="console-header">Live Nextflow Execution Logs</div>
                                 <div class="console-body">
-                                    <div>[info] Launching nextflow run nf-core/rnaseq -profile docker...</div>
-                                    <div>[info] N E X T F L O W  ~  version 23.10.0</div>
-                                    <div class="typing-animation">[work] [53/de48a1] submitted > NFCORE_RNASEQ:RNASEQ:FASTQC (1)</div>
+                                    <div>Config: {</div>
+                                    <div class="indent">"input": "/home/sinan/OmixForge/OmixForge_data/sample_prep/test.csv",</div>
+                                    <div class="indent">"outdir": "/home/sinan/OmixForge/OmixForge_run/demo_2026-03-07_14-47-59_run"</div>
+                                    <div>}</div>
+                                    <div>Nextflow 25.10.4 is available - Please consider updating your version to it</div>
+                                    <div>N E X T F L O W  ~  version 25.10.2</div>
+                                    <div>NOTE: Your local project version looks outdated - a different revision is available in the remote repository [45904cb9d1]</div>
                                 </div>
+                            </div>
+                            <div class="mock-action-bar">
+                                <button class="mock-btn-delete">Delete</button>
                             </div>
                         </main>
                     </div>

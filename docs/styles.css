@@ -2,16 +2,6 @@
    Design Tokens & Themes
    ========================================================================== */
 :root {
-    /* Color Palette - HSL based */
-    --primary-hue: 217;
-    --primary-sat: 65%;
-    --primary-light: 51%; /* #2f6fd6 */
-    
-    --primary: hsl(var(--primary-hue), var(--primary-sat), var(--primary-light));
-    --primary-hover: hsl(var(--primary-hue), var(--primary-sat), 60%);
-    --primary-pressed: hsl(var(--primary-hue), var(--primary-sat), 40%);
-    --primary-glow: hsla(var(--primary-hue), var(--primary-sat), var(--primary-light), 0.15);
-    
     --accent-red: #ef4444;
     --accent-green: #10b981;
     --accent-yellow: #f59e0b;
@@ -26,40 +16,52 @@
 
 /* Dark Theme Variables (Default) */
 body.dark-theme {
-    --bg-base: #080b11;
-    --bg-surface: #0f1422;
-    --bg-surface-elevated: #161e31;
-    --border-color: rgba(255, 255, 255, 0.08);
-    --border-color-hover: rgba(255, 255, 255, 0.15);
+    --primary: #ffffff;
+    --primary-hover: #e5e5e5;
+    --primary-pressed: #cccccc;
+    --primary-glow: rgba(255, 255, 255, 0.1);
+    --primary-contrast: #000000;
+
+    --bg-base: #000000;
+    --bg-surface: #0a0a0a;
+    --bg-surface-elevated: #161616;
+    --border-color: rgba(255, 255, 255, 0.12);
+    --border-color-hover: rgba(255, 255, 255, 0.22);
     
-    --text-primary: #f3f4f6;
-    --text-secondary: #9ca3af;
-    --text-muted: #6b7280;
+    --text-primary: #ffffff;
+    --text-secondary: #a3a3a3;
+    --text-muted: #737373;
     
-    --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    --hero-glow: radial-gradient(circle at 50% 50%, rgba(47, 111, 214, 0.15) 0%, transparent 60%);
-    --glass-bg: rgba(15, 20, 34, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.06);
-    --code-bg: #07090e;
+    --card-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+    --hero-glow: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04) 0%, transparent 60%);
+    --glass-bg: rgba(10, 10, 10, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --code-bg: #050505;
 }
 
 /* Light Theme Variables */
 body.light-theme {
-    --bg-base: #f8fafc;
-    --bg-surface: #ffffff;
-    --bg-surface-elevated: #f1f5f9;
-    --border-color: rgba(0, 0, 0, 0.08);
-    --border-color-hover: rgba(0, 0, 0, 0.15);
+    --primary: #000000;
+    --primary-hover: #262626;
+    --primary-pressed: #404040;
+    --primary-glow: rgba(0, 0, 0, 0.08);
+    --primary-contrast: #ffffff;
+
+    --bg-base: #ffffff;
+    --bg-surface: #fafafa;
+    --bg-surface-elevated: #f5f5f5;
+    --border-color: rgba(0, 0, 0, 0.1);
+    --border-color-hover: rgba(0, 0, 0, 0.18);
     
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
+    --text-primary: #000000;
+    --text-secondary: #525252;
+    --text-muted: #888888;
     
-    --card-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
-    --hero-glow: radial-gradient(circle at 50% 50%, rgba(47, 111, 214, 0.08) 0%, transparent 60%);
-    --glass-bg: rgba(255, 255, 255, 0.8);
-    --glass-border: rgba(0, 0, 0, 0.06);
-    --code-bg: #0f172a; /* Keep terminal code block dark for readability */
+    --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    --hero-glow: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.02) 0%, transparent 60%);
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --code-bg: #000000; /* Keep terminal code block dark for readability */
 }
 
 /* ==========================================================================
@@ -161,7 +163,7 @@ hr {
 
 .btn-primary {
     background-color: var(--primary);
-    color: #ffffff;
+    color: var(--primary-contrast);
     box-shadow: 0 4px 14px var(--primary-glow);
 }
 
@@ -169,7 +171,7 @@ hr {
     background-color: var(--primary-hover);
     transform: translateY(-2px);
     box-shadow: 0 6px 20px var(--primary-glow);
-    color: #ffffff;
+    color: var(--primary-contrast);
 }
 
 .btn-primary:active {
@@ -196,7 +198,7 @@ hr {
 }
 
 .gradient-text {
-    background: linear-gradient(135deg, var(--primary) 0%, #a78bfa 100%);
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-muted) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     display: inline-block;
@@ -208,10 +210,10 @@ hr {
     font-family: var(--font-heading);
     font-size: 0.8rem;
     font-weight: 600;
-    background-color: var(--primary-glow);
-    color: var(--primary);
+    background-color: var(--bg-surface-elevated);
+    color: var(--text-primary);
     border-radius: 50px;
-    border: 1px solid rgba(47, 111, 214, 0.2);
+    border: 1px solid var(--border-color);
     margin-bottom: 24px;
 }
 
@@ -463,225 +465,267 @@ body.light-theme .moon-icon { display: block; }
 
 /* Mock Sidebar */
 .mock-sidebar {
-    background-color: #0a0d16;
+    background-color: #1a1a1a;
     border-right: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 16px 8px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
+    gap: 16px;
 }
 
-.mock-profile {
+.mock-header-icon {
+    font-size: 1rem;
+    padding: 4px;
+    margin-bottom: 4px;
+    color: #a3a3a3;
+}
+
+.mock-sidebar-group {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px;
-    margin-bottom: 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    flex-direction: column;
+    gap: 6px;
 }
 
-.mock-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background-color: var(--primary);
-}
-
-.mock-user-info {
-    line-height: 1.2;
-}
-
-.mock-username {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #f3f4f6;
-}
-
-.mock-badge {
+.mock-group-title {
     font-size: 0.65rem;
-    color: #10b981;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #6b7280;
+    letter-spacing: 0.5px;
+    padding-left: 8px;
+    margin-bottom: 2px;
 }
 
 .mock-nav {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
 }
 
 .mock-nav-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 500;
-    color: #9ca3af;
-    border-radius: 6px;
+    color: #c2c2c2;
+    padding: 6px 8px;
+    border-radius: 4px;
     cursor: pointer;
+    transition: all 0.15s;
 }
 
-.mock-nav-item.active, .mock-nav-item:hover {
+.mock-nav-item.active {
     color: #ffffff;
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: #d35400; /* Orange highlight to match the app screenshot */
+    font-weight: 600;
 }
 
-.mock-nav-icon {
-    font-size: 0.9rem;
+.mock-nav-item:hover:not(.active) {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.06);
 }
 
 /* Mock Content */
 .mock-content {
+    background-color: #f5f5f5; /* Light gray body from screenshot */
     padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    overflow-y: auto;
-}
-
-.mock-dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.mock-dashboard-header h3 {
-    font-size: 0.95rem;
-    color: #ffffff;
-}
-
-.mock-btn-sm {
-    background-color: var(--primary);
-    border: none;
-    color: #ffffff;
-    border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 0.7rem;
-    font-weight: 600;
-}
-
-.mock-stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
     gap: 12px;
+    overflow-y: auto;
+    color: #333333;
 }
 
-.mock-stat-card {
-    background-color: #121826;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    padding: 10px;
+body.dark-theme .mock-content {
+    background-color: #0f1013; /* Keep it dark in dark mode if needed, or let it match the app's light layout. */
 }
 
-.stat-label {
-    font-size: 0.65rem;
-    color: #9ca3af;
+body.dark-theme .mock-sidebar {
+    background-color: #0a0a0c;
 }
 
-.stat-value {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #ffffff;
-    margin-top: 2px;
+/* Let's style the mockup to match the light theme in the screenshot but adapt nicely */
+body.light-theme .mock-content {
+    background-color: #f7f9fa;
+    color: #111111;
 }
 
-.mock-pipeline-list {
+body.light-theme .mock-sidebar {
+    background-color: #ffffff;
+    border-right: 1px solid #e1e4e6;
+}
+
+body.light-theme .mock-nav-item {
+    color: #4a4a4a;
+}
+
+body.light-theme .mock-nav-item:hover:not(.active) {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+body.light-theme .mock-group-title {
+    color: #999999;
+}
+
+/* Mock Tab Bar */
+.mock-tab-bar {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    gap: 4px;
+    border-bottom: 1px solid #d1d5db;
+    margin-bottom: 4px;
 }
 
-.mock-pipeline-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #121826;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    padding: 8px 12px;
+body.dark-theme .mock-tab-bar {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
-.pipeline-card-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.pipeline-icon {
-    font-size: 1.1rem;
-}
-
-.pipeline-info {
-    line-height: 1.2;
-}
-
-.pipeline-name {
+.mock-tab {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #ffffff;
+    padding: 6px 12px;
+    color: #4b5563;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    cursor: pointer;
+    margin-bottom: -1px;
 }
 
-.pipeline-desc {
-    font-size: 0.65rem;
+body.dark-theme .mock-tab {
     color: #9ca3af;
 }
 
-.mock-badge-success {
-    font-size: 0.65rem;
-    background-color: rgba(16, 185, 129, 0.15);
-    color: #10b981;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-weight: 600;
+.mock-tab.active {
+    background-color: #ffffff;
+    border-color: #d1d5db;
+    color: #111111;
 }
 
-.mock-badge-ready {
-    font-size: 0.65rem;
-    background-color: rgba(47, 111, 214, 0.15);
-    color: #5592ff;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-weight: 600;
+body.dark-theme .mock-tab.active {
+    background-color: #161e31;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
 }
 
+/* Mock Runs Grid */
+.mock-runs-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.mock-run-card {
+    border-radius: 12px;
+    padding: 40px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.72rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.mock-run-card.orange {
+    background-color: #f39c12;
+    color: #000000;
+}
+
+.mock-run-card.green {
+    background-color: #27ae60;
+    color: #000000;
+}
+
+.mock-run-title {
+    word-break: break-all;
+}
+
+/* Mock Details Header */
+.mock-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 8px;
+    color: #111111;
+}
+
+body.dark-theme .mock-details-header {
+    color: #ffffff;
+}
+
+.mock-close-btn {
+    background-color: #e74c3c;
+    color: white;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* Mock Console */
 .mock-console {
-    background-color: #07090e;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    overflow: hidden;
-    flex-grow: 1;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 10px;
+    min-height: 120px;
     display: flex;
     flex-direction: column;
-    min-height: 110px;
 }
 
-.console-header {
-    background-color: #0b0e16;
-    font-size: 0.65rem;
-    padding: 6px 12px;
-    color: #6b7280;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+body.dark-theme .mock-console {
+    background-color: #050505;
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .console-body {
     font-family: var(--font-mono);
     font-size: 0.65rem;
-    padding: 8px 12px;
-    color: #10b981;
-    line-height: 1.5;
-    flex-grow: 1;
+    color: #1f2937;
+    line-height: 1.4;
 }
 
-.console-body div {
-    margin-bottom: 2px;
+body.dark-theme .console-body {
+    color: #e5e7eb;
 }
 
-.typing-animation::after {
-    content: '|';
-    animation: blink 1s step-end infinite;
+.console-body .indent {
+    padding-left: 16px;
 }
 
-@keyframes blink {
-    from, to { color: transparent }
-    50% { color: #10b981; }
+.mock-action-bar {
+    display: flex;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.mock-btn-delete {
+    background-color: #ffffff;
+    border: 1px solid #3b82f6;
+    color: #3b82f6;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 4px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+body.dark-theme .mock-btn-delete {
+    background-color: transparent;
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+.mock-btn-delete:hover {
+    background-color: #3b82f6;
+    color: #ffffff;
 }
 
 /* ==========================================================================
@@ -964,7 +1008,7 @@ body.light-theme .moon-icon { display: block; }
 
 .docs-nav-btn.active {
     background-color: var(--primary);
-    color: #ffffff;
+    color: var(--primary-contrast);
 }
 
 /* Docs Main Viewer Content */
