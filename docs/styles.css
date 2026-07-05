@@ -400,9 +400,41 @@ body.light-theme .moon-icon { display: block; }
     gap: 16px;
 }
 
-/* App Mockup Window */
-.hero-media {
-    perspective: 1000px;
+/* .hero-media {
+    width: 500px;
+    height: 300px;
+    margin: 0 auto;
+} */
+
+.hero-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;      /* or contain if you need the whole image */
+    display: block;
+
+    border-radius: 16px;    /* Rounded image corners */
+    overflow: hidden;
+
+    box-shadow:
+        0 10px 25px rgba(0, 0, 0, 0.12),
+        0 4px 10px rgba(0, 0, 0, 0.08);
+
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+
+.hero-media img:hover {
+    transform: translateY(-4px);
+    box-shadow:
+        0 16px 35px rgba(0, 0, 0, 0.16),
+        0 8px 16px rgba(0, 0, 0, 0.10);
+}
+
+
+body.dark-mode .hero-media img:hover {
+    box-shadow:
+        0 16px 35px rgba(99, 98, 98, 0.55),
+        0 8px 16px rgba(97, 97, 97, 0.4);
 }
 
 .mockup-window {
@@ -899,6 +931,38 @@ body.dark-theme .mock-btn-delete {
     color: var(--text-secondary);
     font-size: 0.95rem;
 }
+
+.option-divider {
+    margin-top: 12px;
+    margin-bottom: 12px;
+}
+
+.code-block-container-ppa {
+    position: relative;
+    margin-top: 12px;
+    background-color: var(--code-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    margin-left: 52px;
+    margin-bottom: 12px;
+}
+
+.code-block-container-ppa pre {
+    margin: 0;
+    padding: 16px 20px;
+    overflow-x: auto;
+}
+
+.code-block-container-ppa code {
+    font-family: var(--font-mono);
+    color: #a7f3d0; /* Emerald green text for dark code blocks */
+    background: transparent;
+    padding: 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
 
 .code-block-container {
     position: relative;

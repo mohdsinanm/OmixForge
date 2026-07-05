@@ -111,6 +111,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    const heroImage = document.getElementById("heroImage");
+    const siteLogo = document.getElementById("site-logo");  
+
+    function updateHeroImage() {
+        if (document.body.classList.contains("dark-mode")) {
+            heroImage.src = "assets/status-dark.png";
+            siteLogo.src = "assets/logo-light.png";
+        } else {
+            heroImage.src = "assets/status.png";
+            siteLogo.src = "assets/logo.png";
+        }   
+    }
+
+    // Call once on page load
+    updateHeroImage();
+
+    // Call this after toggling dark mode
+    themeToggleBtn.addEventListener("click", () => {
+        document.body.classList.toggle("dark-mode");
+        updateHeroImage();
+    });
+
     // ==========================================================================
     // Interactive Documentation Hub Logic
     // ==========================================================================

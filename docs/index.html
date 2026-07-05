@@ -64,80 +64,10 @@
                 </div>
             </div>
 
-            <!-- Simulated UI Mockup -->
+            <!-- Screenshot of the app -->
             <div class="hero-media">
-                <div class="mockup-window">
-                    <div class="window-header">
-                        <div class="window-dots">
-                            <span class="dot close"></span>
-                            <span class="dot minimize"></span>
-                            <span class="dot maximize"></span>
-                        </div>
-                        <div class="window-title">OmixForge - Pipeline Dashboard</div>
-                    </div>
-                    <div class="window-body">
-                        <!-- Mock Sidebar -->
-                        <aside class="mock-sidebar">
-                            <div class="mock-header-icon">⚙️</div>
-                            <div class="mock-sidebar-group">
-                                <span class="mock-group-title">Menu</span>
-                                <nav class="mock-nav">
-                                    <span class="mock-nav-item">Pipeline Dashboard</span>
-                                    <span class="mock-nav-item">Sample Prep</span>
-                                    <span class="mock-nav-item active">Pipeline Status</span>
-                                    <span class="mock-nav-item">Plugin Store</span>
-                                    <span class="mock-nav-item">Settings</span>
-                                    <span class="mock-nav-item">About</span>
-                                </nav>
-                            </div>
-                            <div class="mock-sidebar-group">
-                                <span class="mock-group-title">Plugins</span>
-                                <nav class="mock-nav">
-                                    <span class="mock-nav-item">Charts Display</span>
-                                    <span class="mock-nav-item">Calculator</span>
-                                    <span class="mock-nav-item">Tabbed Plugin</span>
-                                </nav>
-                            </div>
-                        </aside>
-                        <!-- Mock Content -->
-                        <main class="mock-content">
-                            <!-- Mock Tab Bar -->
-                            <div class="mock-tab-bar">
-                                <span class="mock-tab active">Status</span>
-                                <span class="mock-tab">Results</span>
-                            </div>
-                            <!-- Mock Status View -->
-                            <div class="mock-runs-container">
-                                <div class="mock-run-card orange">
-                                    <span class="mock-run-title">demo_2026-03-07_14-47-59_run.txt</span>
-                                </div>
-                                <div class="mock-run-card green">
-                                    <span class="mock-run-title">demo_2026-03-07_14-36-17_run.txt</span>
-                                </div>
-                            </div>
-                            <!-- Mock Details Header -->
-                            <div class="mock-details-header">
-                                <span>Details for pipeline: demo_2026-03-07_14-47-59_run.txt</span>
-                                <span class="mock-close-btn">X</span>
-                            </div>
-                            <!-- Mock Console -->
-                            <div class="mock-console">
-                                <div class="console-body">
-                                    <div>Config: {</div>
-                                    <div class="indent">"input": "/home/sinan/OmixForge/OmixForge_data/sample_prep/test.csv",</div>
-                                    <div class="indent">"outdir": "/home/sinan/OmixForge/OmixForge_run/demo_2026-03-07_14-47-59_run"</div>
-                                    <div>}</div>
-                                    <div>Nextflow 25.10.4 is available - Please consider updating your version to it</div>
-                                    <div>N E X T F L O W  ~  version 25.10.2</div>
-                                    <div>NOTE: Your local project version looks outdated - a different revision is available in the remote repository [45904cb9d1]</div>
-                                </div>
-                            </div>
-                            <div class="mock-action-bar">
-                                <button class="mock-btn-delete">Delete</button>
-                            </div>
-                        </main>
-                    </div>
-                </div>
+                <img id="heroImage" src="assets/status.png" alt="OmixForge">
+                
             </div>
         </div>
     </section>
@@ -218,29 +148,49 @@
                 
                 <!-- Debian Tab Content -->
                 <div class="tab-content active" id="tab-content-deb">
-                    <div class="step-list">
-                        <div class="step-item">
-                            <span class="step-num">1</span>
-                            <div class="step-info">
-                                <h4>Download Installer</h4>
-                                <p>Get the latest <code>.deb</code> package from the releases page.</p>
+                    <div class="installation-options">
+                        <!-- Option A: PPA -->
+                        <div class="install-option-block">
+                            <h4 class="option-title">Option A: Install via Launchpad PPA (Recommended)</h4>
+                            <p class="option-desc">Install via the official PPA to receive automatic updates and dependency resolution.</p>
+                            <div class="code-block-container-ppa">
+                                <pre><code id="code-deb-ppa">sudo add-apt-repository ppa:mohdsinanm/ppa
+sudo apt update
+sudo apt install omixforge</code></pre>
+                                <button class="copy-btn" data-target="code-deb-ppa" aria-label="Copy code">Copy</button>
                             </div>
                         </div>
-                        <div class="step-item">
-                            <span class="step-num">2</span>
-                            <div class="step-info">
-                                <h4>Install dependencies and application</h4>
-                                <div class="code-block-container">
-                                    <pre><code id="code-deb-install">sudo dpkg -i omixforge_1.1.0_amd64.deb</code></pre>
-                                    <button class="copy-btn" data-target="code-deb-install" aria-label="Copy code">Copy</button>
+
+                        <!-- Divider -->
+                        <div class="option-divider"><hr></div>
+
+                        <!-- Option B: Manual .deb -->
+                        <div class="install-option-block">
+                            <h4 class="option-title">Option B: Manual Debian Package</h4>
+                            <p class="option-desc">Download and install the precompiled package manually.</p>
+                            <div class="step-list">
+                                <div class="step-item">
+                                    <span class="step-num">1</span>
+                                    <div class="step-info">
+                                        <p>Download the latest <code>.deb</code> package from the <a href="https://github.com/mohdsinanm/OmixForge/releases" target="_blank" rel="noopener">Releases page</a> (or build it yourself).</p>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="step-item">
-                            <span class="step-num">3</span>
-                            <div class="step-info">
-                                <h4>Launch Application</h4>
-                                <p>Open OmixForge from your application menu or dashboard.</p>
+                                <div class="step-item">
+                                    <span class="step-num">2</span>
+                                    <div class="step-info">
+                                        <p>Install the package:</p>
+                                        <div class="code-block-container">
+                                            <pre><code id="code-deb-manual">sudo dpkg -i omixforge_x.y.z_amd64.deb</code></pre>
+                                            <button class="copy-btn" data-target="code-deb-manual" aria-label="Copy code">Copy</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="step-item">
+                                    <span class="step-num">3</span>
+                                    <div class="step-info">
+                                        <p>Launch OmixForge from your application menu or dashboard.</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -276,7 +226,7 @@ poetry shell</code></pre>
                             <div class="step-info">
                                 <h4>Run Development Server</h4>
                                 <div class="code-block-container">
-                                    <pre><code id="code-src-run">make dev</code></pre>
+                                    <pre><code id="code-src-run">make</code></pre>
                                     <button class="copy-btn" data-target="code-src-run" aria-label="Copy code">Copy</button>
                                 </div>
                             </div>
@@ -301,7 +251,7 @@ poetry shell</code></pre>
                     <ul class="docs-nav-list" role="tablist">
                         <li><button class="docs-nav-btn active" data-doc="requirements" role="tab" aria-selected="true" aria-controls="panel-requirements">System Requirements</button></li>
                         <li><button class="docs-nav-btn" data-doc="install-deps" role="tab" aria-selected="false" aria-controls="panel-install-deps">Dependency Installation</button></li>
-                        <li><button class="docs-nav-btn" data-doc="setup" role="tab" aria-selected="false" aria-controls="panel-setup">First Launch & Modes</button></li>
+                        <li><button class="docs-nav-btn" data-doc="setup" role="tab" aria-selected="false" aria-controls="panel-setup">App Installation & Setup</button></li>
                         <li><button class="docs-nav-btn" data-doc="dashboards" role="tab" aria-selected="false" aria-controls="panel-dashboards">Pipeline Dashboard</button></li>
                         <li><button class="docs-nav-btn" data-doc="samples" role="tab" aria-selected="false" aria-controls="panel-samples">Sample Preparation</button></li>
                         <li><button class="docs-nav-btn" data-doc="ena-download" role="tab" aria-selected="false" aria-controls="panel-ena-download">ENA Downloader</button></li>
@@ -392,14 +342,39 @@ sudo mv nextflow /usr/local/bin/</code></pre>
 
                     <!-- setup -->
                     <div class="doc-panel" id="panel-setup" role="tabpanel">
-                        <h3>First Launch & Access Modes</h3>
+                        <h3>App Installation & First Launch</h3>
                         <hr>
+                        
+                        <h4>Installing OmixForge</h4>
+                        <p>For Debian and Ubuntu based systems, you have two primary options to install the OmixForge desktop application:</p>
+                        
+                        <h5>Option A: Via Launchpad PPA (Recommended)</h5>
+                        <p>Receive updates automatically by adding the PPA to your system package manager:</p>
+                        <div class="code-block-container">
+                            <pre><code id="doc-deb-ppa">sudo add-apt-repository ppa:mohdsinanm/ppa
+sudo apt update
+sudo apt install omixforge</code></pre>
+                            <button class="copy-btn" data-target="doc-deb-ppa" aria-label="Copy code">Copy</button>
+                        </div>
+                        
+                        <h5>Option B: Manual .deb Installer</h5>
+                        <p>Download the standalone package from the releases page and install manually:</p>
+                        <div class="code-block-container">
+                            <pre><code id="doc-deb-manual"># Install package manually
+sudo dpkg -i omixforge_x.y.z_amd64.deb
+
+# Fix potential missing dependencies
+sudo apt-get install -f</code></pre>
+                            <button class="copy-btn" data-target="doc-deb-manual" aria-label="Copy code">Copy</button>
+                        </div>
+
+                        <h4>First Launch & Access Modes</h4>
                         <p>On launching OmixForge, you are greeted with the profile configuration screen. You can select between two access modes:</p>
                         
-                        <h4>1. Public Mode</h4>
+                        <h5>1. Public Mode</h5>
                         <p>The standard operation mode for standard environments. Requires no setup passwords or access keys. Highly recommended for personal workstations and general workflows.</p>
 
-                        <h4>2. Private Mode</h4>
+                        <h5>2. Private Mode</h5>
                         <p>Designed for shared server environments, sensitive data hubs, or clinical computing layouts. On first launch, you are asked to register a username and passphrase.</p>
                         
                         <div class="alert alert-warning">
