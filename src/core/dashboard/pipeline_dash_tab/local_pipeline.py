@@ -40,19 +40,47 @@ class PipelineInfoWorker(QObject):
     def run(self):
         """Run the nextflow info command and parse output."""
         try:
-            shell_out = run_shell_command(f"nextflow info {self.pipeline_name}")
+            shell_out = run_shell_command(
+                f"nextflow info {self.pipeline_name}"
+            )
+
             info = {}
-            
+            revisions = []
+            in_revisions = False
+
             for line in shell_out.stdout.splitlines():
-                if ": " in line:
-                    key, value = line.split(": ", 1)
+                stripped = line.strip()
+
+                if not stripped:
+                    continue
+
+                # Start of revisions section
+                if stripped.startswith("revisions"):
+                    in_revisions = True
+                    continue
+
+                # Parse revisions
+                if in_revisions:
+                    revision = stripped.lstrip("*").strip()
+                    revision = revision.replace("(default)", "").strip()
+
+                    revisions.append(revision)
+                    continue
+
+                # Parse key/value information
+                if ":" in line:
+                    key, value = line.split(":", 1)
                     info[key.strip()] = value.strip()
-            
-            # Emit the parsed info dict
+
+            if revisions:
+                info["revisions"] = revisions
+
             self.info_ready.emit(info)
+
         except Exception as e:
             logger.error(f"Error fetching pipeline info: {e}")
             self.error.emit(str(e))
+
         finally:
             self.finished.emit()
 
@@ -672,8 +700,17 @@ class PipelineLocal(QWidget):
             # create QProcess without parent
             proc = QProcess()
             proc.setProgram("nextflow")
-            # Include -params-file to pass the JSON config
-            proc.setArguments(["run", pipeline, "-profile", "docker", "-params-file", str(config_file)])
+            selected_revision = config.get("rev", "master")
+            proc.setArguments([
+                "run",
+                pipeline,
+                "-revision",
+                selected_revision,
+                "-profile",
+                "docker",
+                "-params-file",
+                str(config_file),
+            ])
             proc.setWorkingDirectory(str(run_dir))
 
             # keep proc referenced
@@ -1203,7 +1240,8 @@ except Exception as e:
             append_to_file(local_log, "Starting remote pipeline...\n")
             # run pipeline remotely and save remote logs
             remote_log = f"{remote_base}/run.log"
-            nextflow_cmd = f"cd {remote_base} && bash -l -c 'nextflow run {self.pipeline} -profile docker -params-file params.json > run.log 2>&1'"
+            selected_revision = self.config.get("rev", "master")
+            nextflow_cmd = f"cd {remote_base} && bash -l -c 'nextflow run {self.pipeline} -revision {selected_revision} -profile docker -params-file params.json > run.log 2>&1'"
             
             # Start the pipeline process
             if port is None:
