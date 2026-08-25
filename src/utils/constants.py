@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 import json
 
-APP_DIR = Path(f"/home/{os.getenv("USER")}/OmxiForge")
+APP_DIR = Path(f"/home/{os.getenv("USER")}/OmixForge")
 LOG_DIR = APP_DIR /  "OmixForge_logs"
 DATA_DIR = APP_DIR / "OmixForge_data"
 RUN_DIR = APP_DIR / "OmixForge_run"

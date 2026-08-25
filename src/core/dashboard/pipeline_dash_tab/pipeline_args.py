@@ -88,8 +88,20 @@ class PipelineArgsDialog(QDialog):
         self.outdir_field.setText(self.run_dir)
         args_layout.addWidget(self.outdir_field, row, 1)
         row += 1
-    
-        
+
+        # Revision selector
+        args_layout.addWidget(QLabel("revision:"), row, 0)
+        self.revision_combo = QComboBox()
+        revision_options = self._get_revision_options()
+        for rev in revision_options:
+            self.revision_combo.addItem(str(rev))
+        if revision_options:
+            default_revision = "master" if "master" in revision_options else revision_options[0]
+            idx = revision_options.index(default_revision)
+            self.revision_combo.setCurrentIndex(idx)
+        args_layout.addWidget(self.revision_combo, row, 1)
+        row += 1
+
         layout.addLayout(args_layout)
         
         # Submit to remote server option
@@ -259,6 +271,27 @@ class PipelineArgsDialog(QDialog):
             self.params_layout.addLayout(row)
             self.params_widgets[key] = w
 
+    def _get_revision_options(self):
+        """Return revision choices with "master" preferred by default."""
+        revisions = self.pipeline_info.get("revisions", []) if isinstance(self.pipeline_info, dict) else []
+        if not isinstance(revisions, list):
+            revisions = []
+
+        cleaned = []
+        for rev in revisions:
+            value = str(rev).strip()
+            if value and value not in cleaned:
+                cleaned.append(value)
+
+        if not cleaned:
+            return ["master"]
+
+        if "master" in cleaned:
+            ordered = ["master"] + [rev for rev in cleaned if rev != "master"]
+            return ordered
+
+        return cleaned
+
     def get_config(self):
         """Return the config as a dictionary."""
         config = {}
@@ -268,6 +301,10 @@ class PipelineArgsDialog(QDialog):
             config["input"] = self.input_field.text()
         if self.outdir_field.text():
             config["outdir"] = self.outdir_field.text()
+        if self.revision_combo.currentText():
+            config["rev"] = self.revision_combo.currentText().strip()
+        else:
+            config["rev"] = "master"
         
         # Custom args
         for key_field, value_field in self.custom_args:
