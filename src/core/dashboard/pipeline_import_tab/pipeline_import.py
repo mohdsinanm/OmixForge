@@ -329,7 +329,7 @@ class PipelineImport(QWidget):
         
         if success:
             logger.info(f"Successfully imported pipeline: {message}")
-            QMessageBox.information(self, "Import Successful", f"Successfully imported pipeline: {message}")
+            QMessageBox.information(self, "Import Successful", f"Successfully imported pipeline")
             # Emit signal to trigger refresh in local pipeline tab
             self.import_successful.emit()
         else:

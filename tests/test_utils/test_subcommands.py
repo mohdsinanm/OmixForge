@@ -10,7 +10,11 @@ def test_run_shell_command_success():
 
 def test_run_shell_command_called_process_error():
     result = run_shell_command("badcmd")
-    assert not result
+    # run_shell_command now returns a CompletedProcess even on non-zero exit;
+    # verify we got a result and that it indicates failure
+    assert result is not None
+    assert result.returncode != 0
+    assert result.stderr != ''
 
 def test_run_shell_command_stream_success():
 

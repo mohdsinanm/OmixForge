@@ -7,10 +7,21 @@ def run_shell_command(command: str) -> str:
     """Runs a shell command and returns its output as a string."""
     try:
         logger.info(f"Executing command: {command}")
-        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # Use check=False so we always get a CompletedProcess to inspect returncode/stderr
+        result = subprocess.run(
+            command,
+            shell=True,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        # Log non-zero exit but still return the result so callers can decide
+        if result.returncode != 0:
+            logger.error(f"Command exited with code {result.returncode}: {result.stderr}")
         return result
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Error executing command '{command}': {e.stderr}")
+    except Exception as e:
+        logger.error(f"Error executing command '{command}': {str(e)}")
         return None
 
 def run_shell_command_stream(command: str):
