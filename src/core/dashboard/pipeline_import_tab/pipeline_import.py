@@ -1,10 +1,11 @@
-from PyQt6.QtWidgets import QLabel, QWidget, QVBoxLayout, QComboBox, QScrollArea, QSizePolicy, QPushButton
+from PyQt6.QtWidgets import QLabel, QWidget, QVBoxLayout, QComboBox, QScrollArea, QSizePolicy, QPushButton, QLineEdit, QHBoxLayout, QMessageBox
 from PyQt6.QtCore import QThread, QObject, pyqtSignal, Qt
 from pyqtwaitingspinner import WaitingSpinner
 
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.core.dashboard.pipeline_import_tab.import_worker import PipelineImportWorker
+from src.core.dashboard.pipeline_import_tab.import_git_worker import PipelineGitImportWorker
 from src.core.dashboard.pipeline_import_tab.refresh_worker import PipelineRefreshWorker
 
 logger = OmixForgeLogger.get_logger()
@@ -36,10 +37,15 @@ class PipelineImport(QWidget):
         self.refresh_worker_thread = None
         self.import_worker = None
         self.import_worker_thread = None
+        # Git import worker/thread
+        self.git_worker = None
+        self.git_worker_thread = None
         self.refresh_spinner = None
         self.import_spinner = None
+        self.git_spinner = None
         self.active_refresh_spinner = None  # Track active refresh spinner
         self.active_import_spinner = None   # Track active import spinner
+        self.active_git_spinner = None
 
         # Main layout for this widget (contains the scroll area)
         self.main_layout = QVBoxLayout(self)
@@ -51,6 +57,19 @@ class PipelineImport(QWidget):
         # Header label
         label = QLabel("This Pipeline import tab")
         self.content_layout.addWidget(label)
+
+
+        # GitHub URL input + import button
+        url_layout = QHBoxLayout()
+        self.url_input = QLineEdit(parent=self.content)
+        self.url_input.setPlaceholderText("Enter GitHub repository URL (https://github.com/owner/repo.git)")
+        self.url_input.setObjectName("github_url_input")
+        self.url_import_btn = QPushButton("Import from URL", parent=self.content)
+        self.url_import_btn.setObjectName("import_from_url")
+        self.url_import_btn.clicked.connect(self.import_from_url)
+        url_layout.addWidget(self.url_input)
+        url_layout.addWidget(self.url_import_btn)
+        self.content_layout.addLayout(url_layout)
 
         # Refresh button
         self.btn = QPushButton("Refresh Pipelines", parent=self.content)
@@ -310,12 +329,12 @@ class PipelineImport(QWidget):
         
         if success:
             logger.info(f"Successfully imported pipeline: {message}")
-            self.import_btn.setText("Imported Successfully")
+            QMessageBox.information(self, "Import Successful", f"Successfully imported pipeline")
             # Emit signal to trigger refresh in local pipeline tab
             self.import_successful.emit()
         else:
             logger.error(f"Import failed: {message}")
-            self.import_btn.setText(f"Import Failed: {message}")
+            QMessageBox.critical(self, "Import Failed", f"Import failed: {message}")
     
     def _on_import_error(self, error_msg):
         """Handle import error."""
@@ -345,4 +364,125 @@ class PipelineImport(QWidget):
         self.combobox.setEnabled(True)  # Re-enable dropdown on error
         self.btn.setEnabled(True)  # Re-enable refresh button
         logger.error(f"Error importing pipeline: {error_msg}")
-        self.import_btn.setText("Import Failed")
+        QMessageBox.critical(self, "Import Error", f"Error importing pipeline: {error_msg}")
+
+    def import_from_url(self):
+        """Import a pipeline from a GitHub URL asynchronously with spinner."""
+        repo_url = self.url_input.text().strip()
+        if not repo_url:
+            logger.error("No GitHub URL provided")
+            QMessageBox.warning(self, "No URL", "Please provide a GitHub repository URL to import.")
+            return
+
+        logger.info(f"Importing from URL: {repo_url}")
+
+        # Disable controls while importing
+        self.url_import_btn.setEnabled(False)
+        self.combobox.setEnabled(False)
+        self.btn.setEnabled(False)
+
+        # Mark old git spinner inactive
+        self.active_git_spinner = None
+
+        # Stop any existing git worker thread and disconnect signals
+        if self.git_worker_thread is not None:
+            if self.git_worker_thread.isRunning():
+                try:
+                    if self.git_worker is not None:
+                        self.git_worker.import_ready.disconnect()
+                        self.git_worker.error.disconnect()
+                        self.git_worker.finished.disconnect()
+                except (RuntimeError, TypeError):
+                    pass
+                self.git_worker_thread.quit()
+                if not self.git_worker_thread.wait(5000):
+                    logger.warning("Git import worker thread didn't stop gracefully")
+
+        # Show spinner
+        self.git_spinner = WaitingSpinner(self.content)
+        self.git_spinner.start()
+        self.active_git_spinner = self.git_spinner
+        spinner_label = QLabel("Cloning repository...")
+        spinner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.content_layout.addWidget(self.git_spinner)
+        self.content_layout.addWidget(spinner_label)
+        self.detail_widgets.extend([self.git_spinner, spinner_label])
+
+        # Create git worker and thread
+        self.git_worker = PipelineGitImportWorker(repo_url)
+        self.git_worker_thread = QThread()
+        self.git_worker.moveToThread(self.git_worker_thread)
+
+        # Connect signals
+        self.git_worker_thread.started.connect(self.git_worker.run)
+        self.git_worker.import_ready.connect(self._on_git_import_ready)
+        self.git_worker.error.connect(self._on_git_import_error)
+        self.git_worker.finished.connect(self.git_worker_thread.quit)
+
+        # Start
+        self.git_worker_thread.start()
+
+    def _on_git_import_ready(self, success, message):
+        """Handle git import completion."""
+        # Ignore if spinner not active
+        if self.git_spinner is not self.active_git_spinner:
+            logger.debug("Ignoring git import_ready for stale spinner")
+            return
+
+        # Stop spinner
+        if self.git_spinner:
+            try:
+                self.git_spinner.stop()
+            except RuntimeError:
+                logger.debug("Git spinner already deleted, skipping stop()")
+
+        self.active_git_spinner = None
+
+        # Cleanup spinner widgets
+        for w in [self.git_spinner] + [w for w in self.detail_widgets if isinstance(w, QLabel) and "Cloning" in (w.text() if hasattr(w, 'text') else "")]:
+            if w in self.detail_widgets:
+                self.detail_widgets.remove(w)
+                self.content_layout.removeWidget(w)
+                w.deleteLater()
+
+        # Re-enable controls
+        self.url_import_btn.setEnabled(True)
+        self.combobox.setEnabled(True)
+        self.btn.setEnabled(True)
+
+        if success:
+            logger.info(f"Git import succeeded: {message}")
+            QMessageBox.information(self, "Import Successful", message)
+            self.import_successful.emit()
+        else:
+            logger.error(f"Git import failed: {message}")
+            QMessageBox.critical(self, "Import Failed", message)
+
+    def _on_git_import_error(self, error_msg):
+        """Handle error during git import."""
+        # Ignore if spinner not active
+        if self.git_spinner is not self.active_git_spinner:
+            logger.debug("Ignoring git import_error for stale spinner")
+            return
+
+        # Stop spinner
+        if self.git_spinner:
+            try:
+                self.git_spinner.stop()
+            except RuntimeError:
+                logger.debug("Git spinner already deleted, skipping stop()")
+
+        self.active_git_spinner = None
+
+        # Cleanup spinner widgets
+        for w in [self.git_spinner] + [w for w in self.detail_widgets if isinstance(w, QLabel) and "Cloning" in (w.text() if hasattr(w, 'text') else "")]:
+            if w in self.detail_widgets:
+                self.detail_widgets.remove(w)
+                self.content_layout.removeWidget(w)
+                w.deleteLater()
+
+        self.url_import_btn.setEnabled(True)
+        self.combobox.setEnabled(True)
+        self.btn.setEnabled(True)
+        logger.error(f"Error importing from git: {error_msg}")
+        QMessageBox.critical(self, "Import Error", f"Error importing from git: {error_msg}")

@@ -63,6 +63,7 @@ class PipelineInfoWorker(QObject):
                 if in_revisions:
                     revision = stripped.lstrip("*").strip()
                     revision = revision.replace("(default)", "").strip()
+                    revision = revision.replace(">", "").strip()
 
                     revisions.append(revision)
                     continue
@@ -123,6 +124,8 @@ class PipelineDeleteWorker(QObject):
     finished = pyqtSignal()
     error = pyqtSignal(str)
     result = pyqtSignal(bool, str)  # success, message
+    # Emitted when a failure requires user confirmation to force-delete the local assets folder
+    requires_confirmation = pyqtSignal(str, str)  # (pipeline_dir, error_message)
 
     def __init__(self, pipeline_name):
         super().__init__()
@@ -137,7 +140,28 @@ class PipelineDeleteWorker(QObject):
                 self.result.emit(True, "Deleted")
             else:
                 err = getattr(proc, 'stderr', '') or str(proc)
-                self.result.emit(False, err)
+                # Detect the specific Nextflow message about uncommitted changes and request confirmation
+                try:
+                    from pathlib import Path as _Path
+                    assets_dir = str(_Path.home() / ".nextflow" / "assets" / self.pipeline_name)
+                except Exception:
+                    assets_dir = str(self.pipeline_name)
+
+                low_err = err.lower()
+                # Detect known Nextflow refusal reasons: uncommitted changes or corrupted repo
+                if (
+                    'uncommitted changes' in low_err
+                    or "won't drop" in low_err
+                    or 'local project repository contains uncommitted changes' in low_err
+                    or "can't find git repository config file" in low_err
+                    or 'repository may be corrupted' in low_err
+                ):
+                    # Ask the GUI to request user confirmation before force-deleting the folder
+                    self.requires_confirmation.emit(assets_dir, err)
+                    # Inform caller that deletion did not occur but requires force delete
+                    self.result.emit(False, f"RequiresForceDelete:{assets_dir}:{err}")
+                else:
+                    self.result.emit(False, err)
         except Exception as e:
             logger.error(f"Error deleting pipeline: {e}")
             self.error.emit(str(e))
@@ -509,6 +533,68 @@ class PipelineLocal(QWidget):
             delete_worker = PipelineDeleteWorker(pipeline)
             delete_thread = QThread()
             delete_worker.moveToThread(delete_thread)
+
+            # Connect a handler for cases where nextflow reports uncommitted changes
+            def _handle_requires_confirmation(pipeline_dir, error_msg):
+                try:
+                    # Ask user if they want to force-delete the local assets folder
+                    resp2 = QMessageBox.question(
+                        self,
+                        "Force Delete Pipeline",
+                        f"Nextflow could not drop the pipeline due to local repository issues:\n{error_msg}\n\nForcefully delete the local pipeline folder at:\n{pipeline_dir}?\nThis will permanently remove the pipeline assets.",
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    )
+                    if resp2 != QMessageBox.StandardButton.Yes:
+                        try:
+                            err_label = QLabel("Delete aborted by user. Pipeline not removed.")
+                            err_label.setStyleSheet("color: red;")
+                            err_label.setWordWrap(True)
+                            self.details_layout.addWidget(err_label)
+                        except Exception:
+                            pass
+                        return
+
+                    # User confirmed - attempt to remove the directory
+                    try:
+                        delete_directory(pipeline_dir)
+                        # Clean up spinner and deleting label if present
+                        try:
+                            spinner.stop()
+                        except Exception:
+                            pass
+                        try:
+                            for j in reversed(range(self.details_layout.count())):
+                                it = self.details_layout.itemAt(j)
+                                w = it.widget() if it is not None else None
+                                if w is spinner or w is deleting_label:
+                                    try:
+                                        self.details_layout.removeWidget(w)
+                                    except Exception:
+                                        pass
+                                    try:
+                                        w.deleteLater()
+                                    except Exception:
+                                        pass
+                        except Exception:
+                            pass
+
+                        # Refresh UI
+                        try:
+                            self.refresh_pipelines()
+                        except Exception:
+                            pass
+                        try:
+                            self.details_box.hide()
+                        except Exception:
+                            pass
+                        QMessageBox.information(self, "Deleted", f"Pipeline folder removed: {pipeline_dir}")
+                    except Exception as e:
+                        logger.error(f"Force delete failed for {pipeline_dir}: {e}")
+                        QMessageBox.critical(self, "Force Delete Failed", f"Failed to remove {pipeline_dir}: {e}")
+                except Exception as e:
+                    logger.error(f"Error in force-delete confirmation handler: {e}")
+
+            delete_worker.requires_confirmation.connect(_handle_requires_confirmation)
 
             # retain references so they are not garbage-collected while running
             self.delete_worker = delete_worker

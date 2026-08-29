@@ -3,6 +3,32 @@ sys.path.append(os.getcwd())
 from src.__main__ import MainWindow
 from pathlib import Path
 from unittest.mock import MagicMock
+from PyQt6.QtWidgets import QMessageBox
+
+
+@pytest.fixture(autouse=True)
+def auto_confirm_dialogs(monkeypatch):
+    """Prevent modal dialogs from blocking pytest UI tests."""
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args, **kwargs: QMessageBox.StandardButton.Yes,
+    )
+    monkeypatch.setattr(
+        QMessageBox,
+        "information",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        QMessageBox,
+        "warning",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        QMessageBox,
+        "critical",
+        lambda *args, **kwargs: None,
+    )
 
 
 @pytest.fixture
