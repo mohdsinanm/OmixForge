@@ -1,5 +1,5 @@
 APP_NAME = omixforge
-VERSION = 1.2.0
+VERSION ?= 1.2.0
 ARCH = amd64
 BUILD_DIR = $(APP_NAME)_$(VERSION)_$(ARCH)
 ENTRY_POINT = src/__main__.py
@@ -7,20 +7,26 @@ BIN_NAME = $(APP_NAME)
 DESKTOP_FILE = $(APP_NAME).desktop
 ICON_NAME = $(APP_NAME).png
 ICON_SOURCE = src/assets/$(ICON_NAME)
+VERSION_SCRIPT = python3 scripts/sync_version.py
 
-.PHONY: all clean build-deb build-bin
+.PHONY: all clean build-deb build-bin sync-version release
 
 all: remove-omix build-bin build-deb build-debian install-omix
 
-build-bin:
+sync-version:
+	@$(VERSION_SCRIPT) "$(VERSION)"
+
+release: sync-version
+	@$(VERSION_SCRIPT) --release "Release $(VERSION)" "$(VERSION)"
+
+build-bin: sync-version
 	@echo "Building PyInstaller executable..."
-	@sed -i "s/APP_VERSION = .*/APP_VERSION = \"$(VERSION)\"/g" src/utils/version.py
 	poetry run pyinstaller --name $(BIN_NAME) --onefile --noconsole $(ENTRY_POINT) --add-data "src/assets/omixforge.png:src/assets" --add-data "src/assets/users-alt.svg:src/assets" --add-data "src/assets/lock.svg:src/assets"
 	@echo "Executable built at dist/$(BIN_NAME)"
 	split -b 80M dist/omixforge dist/omixforge.part.
 
 
-build-deb:
+build-deb: sync-version
 	@echo "Setting up package directory structure..."
 	mkdir -p $(BUILD_DIR)/DEBIAN
 	mkdir -p $(BUILD_DIR)/usr/bin
@@ -48,7 +54,7 @@ build-deb:
 
 	@echo "All set! Run 'dpkg-deb --build $(BUILD_DIR)' to generate your .deb file."
 
-build-debian:
+build-debian: sync-version
 	dpkg-deb --build $(BUILD_DIR)
 
 clean:
@@ -63,8 +69,7 @@ install-omix:
 remove-omix:
 	sudo apt remove omixforge --purge -y || true
 
-dev:
-	sed -i "s/APP_VERSION = .*/APP_VERSION = \"$(VERSION)\"/g" src/utils/version.py
+dev: sync-version
 	cp src/__main__.py __main__.py
 	python3 __main__.py
 
