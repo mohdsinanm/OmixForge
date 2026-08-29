@@ -39,6 +39,14 @@ class PipelineGitImportWorker(QObject):
                 self.import_ready.emit(False, msg)
                 return
 
+            # Ensure git is available
+            which_git = run_shell_command("which git")
+            if which_git is None or getattr(which_git, 'returncode', 1) != 0:
+                msg = "git is not installed or not available in PATH"
+                logger.error(msg)
+                self.import_ready.emit(False, msg)
+                return
+
             os.makedirs(self.target_root, exist_ok=True)
             dest = os.path.join(self.target_root, repo_name)
 
