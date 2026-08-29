@@ -63,6 +63,7 @@ class PipelineInfoWorker(QObject):
                 if in_revisions:
                     revision = stripped.lstrip("*").strip()
                     revision = revision.replace("(default)", "").strip()
+                    revision = revision.replace(">", "").strip()
 
                     revisions.append(revision)
                     continue
