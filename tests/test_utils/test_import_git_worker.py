@@ -41,22 +41,18 @@ def test_successful_clone_and_lint(monkeypatch, tmp_path):
     dest_root = str(tmp_path / 'assets')
     repo_name = 'repo'
     dest = os.path.join(dest_root, repo_name)
-
-    # Track calls and emulate filesystem
-    exists_calls = set()
+    cloned = {'done': False}
 
     def fake_exists(path):
-        # dest does not exist initially, after clone we simulate it exists
         if path == dest:
-            return True
-        # any file checks for main.nf/nextflow.config return False (not used because lint passes)
+            return cloned['done']
         return False
 
-    # Fake run_shell_command behavior
     def fake_run(cmd):
         if cmd.startswith('which git'):
             return FakeCompleted(0)
         if cmd.startswith('git clone'):
+            cloned['done'] = True
             return FakeCompleted(0)
         if cmd.startswith('which nf-core'):
             return FakeCompleted(0)
@@ -67,12 +63,8 @@ def test_successful_clone_and_lint(monkeypatch, tmp_path):
         return FakeCompleted(0)
 
     monkeypatch.setattr(gitmod, 'run_shell_command', fake_run)
-    monkeypatch.setattr(os, 'path', os.path)  # ensure attribute exists
     monkeypatch.setattr(os.path, 'exists', fake_exists)
     monkeypatch.setattr(os, 'makedirs', lambda *a, **k: None)
-
-    # Prevent actual rmtree
-    monkeypatch.setattr(gitmod, 'shutil', gitmod.shutil)
     monkeypatch.setattr(gitmod.shutil, 'rmtree', lambda *a, **k: None)
 
     w = gitmod.PipelineGitImportWorker('https://github.com/owner/repo.git', target_root=dest_root)
@@ -92,19 +84,18 @@ def test_non_compliant_repo_removal(monkeypatch, tmp_path):
     dest_root = str(tmp_path / 'assets')
     repo_name = 'badrepo'
     dest = os.path.join(dest_root, repo_name)
+    cloned = {'done': False}
 
-    # Emulate dest exists after clone
     def fake_exists(path):
         if path == dest:
-            return True
-        # main.nf and nextflow.config missing
+            return cloned['done']
         return False
 
-    # Emulate commands: git present, clone ok, nf-core present but lint fails
     def fake_run(cmd):
         if cmd.startswith('which git'):
             return FakeCompleted(0)
         if cmd.startswith('git clone'):
+            cloned['done'] = True
             return FakeCompleted(0)
         if cmd.startswith('which nf-core'):
             return FakeCompleted(0)
