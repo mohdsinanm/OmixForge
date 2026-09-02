@@ -1276,4 +1276,60 @@ body.dark-theme .mock-btn-delete {
     .docs-content {
         padding: 24px;
     }
+
+    .docs-section {
+        padding: 72px 0;
+    }
+
+    .docs-wrapper {
+        gap: 20px;
+    }
+
+    .docs-sidebar {
+        padding: 10px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .docs-nav-list {
+        flex-wrap: nowrap;
+        width: max-content;
+        gap: 8px;
+    }
+
+    .docs-nav-btn {
+        flex: 0 0 auto;
+        min-height: 42px;
+        padding: 10px 12px;
+        font-size: 0.82rem;
+        white-space: nowrap;
+    }
+
+    .docs-content {
+        min-width: 0;
+        min-height: 0;
+        padding: 24px 18px;
+        overflow: hidden;
+    }
+
+    .doc-panel h3 {
+        font-size: 1.45rem;
+        overflow-wrap: anywhere;
+    }
+
+    .doc-panel h4 {
+        font-size: 1.1rem;
+    }
+
+    .doc-panel ul,
+    .doc-panel ol {
+        margin-left: 20px;
+        padding-left: 4px;
+    }
+
+    .doc-panel .code-block-container {
+        max-width: 100%;
+        overflow-x: auto;
+    }
 }
