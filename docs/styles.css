@@ -379,6 +379,11 @@ body.light-theme .moon-icon { display: block; }
     align-items: center;
 }
 
+.hero-media {
+    min-width: 0;
+    width: 100%;
+}
+
 .hero-content {
     max-width: 540px;
 }
@@ -408,8 +413,9 @@ body.light-theme .moon-icon { display: block; }
 
 .hero-media img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;      /* or contain if you need the whole image */
+    height: auto;
+    aspect-ratio: 1365 / 735;
+    object-fit: contain;
     display: block;
 
     border-radius: 16px;    /* Rounded image corners */
