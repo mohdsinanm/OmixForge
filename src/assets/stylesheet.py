@@ -1,6 +1,9 @@
+from src.utils.resource import resource_path
+
+
 def global_style_sheet():
     """Return the shared visual theme for the application."""
-    return """
+    stylesheet = """
     QWidget {
         color: #263b36;
         font-family: "Noto Sans";
@@ -163,6 +166,7 @@ def global_style_sheet():
     QCheckBox::indicator:checked {
         background-color: #087f70;
         border-color: #087f70;
+        image: url("__CHECKMARK_PATH__");
     }
 
     QCheckBox::indicator:disabled {
@@ -472,6 +476,8 @@ def global_style_sheet():
         color: #086b60;
     }
     """
+    checkmark_path = resource_path("src/assets/checkmark.svg").replace("\\", "/")
+    return stylesheet.replace("__CHECKMARK_PATH__", checkmark_path)
 
 
 def close_button_style():

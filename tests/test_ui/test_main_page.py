@@ -280,6 +280,38 @@ def test_pipeline_import_empty_state_keeps_controls_at_top(qtbot):
     assert import_tab.status_label.height() < 60
 
 
+def test_download_checkbox_renders_a_check_mark(qtbot):
+    from PyQt6.QtGui import QImage
+    from PyQt6.QtWidgets import QCheckBox, QStyle, QStyleOptionButton
+    from src.assets.stylesheet import global_style_sheet
+
+    checkbox = QCheckBox()
+    checkbox.setStyleSheet(global_style_sheet())
+    checkbox.setChecked(True)
+    checkbox.resize(30, 24)
+    qtbot.addWidget(checkbox)
+    checkbox.show()
+    QApplication.processEvents()
+
+    option = QStyleOptionButton()
+    checkbox.initStyleOption(option)
+    indicator = checkbox.style().subElementRect(
+        QStyle.SubElement.SE_CheckBoxIndicator, option, checkbox
+    )
+    image = QImage(checkbox.size(), QImage.Format.Format_ARGB32)
+    image.fill(Qt.GlobalColor.transparent)
+    checkbox.render(image)
+
+    white_pixels = sum(
+        image.pixelColor(x, y).red() > 220
+        and image.pixelColor(x, y).green() > 220
+        and image.pixelColor(x, y).blue() > 220
+        for x in range(indicator.left(), indicator.right() + 1)
+        for y in range(indicator.top(), indicator.bottom() + 1)
+    )
+    assert white_pixels > 0
+
+
 def test_pipeline_import_empty_results_offer_refresh_guidance(qtbot):
     import_tab = PipelineImport()
     qtbot.addWidget(import_tab)
