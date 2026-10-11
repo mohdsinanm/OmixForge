@@ -137,12 +137,12 @@ class ProfilePage(QWidget):
             color: #263b36;
         }
         QLineEdit#inputField:focus {
-            border: 1px solid #087f70;
+            border: 1px solid #111111;
         }
 
         QPushButton#loginButton {
             padding: 12px;
-            background-color: #087f70;
+            background-color: #111111;
             color: #ffffff;
             border: none;
             border-radius: 6px;
@@ -150,22 +150,22 @@ class ProfilePage(QWidget):
             font-weight: 700;
         }
         QPushButton#loginButton:hover {
-            background-color: #066b60;
+            background-color: #292929;
         }
         QPushButton#loginButton:pressed {
-            background-color: #05574e;
+            background-color: #000000;
         }
 
         QPushButton#backButton {
             border: none;
             background: transparent;
-            color: #087f70;
+            color: #111111;
             font-size: 14px;
             padding: 6px;
         }
         QPushButton#backButton:hover {
             text-decoration: underline;
-            color: #066b60;
+            color: #292929;
         }
 
         QLabel#loginError {

@@ -1,256 +1,186 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,QToolButton
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QToolButton, QPushButton,
+    QFrame, QSizePolicy,
+)
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QSize
+from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtSvgWidgets import QSvgWidget
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
-from PyQt6.QtGui import QPixmap
 
 from src.core.profile_page.requirements import RequirementsNotSatisfied
 from src.utils.resource import resource_path
 from src.utils.widgets.loading_spinner import LoadingSpinner
 
+
 class AccessModePage(QWidget):
     public_selected = pyqtSignal()
     private_selected = pyqtSignal()
 
-    def __init__(self, docker_installed :bool, nextflow_installed: bool):
-        """Initialize the access mode selection page.
-        
-        Parameters
-        ----------
-        docker_installed : bool
-            Whether Docker is installed on the system.
-        nextflow_installed : bool
-            Whether Nextflow is installed on the system.
-        """
+    def __init__(self, docker_installed: bool, nextflow_installed: bool):
+        """Welcome page and access-mode selector for OmixForge."""
         super().__init__()
         self.setObjectName("welcomePage")
-
-        self.loading_dialog = None
         self._selected_mode = None
 
-        main_layout = QVBoxLayout(self)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.setSpacing(25)
+        page_layout = QVBoxLayout(self)
+        page_layout.setContentsMargins(56, 38, 56, 30)
+        page_layout.setSpacing(0)
 
-         # Logo section
-        logo_layout = QHBoxLayout()
-        logo_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        try:
-            logo_path = resource_path("src/assets/omixforge.png")
-            logo_label = QLabel()
-            pixmap = QPixmap(logo_path)
-            scaled_pixmap = pixmap.scaledToWidth(100, Qt.TransformationMode.SmoothTransformation)
-            logo_label.setPixmap(scaled_pixmap)
-            logo_layout.addWidget(logo_label)
-        except Exception:
-            pass
-        main_layout.addLayout(logo_layout)
+        brand_row = QHBoxLayout()
+        brand_row.setSpacing(10)
+        logo = QLabel()
+        logo.setObjectName("brandLogo")
+        pixmap = QPixmap(resource_path("src/assets/omixforge.png"))
+        if not pixmap.isNull():
+            logo.setPixmap(pixmap.scaledToWidth(40, Qt.TransformationMode.SmoothTransformation))
+        brand_row.addWidget(logo)
+        brand_name = QLabel("OimxForge")
+        brand_name.setObjectName("brandName")
+        brand_row.addWidget(brand_name)
+        brand_row.addStretch(1)
+        eyebrow = QLabel("BIOINFORMATICS WORKFLOW STUDIO")
+        eyebrow.setObjectName("eyebrow")
+        brand_row.addWidget(eyebrow)
+        page_layout.addLayout(brand_row)
+        page_layout.addStretch(1)
 
-        # TITLE
-        title = QLabel("OmixForge")
+        content = QHBoxLayout()
+        content.setSpacing(36)
+        content.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+        copy = QVBoxLayout()
+        copy.setSpacing(0)
+        copy.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        kicker = QLabel("FROM SEQUENCE TO SCIENTIFIC INSIGHT")
+        kicker.setObjectName("kickerLabel")
+        copy.addWidget(kicker)
+
+        title = QLabel("Your science,\nin motion.")
         title.setObjectName("titleLabel")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(title)  
+        title.setWordWrap(True)
+        copy.addWidget(title)
+
+        subtitle = QLabel(
+            "Bring samples, pipelines, and results together in one calm workspace.\n"
+            "Build a reproducible path from raw data to discovery."
+        )
+        subtitle.setObjectName("subtitleLabel")
+        subtitle.setWordWrap(True)
+        copy.addWidget(subtitle)
+
+        workflow = QHBoxLayout()
+        workflow.setSpacing(10)
+        workflow.setContentsMargins(0, 24, 0, 26)
+        for number, heading, detail in (
+            ("01", "Prepare", "Samples & metadata"),
+            ("02", "Execute", "Nextflow pipelines"),
+            ("03", "Explore", "Outputs & results"),
+        ):
+            item = QVBoxLayout()
+            item.setSpacing(4)
+            step = QLabel(number)
+            step.setObjectName("stepNumber")
+            item.addWidget(step)
+            name = QLabel(heading)
+            name.setObjectName("stepName")
+            item.addWidget(name)
+            desc = QLabel(detail)
+            desc.setObjectName("stepDetail")
+            item.addWidget(desc)
+            workflow.addLayout(item)
+            if number != "03":
+                arrow = QLabel("→")
+                arrow.setObjectName("stepArrow")
+                workflow.addWidget(arrow, alignment=Qt.AlignmentFlag.AlignTop)
+        copy.addLayout(workflow)
 
         if docker_installed and nextflow_installed:
-            # SUBTITLE
-            subtitle = QLabel("Offline Bioinformatics Pipeline Execution")
-            subtitle.setObjectName("subtitleLabel")
-            subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            main_layout.addWidget(subtitle)
-            self.show_access_modes(main_layout)
+            actions = QHBoxLayout()
+            actions.setSpacing(12)
+            self.public_start_button = QPushButton("Start a workspace")
+            self.public_start_button.setObjectName("publicStartButton")
+            self.public_start_button.setMinimumSize(190, 48)
+            self.public_start_button.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.public_start_button.clicked.connect(lambda: self._on_card_clicked("public"))
+            actions.addWidget(self.public_start_button)
+
+            self.private_mode_button = QToolButton()
+            self.private_mode_button.setObjectName("privateModeButton")
+            self.private_mode_button.setIcon(QIcon(resource_path("src/assets/lock.svg")))
+            self.private_mode_button.setIconSize(QSize(19, 19))
+            self.private_mode_button.setText("  Private mode")
+            self.private_mode_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+            self.private_mode_button.setMinimumSize(154, 48)
+            self.private_mode_button.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.private_mode_button.setToolTip("Encrypted workspace; requires login")
+            self.private_mode_button.setAccessibleName("Private mode (encrypted)")
+            self.private_mode_button.clicked.connect(self.private_selected.emit)
+            actions.addWidget(self.private_mode_button)
+            actions.addStretch(1)
+            copy.addLayout(actions)
+
+            self.loading_spinner = LoadingSpinner("Preparing your workspace…", parent=self)
+            copy.addWidget(self.loading_spinner)
         else:
-            self.show_requirements_not_satisfied(main_layout, docker_installed, nextflow_installed)
+            self.requirements_frame = QFrame()
+            self.requirements_frame.setObjectName("requirementsPanel")
+            req_layout = QVBoxLayout(self.requirements_frame)
+            req_layout.setContentsMargins(16, 12, 16, 12)
+            self.req_page = RequirementsNotSatisfied(req_layout, docker_installed, nextflow_installed)
+            copy.addWidget(self.requirements_frame)
 
-    def show_requirements_not_satisfied(self, main_layout, docker_installed, nextflow_installed):
-        """Display error message for unsatisfied system requirements.
-        
-        Parameters
-        ----------
-        main_layout : QVBoxLayout
-            The main layout to add the requirements widget to.
-        docker_installed : bool
-            Docker installation status.
-        nextflow_installed : bool
-            Nextflow installation status.
-        """
-        self.req_page = RequirementsNotSatisfied(main_layout, docker_installed, nextflow_installed)
-        self.setStyleSheet(self.stylesheet())
+        copy.addStretch(1)
+        content.addLayout(copy, 5)
 
-    def show_access_modes(self, main_layout):
-        """Display available access mode selection cards."""
-        # CARD CONTAINER
-        card_layout = QHBoxLayout()
-        card_layout.setSpacing(40)
-        main_layout.addLayout(card_layout)
+        illustration = QSvgWidget(resource_path("src/assets/startup_bioinformatics.svg"))
+        illustration.setObjectName("workflowIllustration")
+        illustration.setMinimumSize(330, 300)
+        illustration.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        illustration.setToolTip("A visual overview of a reproducible bioinformatics workflow")
+        content.addWidget(illustration, 6)
+        page_layout.addLayout(content, 8)
+        page_layout.addStretch(1)
 
-        # PUBLIC MODE
-        public_card = self.create_card("Public Mode", "Run without login", resource_path("src/assets/users-alt.svg"), "The run data will be stored locally on your machine without any encryption.")
-        public_card.mousePressEvent = lambda e: self._on_card_clicked("public")
-        card_layout.addWidget(public_card)
-        public_card.setObjectName("public_access_card")
-
-        # PRIVATE MODE
-        private_card = self.create_card("Private Mode", "Requires login", resource_path("src/assets/lock.svg"), "The run data will be encrypted and stored locally, ensuring privacy and security. Only one user will be able to access the private mode on this installation.")
-
-        private_card.mousePressEvent = lambda e: self.private_selected.emit()
-        card_layout.addWidget(private_card)
-        private_card.setObjectName("private_access_card")
-
-        # Add loading spinner widget (initially hidden)
-        self.loading_spinner = LoadingSpinner("Loading OmixForge...", parent=self)
-        main_layout.addWidget(self.loading_spinner, alignment=Qt.AlignmentFlag.AlignCenter)
-
+        footer = QHBoxLayout()
+        footer.addWidget(QLabel("REPRODUCIBLE BY DESIGN"))
+        footer.addStretch(1)
+        footer_note = QLabel("Samples  ·  Pipelines  ·  Results")
+        footer.addWidget(footer_note)
+        page_layout.addLayout(footer)
         self.setStyleSheet(self.stylesheet())
 
     def _on_card_clicked(self, mode: str):
-        """Show loading spinner and emit the appropriate signal.
-        
-        Parameters
-        ----------
-        mode : str
-            The access mode selected ("public" or "private").
-        """
-        # Store the mode for later emission
+        """Show the loading indicator, then emit the selected access mode."""
         self._selected_mode = mode
-        
-        # Show loading spinner
         self.loading_spinner.start_loading()
-        
-        # Delay signal emission to allow spinner to render
+        self.public_start_button.setEnabled(False)
+        self.private_mode_button.setEnabled(False)
         QTimer.singleShot(100, self._emit_selected_signal)
-    
+
     def _emit_selected_signal(self):
-        """Emit the selected signal after a delay to allow dialog to render."""
         if self._selected_mode == "public":
             self.public_selected.emit()
         elif self._selected_mode == "private":
             self.private_selected.emit()
-    def create_card(self, title, subtitle, svg_path=None, info_text=None):
-        """Create a styled card widget for access mode selection.
-        
-        Parameters
-        ----------
-        title : str
-            The title text for the card.
-        subtitle : str
-            The subtitle/description text.
-        svg_path : str, optional
-            Path to an SVG icon file.
-        info_text : str, optional
-            Tooltip text for the info button.
-        
-        Returns
-        -------
-        QFrame
-            The constructed card widget.
-        """
-        card = QFrame()
-        card.setObjectName("accessCard")
-        card.setFixedSize(300, 200)
-
-        layout = QVBoxLayout(card)
-        layout.setSpacing(10)
-        layout.setContentsMargins(10, 10, 10, 10)
-
-        # --- TOP RIGHT INFO BUTTON ---
-        if info_text:
-            info_btn = QToolButton()
-            info_btn.setText("i")
-            info_btn.setToolTip(info_text)
-            info_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            info_btn.setFixedSize(20, 20)
-            info_btn.setStyleSheet("""
-                QToolButton {
-                    border: 1px solid #cbdad5;
-                    border-radius: 10px;
-                    font-size: 12px;
-                    font-weight: bold;
-                    padding: 0px;
-                    background: #ffffff;
-                    color: #536a63;
-                }
-                QToolButton:hover {
-                    border: 1px solid #087f70;
-                    color: #087f70;
-                }
-            """)
-
-            top_layout = QHBoxLayout()
-            top_layout.addStretch()
-            top_layout.addWidget(info_btn)
-            top_layout.setContentsMargins(0, 0, 0, 0)
-            layout.addLayout(top_layout)
-
-        # --- ICON (SVG) ---
-        if svg_path:
-            icon_widget = QSvgWidget(svg_path)
-            icon_widget.setFixedSize(48, 48)
-
-            icon_container = QWidget()
-            icon_layout = QHBoxLayout(icon_container)
-            icon_layout.addWidget(icon_widget)
-            icon_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            icon_layout.setContentsMargins(0, 0, 0, 0)
-
-            layout.addWidget(icon_container)
-
-        # --- TITLE ---
-        title_label = QLabel(title)
-        title_label.setObjectName("cardTitle")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title_label)
-
-        # --- SUBTITLE ---
-        subtitle_label = QLabel(subtitle)
-        subtitle_label.setObjectName("cardSubtitle")
-        subtitle_label.setWordWrap(True)
-        subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(subtitle_label)
-
-        return card
 
     def stylesheet(self):
-        """Return CSS stylesheet for the access mode selection page."""
         return """
-        QWidget#welcomePage {
-            background-color: #f3f7f6;
-            font-family: "Noto Sans";
-        }
-
-        QLabel#titleLabel {
-            color: #193b34;
-            font-size: 38px;
-            font-weight: 700;
-        }
-
-        QLabel#subtitleLabel {
-            color: #71847d;
-            font-size: 15px;
-            margin-bottom: 12px;
-        }
-        QFrame#public_access_card,
-        QFrame#private_access_card,
-        QFrame#accessCard {
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 18px;
-            border: 1px solid #d5e1dd;
-        }
-        QFrame#public_access_card:hover,
-        QFrame#private_access_card:hover,
-        QFrame#accessCard:hover {
-            background-color: #fbfefd;
-            border: 1px solid #087f70;
-        }
-
-        QLabel#cardTitle {
-            color: #203a34;
-            font-size: 20px;
-            font-weight: 700;
-        }
-
-        QLabel#cardSubtitle {
-            color: #71847d;
-            font-size: 14px;
-        }
+        QWidget#welcomePage { background: #f4f7f5; font-family: "Noto Sans"; }
+        QLabel#brandLogo { min-width: 40px; }
+        QLabel#brandName { color: #111111; font-size: 13px; font-weight: 800; letter-spacing: 2px; }
+        QLabel#eyebrow, QLabel#kickerLabel { color: #628078; font-size: 10px; font-weight: 700; letter-spacing: 1.6px; }
+        QLabel#kickerLabel { margin-bottom: 12px; }
+        QLabel#titleLabel { color: #111111; font-size: 48px; font-weight: 700; line-height: 1.1; }
+        QLabel#subtitleLabel { color: #647970; font-size: 14px; line-height: 1.5; margin-top: 14px; }
+        QLabel#stepNumber { color: #b26340; font-size: 10px; font-weight: 800; letter-spacing: 1px; }
+        QLabel#stepName { color: #252525; font-size: 13px; font-weight: 700; }
+        QLabel#stepDetail { color: #82918c; font-size: 10px; }
+        QLabel#stepArrow { color: #a5b9b1; font-size: 18px; margin: 0 3px; }
+        QPushButton#publicStartButton { background: #111111; border: 1px solid #111111; border-radius: 7px; color: white; font-size: 13px; font-weight: 700; padding: 0 18px; }
+        QPushButton#publicStartButton:hover { background: #292929; }
+        QPushButton#publicStartButton:disabled { background: #79a89f; color: #f2f7f5; }
+        QToolButton#privateModeButton { background: #ffffff; border: 1px solid #d4e1dc; border-radius: 7px; color: #31564c; font-weight: 600; padding: 0 12px; }
+        QToolButton#privateModeButton:hover { background: #edf6f3; border-color: #7a8580; }
+        QToolButton#privateModeButton:disabled { color: #8a9a95; }
+        QFrame#requirementsPanel { background: #ffffff; border: 1px solid #dbe6e2; border-radius: 8px; }
+        QWidget#workflowIllustration { background: transparent; }
         """

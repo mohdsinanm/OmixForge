@@ -30,7 +30,7 @@ class PipelineCard(QFrame):
             "#f0f2f1": "#778780",
             "#e5f3eb": "#19825c",
             "#fff3df": "#b87718",
-        }.get(background, "#087f70")
+        }.get(background, "#111111")
         
         self.setStyleSheet("""
             QFrame#pipelineResultCard {{

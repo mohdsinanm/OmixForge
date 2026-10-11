@@ -17,7 +17,7 @@ class LoadingSpinner(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
-        layout.setContentsMargins(0, 20, 50, 20)
+        layout.setContentsMargins(0, 20, 0, 20)
 
         # Message label
         self.message_label = QLabel(message)
@@ -38,7 +38,7 @@ class LoadingSpinner(QWidget):
                 height: 8px;
             }
             QProgressBar::chunk {
-                background-color: #087f70;
+                background-color: #111111;
                 border-radius: 4px;
             }
         """)

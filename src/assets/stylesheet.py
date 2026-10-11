@@ -39,6 +39,27 @@ def global_style_sheet():
         background-color: #d6e9e2;
     }
 
+    QToolBar#sessionActionsToolbar {
+        background-color: #eaf1ee;
+        border: none;
+        border-bottom: 1px solid #d8e3df;
+        padding: 5px 14px;
+    }
+
+    QPushButton#logoutButton {
+        background-color: #111111;
+        border: 1px solid #111111;
+        border-radius: 6px;
+        color: #ffffff;
+        font-weight: 700;
+        padding: 7px 16px;
+    }
+
+    QPushButton#logoutButton:hover {
+        background-color: #292929;
+        border-color: #292929;
+    }
+
     QDockWidget#navigationDock {
         background-color: #eaf1ee;
         border: none;
@@ -101,7 +122,7 @@ def global_style_sheet():
 
     QPushButton:hover {
         background-color: #edf6f3;
-        border-color: #79b6a8;
+        border-color: #7a8580;
     }
 
     QPushButton:pressed {
@@ -117,8 +138,8 @@ def global_style_sheet():
     QPushButton#fetchAccessionsButton,
     QPushButton#loginButton,
     QPushButton#saveSettingsButton {
-        background-color: #087f70;
-        border-color: #087f70;
+        background-color: #111111;
+        border-color: #111111;
         color: #ffffff;
         font-weight: 700;
     }
@@ -126,8 +147,8 @@ def global_style_sheet():
     QPushButton#fetchAccessionsButton:hover,
     QPushButton#loginButton:hover,
     QPushButton#saveSettingsButton:hover {
-        background-color: #066b60;
-        border-color: #066b60;
+        background-color: #292929;
+        border-color: #292929;
     }
 
     QLineEdit, QTextEdit, QPlainTextEdit, QComboBox,
@@ -137,13 +158,13 @@ def global_style_sheet():
         border-radius: 6px;
         color: #263b36;
         padding: 7px 9px;
-        selection-background-color: #087f70;
+        selection-background-color: #111111;
         selection-color: #ffffff;
     }
 
     QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus,
     QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
-        border: 1px solid #087f70;
+        border: 1px solid #111111;
     }
 
     QCheckBox {
@@ -160,12 +181,12 @@ def global_style_sheet():
     }
 
     QCheckBox::indicator:hover {
-        border-color: #087f70;
+        border-color: #111111;
     }
 
     QCheckBox::indicator:checked {
-        background-color: #087f70;
-        border-color: #087f70;
+        background-color: #111111;
+        border-color: #111111;
         image: url("__CHECKMARK_PATH__");
     }
 
@@ -330,8 +351,8 @@ def global_style_sheet():
 
     QTabBar::tab:selected {
         background-color: #ffffff;
-        border-bottom: 2px solid #087f70;
-        color: #087f70;
+        border-bottom: 2px solid #111111;
+        color: #111111;
         font-weight: 700;
     }
 
@@ -449,7 +470,7 @@ def global_style_sheet():
     }
 
     QProgressBar::chunk {
-        background-color: #087f70;
+        background-color: #111111;
         border-radius: 5px;
     }
 
@@ -473,7 +494,7 @@ def global_style_sheet():
 
     QMenu::item:selected {
         background-color: #e4f1ec;
-        color: #086b60;
+        color: #292929;
     }
     """
     checkmark_path = resource_path("src/assets/checkmark.svg").replace("\\", "/")

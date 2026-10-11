@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="620" viewBox="0 0 760 620" fill="none">
+  <defs>
+    <linearGradient id="field" x1="89" y1="54" x2="656" y2="570" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EAF4EF"/><stop offset="1" stop-color="#DCECE5"/>
+    </linearGradient>
+    <linearGradient id="card" x1="230" y1="118" x2="572" y2="504" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#F8FBF9"/>
+    </linearGradient>
+    <filter id="shadow" x="112" y="63" width="565" height="509" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="12"/><feGaussianBlur stdDeviation="13"/><feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix values="0 0 0 0 0.11 0 0 0 0 0.27 0 0 0 0 0.22 0 0 0 0.12 0"/><feBlend in2="BackgroundImageFix" result="effect1_dropShadow"/>
+      <feBlend in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+    </filter>
+  </defs>
+  <circle cx="390" cy="311" r="264" fill="url(#field)"/>
+  <circle cx="390" cy="311" r="224" stroke="#C6DED3" stroke-dasharray="3 8"/>
+  <circle cx="390" cy="311" r="177" stroke="#D0E4DB" stroke-dasharray="2 9"/>
+  <circle cx="164" cy="145" r="5" fill="#C8835C"/><circle cx="633" cy="398" r="4" fill="#7CAC9B"/>
+  <path d="M165 145C219 111 232 91 285 92" stroke="#9FBCAF" stroke-width="1.5" stroke-dasharray="4 6"/>
+  <path d="M556 495C615 468 633 442 633 398" stroke="#9FBCAF" stroke-width="1.5" stroke-dasharray="4 6"/>
+
+  <g filter="url(#shadow)">
+    <rect x="146" y="92" width="468" height="414" rx="20" fill="url(#card)"/>
+    <path d="M166 92H594C605.046 92 614 100.954 614 112V140H146V112C146 100.954 154.954 92 166 92Z" fill="#F2F7F4"/>
+    <circle cx="168" cy="116" r="4" fill="#C4D7CE"/><circle cx="183" cy="116" r="4" fill="#C4D7CE"/><circle cx="198" cy="116" r="4" fill="#C4D7CE"/>
+    <rect x="480" y="108" width="107" height="16" rx="8" fill="#E5EFEA"/><circle cx="491" cy="116" r="3" fill="#111111"/>
+    <text x="235" y="119" fill="#617A70" font-family="sans-serif" font-size="10" font-weight="700" letter-spacing="1.4">OMIXFORGE WORKSPACE</text>
+
+    <text x="178" y="177" fill="#244C43" font-family="sans-serif" font-size="12" font-weight="700">A reproducible path through your data</text>
+    <text x="178" y="195" fill="#91A19A" font-family="sans-serif" font-size="9">Connected tools, clear progress, traceable results</text>
+
+    <!-- sample sheet -->
+    <rect x="178" y="220" width="112" height="140" rx="10" fill="#FBFCFB" stroke="#DFE9E4"/>
+    <rect x="178" y="220" width="112" height="34" rx="10" fill="#EFF5F1"/>
+    <path d="M178 244V230C178 224.477 182.477 220 188 220H280C285.523 220 290 224.477 290 230V244H178Z" fill="#EFF5F1"/>
+    <rect x="190" y="232" width="15" height="12" rx="2" fill="#A9C9BA"/><path d="M194 235H201M194 238H201M194 241H199" stroke="white" stroke-width="1"/>
+    <text x="211" y="241" fill="#527166" font-family="sans-serif" font-size="9" font-weight="700">SAMPLES</text>
+    <path d="M190 267H278M190 292H278M190 317H278M190 342H278" stroke="#E3ECE7"/>
+    <path d="M219 254V360" stroke="#E3ECE7"/>
+    <text x="190" y="281" fill="#94A49D" font-family="sans-serif" font-size="7">sample_01</text><text x="225" y="281" fill="#4C9B7E" font-family="sans-serif" font-size="7">ready</text>
+    <text x="190" y="306" fill="#94A49D" font-family="sans-serif" font-size="7">sample_02</text><text x="225" y="306" fill="#4C9B7E" font-family="sans-serif" font-size="7">ready</text>
+    <text x="190" y="331" fill="#94A49D" font-family="sans-serif" font-size="7">sample_03</text><text x="225" y="331" fill="#4C9B7E" font-family="sans-serif" font-size="7">ready</text>
+    <rect x="190" y="349" width="55" height="4" rx="2" fill="#DCE9E2"/>
+
+    <!-- connected workflow -->
+    <path d="M302 289H338M402 289H438" stroke="#8AB8A4" stroke-width="2" stroke-linecap="round"/>
+    <path d="M333 284L339 289L333 294M433 284L439 289L433 294" stroke="#8AB8A4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="343" y="243" width="88" height="92" rx="12" fill="#EDF6F1" stroke="#D7E8DF"/>
+    <circle cx="387" cy="274" r="17" fill="#D8EADF"/>
+    <path d="M382 267V281M392 267V281M382 270C385 270 389 278 392 278M392 270C389 270 385 278 382 278" stroke="#111111" stroke-width="1.7" stroke-linecap="round"/>
+    <text x="387" y="309" text-anchor="middle" fill="#303030" font-family="sans-serif" font-size="9" font-weight="700">NEXTFLOW</text>
+    <text x="387" y="321" text-anchor="middle" fill="#91A19A" font-family="sans-serif" font-size="7">workflow run</text>
+
+    <!-- results -->
+    <rect x="444" y="220" width="138" height="140" rx="10" fill="#FBFCFB" stroke="#DFE9E4"/>
+    <rect x="444" y="220" width="138" height="34" rx="10" fill="#EFF5F1"/>
+    <path d="M456 241L460 237L464 240L470 232" stroke="#C37A53" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="478" y="241" fill="#527166" font-family="sans-serif" font-size="9" font-weight="700">RESULTS</text>
+    <text x="458" y="271" fill="#8B9B94" font-family="sans-serif" font-size="7">QUALITY METRICS</text>
+    <path d="M458 338V283M458 338H568" stroke="#DDE8E2"/>
+    <path d="M465 327L481 313L497 319L515 291L531 302L549 279L562 286" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="481" cy="313" r="2.5" fill="#111111"/><circle cx="515" cy="291" r="2.5" fill="#111111"/><circle cx="549" cy="279" r="2.5" fill="#111111"/>
+
+    <rect x="178" y="386" width="404" height="82" rx="12" fill="#F5F8F6" stroke="#E3ECE7"/>
+    <circle cx="210" cy="427" r="17" fill="#E4EFE9"/>
+    <path d="M204 427C204 423.686 206.686 421 210 421C213.314 421 216 423.686 216 427C216 430.314 213.314 433 210 433C206.686 433 204 430.314 204 427Z" stroke="#111111" stroke-width="1.4"/>
+    <path d="M210 414V417M210 437V440M197 427H200M220 427H223M201 418L203 420M217 434L219 436M219 418L217 420M203 434L201 436" stroke="#111111" stroke-width="1.4" stroke-linecap="round"/>
+    <text x="240" y="421" fill="#345C50" font-family="sans-serif" font-size="10" font-weight="700">Built for transparent analysis</text>
+    <text x="240" y="439" fill="#86978F" font-family="sans-serif" font-size="8">Keep inputs, workflow steps, and outputs connected.</text>
+    <rect x="514" y="414" width="48" height="23" rx="11.5" fill="#E5F2EB"/>
+    <circle cx="526" cy="425.5" r="3" fill="#111111"/><text x="534" y="429" fill="#303030" font-family="sans-serif" font-size="7" font-weight="700">TRACKED</text>
+  </g>
+
+  <!-- DNA motif -->
+  <g transform="translate(76 260)" stroke-linecap="round">
+    <path d="M7 0C35 20 35 41 7 61C-21 81-21 102 7 122M7 0C-21 20-21 41 7 61C35 81 35 102 7 122" stroke="#111111" stroke-width="3"/>
+    <path d="M-5 12H19M-13 31H27M-13 50H27M-5 70H19M-13 91H27M-5 111H19" stroke="#9ABFAE" stroke-width="2"/>
+    <circle cx="7" cy="61" r="5" fill="#C37A53" stroke="none"/>
+  </g>
+  <g transform="translate(607 167)">
+    <circle cx="25" cy="25" r="25" fill="#F9FCFA" stroke="#D7E8DF"/>
+    <circle cx="25" cy="25" r="4" fill="#C37A53"/>
+    <circle cx="12" cy="20" r="3" fill="#303030"/><circle cx="36" cy="14" r="3" fill="#303030"/><circle cx="39" cy="34" r="3" fill="#303030"/><circle cx="15" cy="38" r="3" fill="#303030"/>
+    <path d="M16 21L21 24M29 23L34 16M29 27L36 32M21 28L17 36" stroke="#A7C6B7" stroke-width="1.5"/>
+  </g>
+</svg>

@@ -161,9 +161,9 @@ class ENAFastqDownloader(QWidget):
         fetch_btn = QPushButton("Fetch Accessions")
         fetch_btn.setObjectName("fetchAccessionsButton")
         fetch_btn.setStyleSheet(
-            "QPushButton { background-color: #087f70; color: white; "
+            "QPushButton { background-color: #111111; color: white; "
             "padding: 8px 20px; border-radius: 6px; font-weight: bold; }"
-            "QPushButton:hover { background-color: #066b60; }"
+            "QPushButton:hover { background-color: #292929; }"
         )
         fetch_btn.clicked.connect(self._on_fetch_clicked)
         button_layout.addWidget(fetch_btn)

@@ -85,8 +85,8 @@ class PipelineDashboard(QWidget):
             }
             QTabWidget#pipelineDashboardTabs QTabBar::tab:selected {
                 background: #ffffff;
-                border-bottom: 2px solid #087f70;
-                color: #087f70;
+                border-bottom: 2px solid #111111;
+                color: #111111;
                 font-weight: 700;
             }
             QTabWidget#pipelineDashboardTabs QTabBar::tab:hover:!selected {
@@ -100,10 +100,10 @@ class PipelineDashboard(QWidget):
                 color: #203a34;
                 min-height: 20px;
                 padding: 7px 9px;
-                selection-background-color: #087f70;
+                selection-background-color: #111111;
             }
             QLineEdit:focus, QComboBox:focus {
-                border: 1px solid #087f70;
+                border: 1px solid #111111;
             }
             QPushButton {
                 background: #ffffff;
@@ -114,7 +114,7 @@ class PipelineDashboard(QWidget):
             }
             QPushButton:hover {
                 background: #edf6f3;
-                border-color: #79b6a8;
+                border-color: #7a8580;
             }
             QPushButton:pressed {
                 background: #dceee8;
@@ -128,8 +128,8 @@ class PipelineDashboard(QWidget):
             QPushButton#import_from_url,
             QPushButton#import_selected_pipeline,
             QPushButton#pipeline_run_btn {
-                background: #087f70;
-                border-color: #087f70;
+                background: #111111;
+                border-color: #111111;
                 color: #ffffff;
                 font-weight: 700;
             }
@@ -137,8 +137,8 @@ class PipelineDashboard(QWidget):
             QPushButton#import_from_url:hover,
             QPushButton#import_selected_pipeline:hover,
             QPushButton#pipeline_run_btn:hover {
-                background: #066b60;
-                border-color: #066b60;
+                background: #292929;
+                border-color: #292929;
             }
             QScrollArea {
                 background: transparent;
@@ -154,7 +154,7 @@ class PipelineDashboard(QWidget):
             }
             QFrame#pipelineCard:hover {
                 background: #f1f8f5;
-                border-color: #66a99a;
+                border-color: #7a8580;
             }
             QLabel#pipelineCardName {
                 color: #203a34;
@@ -180,7 +180,7 @@ class PipelineDashboard(QWidget):
             }
             QLabel#pipeline_import_status {
                 background: #edf6f3;
-                border-left: 3px solid #087f70;
+                border-left: 3px solid #111111;
                 border-radius: 4px;
                 color: #31564c;
                 padding: 9px 11px;

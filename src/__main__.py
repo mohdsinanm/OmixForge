@@ -1,5 +1,5 @@
 import sys
-from PyQt6.QtCore import QSize, Qt, QTimer
+from PyQt6.QtCore import QSize, Qt, QTimer, QProcess
 from PyQt6.QtGui import QAction, QIcon, QFont
 from PyQt6.QtWidgets import (
     QApplication,
@@ -13,7 +13,9 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
     QListWidgetItem,
     QHBoxLayout,
-    QLabel
+    QLabel,
+    QMessageBox,
+    QSizePolicy,
 )
 
 from src.utils.resource import resource_path
@@ -55,6 +57,10 @@ class MainWindow(QMainWindow):
         self.sidebar = None
         self.stack = None
         self.plugin_manager = None
+        self.logout_toolbar = None
+        self.logout_button = None
+        self.session_start_page = None
+        self.session_login_page = None
 
         self.show_access_page()
 
@@ -83,6 +89,19 @@ class MainWindow(QMainWindow):
     
     def show_access_page(self):
         """Display the access mode selection page (public or private)."""
+        if self._main_ui_loaded:
+            if self.session_start_page is None or self.stack.indexOf(self.session_start_page) < 0:
+                self.session_start_page = AccessModePage(
+                    self.initiate.docker_installed,
+                    self.initiate.nextflow_installed,
+                )
+                self.session_start_page.public_selected.connect(self.load_main_app)
+                self.session_start_page.private_selected.connect(self.show_login)
+                self.stack.addWidget(self.session_start_page)
+            self.stack.setCurrentWidget(self.session_start_page)
+            self._show_session_navigation(False)
+            return
+
         self.cleanup_main_ui()
 
         self.access_page = AccessModePage(self.initiate.docker_installed , self.initiate.nextflow_installed)
@@ -93,6 +112,16 @@ class MainWindow(QMainWindow):
 
     def show_login(self):
         """Display the login/signup page for private access mode."""
+        if self._main_ui_loaded:
+            if self.session_login_page is None or self.stack.indexOf(self.session_login_page) < 0:
+                self.session_login_page = ProfilePage()
+                self.session_login_page.go_back.connect(self.show_access_page)
+                self.session_login_page.login_success.connect(self.load_main_app)
+                self.stack.addWidget(self.session_login_page)
+            self.stack.setCurrentWidget(self.session_login_page)
+            self._show_session_navigation(False)
+            return
+
         self.cleanup_main_ui()
 
         self.profile = ProfilePage()
@@ -105,6 +134,9 @@ class MainWindow(QMainWindow):
     def load_main_app(self):
         """Initialize and load the main application UI with all components and plugins."""
         if self._main_ui_loaded:
+            self._clear_session_pages()
+            self.stack.setCurrentWidget(self.pipeline_dashboard.widget)
+            self._show_session_navigation(True)
             return 
 
         self._main_ui_loaded = True
@@ -124,6 +156,23 @@ class MainWindow(QMainWindow):
         toggle_sidebar_action.setChecked(True)
         toggle_sidebar_action.triggered.connect(self.toggle_sidebar)
         self.toolbar.addAction(toggle_sidebar_action)
+
+        self.logout_toolbar = QToolBar("Session actions", self)
+        self.logout_toolbar.setObjectName("sessionActionsToolbar")
+        self.logout_toolbar.setMovable(False)
+        self.logout_toolbar.setAllowedAreas(Qt.ToolBarArea.TopToolBarArea)
+        toolbar_spacer = QWidget(self.logout_toolbar)
+        toolbar_spacer.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
+        )
+        self.logout_toolbar.addWidget(toolbar_spacer)
+        self.logout_button = QPushButton("Log out", self.logout_toolbar)
+        self.logout_button.setObjectName("logoutButton")
+        self.logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.logout_button.clicked.connect(self.logout_to_startup)
+        self.logout_toolbar.addWidget(self.logout_button)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.logout_toolbar)
 
         # back_btn = QPushButton("Back")
         # back_btn.clicked.connect(self.show_access_page)
@@ -249,6 +298,62 @@ class MainWindow(QMainWindow):
         
         # Hide loading dialog after main app finishes loading
         QTimer.singleShot(500, self._hide_loading_spinner)
+
+    def _show_session_navigation(self, visible: bool):
+        """Show navigation while a workspace is open; hide it on access screens."""
+        for widget in (self.toolbar, self.logout_toolbar, self.sidebar):
+            if widget is not None:
+                widget.setVisible(visible)
+
+    def _clear_session_pages(self):
+        """Remove temporary access/login pages after returning to the workspace."""
+        for attr in ("session_start_page", "session_login_page"):
+            page = getattr(self, attr, None)
+            if page is not None and self.stack.indexOf(page) >= 0:
+                if attr == "session_login_page":
+                    for field in ("username_input", "password_input"):
+                        input_widget = getattr(page, field, None)
+                        if input_widget is not None:
+                            input_widget.clear()
+                self.stack.removeWidget(page)
+                page.deleteLater()
+            setattr(self, attr, None)
+
+    def logout_to_startup(self):
+        """Return to startup, with a choice for any active local pipeline runs."""
+        local_pipeline = self.pipeline_dashboard.local_pipeline_tab
+        running_processes = [
+            process for process in local_pipeline.processes.values()
+            if process.get("proc") is not None
+            and process["proc"].state() != QProcess.ProcessState.NotRunning
+        ]
+
+        if running_processes:
+            prompt = QMessageBox(self)
+            prompt.setWindowTitle("Pipeline is running")
+            prompt.setText(
+                f"{len(running_processes)} pipeline process(es) are running. "
+                "Choose whether to keep them running while you return to startup."
+            )
+            prompt.setIcon(QMessageBox.Icon.Question)
+            background_button = prompt.addButton(
+                "Continue in background", QMessageBox.ButtonRole.AcceptRole
+            )
+            cancel_button = prompt.addButton(
+                "Cancel process and log out", QMessageBox.ButtonRole.DestructiveRole
+            )
+            prompt.addButton("Stay here", QMessageBox.ButtonRole.RejectRole)
+            prompt.exec()
+            chosen = prompt.clickedButton()
+            if chosen is cancel_button:
+                local_pipeline.cancel_active_runs()
+            elif chosen is not background_button:
+                return
+
+        app = QApplication.instance()
+        if app is not None:
+            app.cred = None
+        self.show_access_page()
 
     def _hide_loading_spinner(self):
         """Hide the loading spinner after main app has loaded."""

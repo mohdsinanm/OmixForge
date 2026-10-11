@@ -29,26 +29,23 @@ def test_starts_on_access_page(window):
 
 
 def test_public_access_button(window):
+    start_button = window.findChild(QPushButton, "publicStartButton")
+    assert start_button is not None
+    assert start_button.text() == "Start"
 
-    public_card = window.findChild(QFrame, "public_access_card")
-    assert public_card
 
-    card_title = public_card.findChild(QLabel, "cardTitle")
-    assert card_title.text() == "Public Mode"
+def test_access_page_uses_original_padding(window):
+    margins = window.access_page.layout().contentsMargins()
+    assert margins.left() <= 20
+    assert margins.right() <= 20
+    assert margins.bottom() <= 20
 
-    subtitle = public_card.findChild(QLabel, "cardSubtitle")
-    assert subtitle.text() == "Run without login"
 
 def test_private_access_button(window):
-
-    public_card = window.findChild(QFrame, "private_access_card")
-    assert public_card
-
-    card_title = public_card.findChild(QLabel, "cardTitle")
-    assert card_title.text() == "Private Mode"
-
-    subtitle = public_card.findChild(QLabel, "cardSubtitle")
-    assert subtitle.text() == "Requires login"
+    private_button = window.findChild(QToolButton, "privateModeButton")
+    assert private_button is not None
+    assert not private_button.icon().isNull()
+    assert "encrypted" in private_button.toolTip()
 
 
 def test_public_mode_loads_main_ui(window, sidebar_items):
@@ -452,17 +449,36 @@ def test_pipeline_cards_scroll_after_fifteenth_pipeline(qtbot, monkeypatch):
     assert page.cards_scroll.verticalScrollBar().maximum() > 0
 
 
-def test_access_page_public_card_renders_expected_titles():
+def test_access_page_renders_compact_mode_controls(qtbot):
     page = AccessModePage(True, True)
-    public_card = page.findChild(QWidget, "public_access_card")
-    assert public_card is not None
-    assert public_card.findChild(QLabel, "cardTitle").text() == "Public Mode"
-    assert public_card.findChild(QLabel, "cardSubtitle").text() == "Run without login"
+    qtbot.addWidget(page)
+    page.resize(800, 600)
+    page.show()
+    QApplication.processEvents()
 
-    private_card = page.findChild(QWidget, "private_access_card")
-    assert private_card is not None
-    assert private_card.findChild(QLabel, "cardTitle").text() == "Private Mode"
-    assert private_card.findChild(QLabel, "cardSubtitle").text() == "Requires login"
+    assert page.findChild(QWidget, "public_access_card") is None
+    assert page.findChild(QWidget, "private_access_card") is None
+    assert page.public_start_button.text() == "Start"
+    assert not page.private_mode_button.icon().isNull()
+    assert page.public_start_button.size().width() == 112
+    assert page.public_start_button.size().height() == 48
+    assert page.private_mode_button.size().width() == 48
+    assert page.private_mode_button.size().height() == 48
+    assert page.private_mode_button.y() > page.findChild(QLabel, "titleLabel").y()
+    margins = page.layout().contentsMargins()
+    assert margins.left() == 44
+    assert margins.bottom() == 44
+
+
+def test_access_mode_buttons_emit_their_existing_signals(qtbot):
+    page = AccessModePage(True, True)
+    qtbot.addWidget(page)
+
+    with qtbot.waitSignal(page.private_selected, timeout=1000):
+        page.private_mode_button.click()
+    with qtbot.waitSignal(page.public_selected, timeout=1000):
+        page.public_start_button.click()
+    page.loading_spinner.stop_loading()
 
 
 def test_pipeline_dashboard_has_expected_tabs(monkeypatch):

@@ -1,4 +1,5 @@
 from datetime import datetime
+import codecs
 import json
 import subprocess
 import csv
@@ -177,6 +178,8 @@ class PipelineLocal(QWidget):
         super().__init__(parent)
         # keep references to running processes so they are not GC'd
         self.processes = {}
+        self.run_credentials = {}
+        self._log_decoders = {}
         self.output_displays = {}  # Store references to output display widgets by run_name
         self.current_pipeline_name = None  # Track the currently displayed pipeline
         
@@ -867,6 +870,13 @@ class PipelineLocal(QWidget):
 
             # keep proc referenced
             self.processes[run_name] = {"proc": proc, "pipeline": pipeline}
+            self._log_decoders[run_name] = {
+                "stdout": codecs.getincrementaldecoder("utf-8")(errors="replace"),
+                "stderr": codecs.getincrementaldecoder("utf-8")(errors="replace"),
+            }
+            app = QApplication.instance()
+            credential = getattr(app, "cred", None) if app is not None else None
+            self.run_credentials[run_name] = dict(credential) if isinstance(credential, dict) else None
             PipelineLocal.active_runs.add(run_name)
 
             # mark current run/pipeline
@@ -895,23 +905,12 @@ class PipelineLocal(QWidget):
             QMessageBox.critical(self, "Error", f"Failed to start pipeline: {e}")
 
     def _proc_stdout(self, run_name):
-        # lookup the live process by run_name (proc may have been deleted)
-        entry = self.processes.get(run_name)
-        if not entry:
-            return
-        proc = entry.get('proc')
-        if not proc:
-            return
-        try:
-            out = proc.readAllStandardOutput().data().decode('utf-8', errors='ignore')
-            if out:
-                for line in out.splitlines():
-                    append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", line + "\n")
-                    logger.info(line)
-        except Exception as e:
-            logger.error(f"Error reading stdout for {run_name}: {e}")
+        self._drain_process_stream(run_name, "stdout")
 
     def _proc_stderr(self, run_name):
+        self._drain_process_stream(run_name, "stderr")
+
+    def _drain_process_stream(self, run_name, stream_name, final=False):
         entry = self.processes.get(run_name)
         if not entry:
             return
@@ -919,13 +918,25 @@ class PipelineLocal(QWidget):
         if not proc:
             return
         try:
-            err = proc.readAllStandardError().data().decode('utf-8', errors='ignore')
-            if err:
-                for line in err.splitlines():
-                    append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", line + "\n")
-                    logger.error(line)
+            read_output = (
+                proc.readAllStandardOutput
+                if stream_name == "stdout"
+                else proc.readAllStandardError
+            )
+            raw_output = read_output().data()
+            decoder = self._log_decoders.setdefault(run_name, {}).get(stream_name)
+            if decoder is None:
+                decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+                self._log_decoders[run_name][stream_name] = decoder
+            text = decoder.decode(raw_output, final=final)
+            if text:
+                append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", text)
+                if stream_name == "stderr":
+                    logger.error(text.rstrip())
+                else:
+                    logger.info(text.rstrip())
         except Exception as e:
-            logger.error(f"Error reading stderr for {run_name}: {e}")
+            logger.error(f"Error reading {stream_name} for {run_name}: {e}")
 
     def on_cancel_clicked(self):
         # Cancel the currently running pipeline (if any)
@@ -956,6 +967,7 @@ class PipelineLocal(QWidget):
             except Exception:
                 pass
             self.processes.pop(rn, None)
+            self.run_credentials.pop(rn, None)
             PipelineLocal.active_runs.discard(rn)
             try:
                 self.run_btn.setEnabled(True)
@@ -967,6 +979,57 @@ class PipelineLocal(QWidget):
                 pass
             self.current_run_name = None
             self.current_pipeline = None
+
+    def cancel_active_runs(self):
+        """Stop every local pipeline process before leaving the workspace."""
+        run_names = list(self.processes)
+        for run_name, entry in list(self.processes.items()):
+            proc = entry.get("proc") if entry else None
+            if proc is None:
+                continue
+            try:
+                self._proc_stdout(run_name)
+                self._proc_stderr(run_name)
+                for signal in (
+                    proc.readyReadStandardOutput,
+                    proc.readyReadStandardError,
+                    proc.finished,
+                ):
+                    try:
+                        signal.disconnect()
+                    except (TypeError, RuntimeError):
+                        pass
+                if proc.state() != QProcess.ProcessState.NotRunning:
+                    proc.terminate()
+                    if not proc.waitForFinished(2000):
+                        proc.kill()
+                        proc.waitForFinished(1000)
+                self._drain_process_stream(run_name, "stdout", final=True)
+                self._drain_process_stream(run_name, "stderr", final=True)
+                append_to_file(
+                    f"{self.PIPELINES_RUNS}/{run_name}",
+                    "Pipeline run cancelled by user during logout.\n",
+                )
+            except Exception as exc:
+                logger.error(f"Error cancelling pipeline {run_name} during logout: {exc}")
+            finally:
+                try:
+                    proc.deleteLater()
+                except Exception:
+                    pass
+                self.processes.pop(run_name, None)
+                self.run_credentials.pop(run_name, None)
+                self._log_decoders.pop(run_name, None)
+                PipelineLocal.active_runs.discard(run_name)
+
+        if getattr(self, "current_run_name", None) in run_names:
+            self.current_run_name = None
+            self.current_pipeline = None
+        try:
+            self.run_btn.setEnabled(True)
+            self.cancel_btn.setEnabled(False)
+        except Exception:
+            pass
 
     def _on_remote_progress(self, message):
         logger.info(f"Remote pipeline progress: {message}")
@@ -1001,33 +1064,34 @@ class PipelineLocal(QWidget):
 
     def _proc_finished(self, run_name, exitCode, exitStatus):
         try:
+            self._drain_process_stream(run_name, "stdout", final=True)
+            self._drain_process_stream(run_name, "stderr", final=True)
+            run_credential = self.run_credentials.get(run_name)
+            if run_credential:
+                zip_name = f"{self.RUN_DIR}/{run_name.replace('.txt', '.tar.gz')}"
+                run_dir = f"{self.RUN_DIR}/{run_name.replace('.txt','')}"
+                worker = ZipEncryptWorker(run_name, run_dir, zip_name, run_credential, exitCode)
+                worker.signals.finished.connect(self._on_zip_encrypt_done)
+                worker.signals.error.connect(self._on_zip_encrypt_error)
+                QThreadPool.globalInstance().start(worker)
+            else:
+                append_to_file(
+                    f"{self.PIPELINES_RUNS}/{run_name}",
+                    f"Pipeline run completed <<exit-code:{exitCode}>>.\n",
+                )
+                logger.info(f"Pipeline {run_name} finished (code={exitCode})")
+        except Exception as e:
+            logger.error(f"Failed to complete run - {e}")
+            append_to_file(
+                f"{self.PIPELINES_RUNS}/{run_name}",
+                "Pipeline run completed <<exit-code:1>>.\n",
+            )
 
-            try:
-                app = QApplication.instance()
-                try:
-                    if app.cred:
-                        zip_name = f"{self.RUN_DIR}/{run_name.replace('.txt', '.tar.gz')}"
-                        run_dir = f"{self.RUN_DIR}/{run_name.replace('.txt','')}"
-
-                        worker = ZipEncryptWorker(run_name, run_dir, zip_name, app.cred, exitCode)
-
-                        # Connect callbacks
-                        worker.signals.finished.connect(self._on_zip_encrypt_done)
-                        worker.signals.error.connect(self._on_zip_encrypt_error)
-
-                        # Start async
-                        QThreadPool.globalInstance().start(worker)
-                except AttributeError:
-                    append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{exitCode}>>.\n")
-                    logger.info(f"Pipeline {run_name} finished (code={exitCode})")
-            except Exception as e:
-                logger.error(f"Failed to complete run - {e}")
-                append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{1}>>.\n")
-
-            
         finally:
             # Clean up stored process
             entry = self.processes.pop(run_name, None)
+            self.run_credentials.pop(run_name, None)
+            self._log_decoders.pop(run_name, None)
             PipelineLocal.active_runs.discard(run_name)
             proc = None
             if entry:
@@ -1089,6 +1153,7 @@ class PipelineLocal(QWidget):
             except Exception:
                 pass
             self.processes.pop(rn, None)
+            self.run_credentials.pop(rn, None)
         
         # Stop any worker threads cleanly
         try:
