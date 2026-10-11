@@ -104,70 +104,71 @@ class ProfilePage(QWidget):
         """Return CSS stylesheet for the profile page widget."""
         return """
         QWidget {
-
-            font-family: 'Segoe UI', sans-serif;
+            background-color: #f3f7f6;
+            color: #263b36;
+            font-family: "Noto Sans";
         }
 
-        /* CARD */
         QFrame#loginCard {
-
-            border-radius: 16px;
+            background-color: #ffffff;
+            border-radius: 8px;
             padding: 20px;
-            border: 1px solid #e4e4e4;
+            border: 1px solid #dbe6e2;
         }
 
-        /* TITLE */
         QLabel#loginTitle {
+            color: #193b34;
             font-size: 22px;
-            font-weight: bold;
-
+            font-weight: 700;
         }
 
         QLabel#loginSubtitle {
+            color: #71847d;
             font-size: 14px;
-
             margin-bottom: 12px;
         }
 
-        /* INPUT FIELDS */
         QLineEdit#inputField {
+            background-color: #ffffff;
             padding: 10px 12px;
-            border-radius: 8px;
-            border: 1px solid #c8c8c8;
+            border-radius: 6px;
+            border: 1px solid #cbdad5;
             font-size: 14px;
-            color: palette(ButtonText);          /* adapts */
+            color: #263b36;
         }
         QLineEdit#inputField:focus {
-            border: 1px solid #448aff;
-            color: palette(ButtonText);          /* adapts */
+            border: 1px solid #087f70;
         }
 
-        /* LOGIN BUTTON */
         QPushButton#loginButton {
             padding: 12px;
-            background-color: #4a90e2;
-            color: white;
+            background-color: #087f70;
+            color: #ffffff;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             font-size: 15px;
-            font-weight: bold;
+            font-weight: 700;
         }
         QPushButton#loginButton:hover {
-            background-color: #3f7fcc;
+            background-color: #066b60;
         }
         QPushButton#loginButton:pressed {
-            background-color: #346db3;
+            background-color: #05574e;
         }
 
         QPushButton#backButton {
             border: none;
             background: transparent;
-            color: #4a90e2;
+            color: #087f70;
             font-size: 14px;
             padding: 6px;
         }
         QPushButton#backButton:hover {
             text-decoration: underline;
-            color: #3577c8;
+            color: #066b60;
+        }
+
+        QLabel#loginError {
+            color: #b74f3b;
         }
         """

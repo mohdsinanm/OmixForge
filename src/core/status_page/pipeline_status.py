@@ -14,9 +14,12 @@ class PipelineStatus(QWidget):
         """Initialize the pipeline status widget with status and results tabs."""
         super().__init__()
 
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(22, 18, 22, 22)
+        layout.setSpacing(12)
 
-        tab_widget = QTabWidget()
+        tab_widget = QTabWidget(self)
+        tab_widget.setObjectName("pipelineStatusTabs")
 
         self.run_status = PipelineRunStatus()
         pipeline_result_tab = PipelineResultsPage()
@@ -26,6 +29,5 @@ class PipelineStatus(QWidget):
 
         layout.addWidget(tab_widget)
 
-        self.setLayout(layout)
         self.widget = self
 

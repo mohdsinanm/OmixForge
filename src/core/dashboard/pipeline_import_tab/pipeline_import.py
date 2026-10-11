@@ -52,10 +52,14 @@ class PipelineImport(QWidget):
 
         # Content widget that lives inside the scroll area
         self.content = QWidget()
+        self.content.setObjectName("dashboardScrollContent")
         self.content_layout = QVBoxLayout(self.content)
+        self.content_layout.setContentsMargins(18, 16, 18, 16)
+        self.content_layout.setSpacing(12)
 
         # Header label
-        label = QLabel("This Pipeline import tab")
+        label = QLabel("Import a workflow")
+        label.setObjectName("dashboardSectionTitle")
         self.content_layout.addWidget(label)
 
 
@@ -71,17 +75,30 @@ class PipelineImport(QWidget):
         url_layout.addWidget(self.url_import_btn)
         self.content_layout.addLayout(url_layout)
 
-        # Refresh button
+        # Search and refresh controls
         self.btn = QPushButton("Refresh Pipelines", parent=self.content)
         self.btn.clicked.connect(self.refresh_pipelines)
         self.btn.setObjectName("refersh_pipeline")
-        self.content_layout.addWidget(self.btn)
 
-        # Combo box
+        self.search_input = QLineEdit(parent=self.content)
+        self.search_input.setObjectName("pipeline_search_input")
+        self.search_input.setPlaceholderText("Search pipelines by name or topic")
+        self.search_input.textChanged.connect(self._update_pipeline_filter)
+        filter_layout = QHBoxLayout()
+        filter_layout.setSpacing(8)
+        filter_layout.addWidget(self.search_input, 1)
+        filter_layout.addWidget(self.btn)
+        self.content_layout.addLayout(filter_layout)
+
         self.combobox = QComboBox(parent=self.content)
         self.combobox.setObjectName("select_pipelines_box")
         self.combobox.currentIndexChanged.connect(self.current_text)
         self.content_layout.addWidget(self.combobox)
+
+        self.status_label = QLabel("Refresh to load available pipelines.", parent=self.content)
+        self.status_label.setObjectName("pipeline_import_status")
+        self.status_label.setWordWrap(True)
+        self.content_layout.addWidget(self.status_label)
 
         # Container to keep track of dynamically-added detail widgets
         self.detail_widgets = []
@@ -101,6 +118,7 @@ class PipelineImport(QWidget):
         self.clear_details()
         self.btn.setText("Refreshing...")
         self.btn.setEnabled(False)
+        self.status_label.setText("Loading workflows from nf-core...")
         
         # Mark old spinner as inactive
         self.active_refresh_spinner = None
@@ -164,13 +182,9 @@ class PipelineImport(QWidget):
             self.refresh_spinner = None
             self.active_refresh_spinner = None
         
-        # Update combo
-        self.combobox.clear()
-        for pipeline in self.pipelines:
-            self.combobox.addItem(pipeline.name)
-        
         self.btn.setText("Refresh Pipelines")
         self.btn.setEnabled(True)
+        self._update_pipeline_filter()
         logger.info(f"Successfully loaded {len(self.pipelines)} pipelines")
     
     def _on_refresh_error(self, error_msg):
@@ -194,7 +208,44 @@ class PipelineImport(QWidget):
         
         self.btn.setText("Refresh Pipelines")
         self.btn.setEnabled(True)
-        logger.error(f"Error refreshing pipelines: {error_msg}")
+        self.status_label.setText(
+            f"Refresh failed: {error_msg}\nCheck your network connection and refresh to retry."
+        )
+        logger.warning(f"Error refreshing pipelines: {error_msg}")
+
+    def _update_pipeline_filter(self, _text=None):
+        """Filter the loaded workflow list by name and topics."""
+        query = self.search_input.text().strip().casefold()
+        selected_name = self.combobox.currentText()
+        filtered = [
+            pipeline for pipeline in self.pipelines
+            if query in (pipeline.name or "").casefold()
+            or any(query in topic.casefold() for topic in (pipeline.topics or []))
+        ]
+
+        self.combobox.blockSignals(True)
+        self.combobox.clear()
+        for pipeline in filtered:
+            self.combobox.addItem(pipeline.name)
+        selected_index = self.combobox.findText(selected_name)
+        self.combobox.setCurrentIndex(
+            selected_index if selected_index >= 0 else (0 if filtered else -1)
+        )
+        self.combobox.blockSignals(False)
+        self.current_text(self.combobox.currentIndex())
+
+        if not self.pipelines:
+            self.status_label.setText(
+                "No workflows are available. Check your network connection and refresh to try again."
+            )
+        elif not filtered:
+            self.status_label.setText(
+                f'No workflows match "{self.search_input.text().strip()}". Adjust or clear your search.'
+            )
+        elif query:
+            self.status_label.setText(f"Showing {len(filtered)} of {len(self.pipelines)} workflows.")
+        else:
+            self.status_label.setText(f"Loaded {len(self.pipelines)} workflows.")
 
     def current_text(self, _):  # We receive the index, but don't use it.
         # Clear previous detail widgets so new selection doesn't duplicate
@@ -253,6 +304,7 @@ class PipelineImport(QWidget):
         self.import_btn.setEnabled(False)
         self.combobox.setEnabled(False)  # Disable dropdown while importing
         self.btn.setEnabled(False)  # Disable refresh button while importing
+        self.status_label.setText(f"Importing nf-core/{pipeline_name}...")
         
         # Mark old spinner as inactive
         self.active_import_spinner = None
@@ -329,11 +381,15 @@ class PipelineImport(QWidget):
         
         if success:
             logger.info(f"Successfully imported pipeline: {message}")
+            self.status_label.setText(
+                f"Successfully imported nf-core/{self.combobox.currentText()}."
+            )
             QMessageBox.information(self, "Import Successful", f"Successfully imported pipeline")
             # Emit signal to trigger refresh in local pipeline tab
             self.import_successful.emit()
         else:
             logger.error(f"Import failed: {message}")
+            self.status_label.setText(message)
             QMessageBox.critical(self, "Import Failed", f"Import failed: {message}")
     
     def _on_import_error(self, error_msg):
@@ -364,6 +420,9 @@ class PipelineImport(QWidget):
         self.combobox.setEnabled(True)  # Re-enable dropdown on error
         self.btn.setEnabled(True)  # Re-enable refresh button
         logger.error(f"Error importing pipeline: {error_msg}")
+        self.status_label.setText(
+            f"Import failed: {error_msg}\nCheck your Nextflow/network setup and retry."
+        )
         QMessageBox.critical(self, "Import Error", f"Error importing pipeline: {error_msg}")
 
     def import_from_url(self):
@@ -380,6 +439,7 @@ class PipelineImport(QWidget):
         self.url_import_btn.setEnabled(False)
         self.combobox.setEnabled(False)
         self.btn.setEnabled(False)
+        self.status_label.setText("Cloning and validating repository...")
 
         # Mark old git spinner inactive
         self.active_git_spinner = None
@@ -452,10 +512,12 @@ class PipelineImport(QWidget):
 
         if success:
             logger.info(f"Git import succeeded: {message}")
+            self.status_label.setText(message)
             QMessageBox.information(self, "Import Successful", message)
             self.import_successful.emit()
         else:
             logger.error(f"Git import failed: {message}")
+            self.status_label.setText(f"Import failed: {message}")
             QMessageBox.critical(self, "Import Failed", message)
 
     def _on_git_import_error(self, error_msg):
@@ -485,4 +547,7 @@ class PipelineImport(QWidget):
         self.combobox.setEnabled(True)
         self.btn.setEnabled(True)
         logger.error(f"Error importing from git: {error_msg}")
+        self.status_label.setText(
+            f"Import failed: {error_msg}\nCheck the repository URL and your network connection, then retry."
+        )
         QMessageBox.critical(self, "Import Error", f"Error importing from git: {error_msg}")

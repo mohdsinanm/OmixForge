@@ -1,8 +1,8 @@
 
 from pathlib import Path
-from src.assets.stylesheet import close_btn_red_bg
+from src.assets.stylesheet import close_button_style
 from src.utils.logger_module.omix_logger import OmixForgeLogger
-from src.utils.constants import RUN_DIR, CONFIG_FILE
+from src.utils.constants import RUN_DIR, PIPELINES_RUNS, CONFIG_FILE
 from src.utils.fileops.file_handle import list_files_in_directory, delete_directory, delete_file, untar_folder, json_read, file_exists
 from src.utils.encryption.handle import generate_key, decrypt_file
 from src.utils.widgets.filetree import FilesTreeWidget
@@ -43,9 +43,9 @@ class TarDecryptWorker(QRunnable):
                 f"{self.cred.get('user', '')}:{self.cred.get('password', '')}"
             )
 
-            decrypt_file(self.tar_name, key)
-            untar_folder( self.tar_name.replace(".enc","") ,self.run_dir)
-            delete_file(self.tar_name.replace(".enc",""))
+            archive_path = decrypt_file(self.tar_name, key)
+            untar_folder(archive_path, str(Path(self.run_dir).parent))
+            delete_file(archive_path)
 
             self.signals.finished.emit(self.run_name)
 
@@ -55,28 +55,15 @@ class TarDecryptWorker(QRunnable):
 class PipelineDataCard(QFrame):
     clicked = pyqtSignal(str)
 
-    def __init__(self, name: str, locked: bool = False):
+    def __init__(self, name: str, locked: bool = False, status: str = "Unknown"):
         super().__init__()
         self.name = name
         self.locked = locked
+        self.status = status
 
-        self.setObjectName("pipelineCard")
-
-        self.setStyleSheet("""
-            QFrame#pipelineCard {
-                border: 1px solid #ccc;
-                border-radius: 10px;
-                padding: 12px;
-                color: #444;
-                background: white;
-            }
-            QFrame#pipelineCard:hover {
-                background: #eaeaea;
-            }
-            QFrame#pipelineCard:hover QLabel {
-                color: black;
-            }
-        """)
+        self.setObjectName("pipelineResultCard")
+        self.setProperty("state", status.casefold())
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 8, 12, 8)
@@ -84,22 +71,33 @@ class PipelineDataCard(QFrame):
 
         # Pipeline name
         self.label = QLabel(name)
+        self.label.setObjectName("pipelineCardName")
         self.label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         layout.addWidget(self.label)
 
         layout.addStretch()
 
-        # Lock icon
-        self.lock_label = QLabel()
-        self.lock_label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        self.status_badge = QLabel(status)
+        self.status_badge.setObjectName("resultStatusBadge")
+        self.status_badge.setProperty("state", status.casefold())
+        self.status_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_badge.setFixedHeight(32)
+
+        self.status_group = QWidget(self)
+        self.status_group.setStyleSheet("background: transparent;")
+        self.status_group_layout = QHBoxLayout(self.status_group)
+        self.status_group_layout.setContentsMargins(0, 0, 0, 0)
+        self.status_group_layout.setSpacing(6)
+        self.status_group_layout.addWidget(self.status_badge)
 
         if locked:
             self.lock_icon = QSvgWidget(resource_path("src/assets/lock.svg"))
             self.lock_icon.setFixedSize(16, 16)
-            layout.addWidget(self.lock_icon)
+            self.status_group_layout.addWidget(
+                self.lock_icon, 0, Qt.AlignmentFlag.AlignVCenter
+            )
 
-        else:
-            self.lock_label.setVisible(False)
+        layout.addWidget(self.status_group, 0, Qt.AlignmentFlag.AlignVCenter)
 
     
     def mousePressEvent(self, event):
@@ -117,6 +115,7 @@ class PipelineResultsPage(QWidget):
 
         self.constants = json_read(CONFIG_FILE)
         self.RUN_DIR = self.constants.get("folders",{}).get("RUN_DIR", RUN_DIR)
+        self.PIPELINES_RUNS = self.constants.get("folders",{}).get("PIPELINES_RUNS", PIPELINES_RUNS)
   
 
         self.get_local_pipelines_status()
@@ -127,11 +126,13 @@ class PipelineResultsPage(QWidget):
         self.cards_grid = QGridLayout()
 
         scroll = QScrollArea()
+        scroll.setObjectName("runResultsScroll")
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         scroll_widget = QWidget()
+        scroll_widget.setObjectName("runResultsScrollContent")
         scroll_widget.setLayout(self.cards_grid)
         scroll.setWidget(scroll_widget)
 
@@ -167,7 +168,7 @@ class PipelineResultsPage(QWidget):
 
         for name in self.pipeline_runs:
             locked = name.endswith(".tar.gz.enc")
-            card = PipelineDataCard(name, locked)
+            card = PipelineDataCard(name, locked, self._get_run_status(name, locked))
             card.clicked.connect(self.on_card_clicked)
 
             card.setMaximumHeight(150)
@@ -179,6 +180,26 @@ class PipelineResultsPage(QWidget):
                 col = 0
                 row += 1
 
+    def _get_run_status(self, name: str, locked: bool = False) -> str:
+        run_name = name.removesuffix(".tar.gz.enc") if locked else name
+        log_path = Path(self.PIPELINES_RUNS) / f"{run_name}.txt"
+        try:
+            log_content = log_path.read_text(encoding="utf-8", errors="ignore").casefold()
+        except OSError:
+            return "Encrypted" if locked else "Unknown"
+
+        if "<<exit-code:0>>" in log_content:
+            return "Completed"
+        if "pipeline run cancelled by user" in log_content:
+            return "Cancelled"
+        if "<<exit-code:" in log_content:
+            return "Failed"
+        if locked:
+            return "Encrypted"
+        if "running pipeline:" in log_content:
+            return "Running"
+        return "Unknown"
+
 
     def on_card_clicked(self, name: str):
         """Open file tree window + show delete action"""
@@ -188,13 +209,13 @@ class PipelineResultsPage(QWidget):
 
         # Title
         title = QLabel(f"Pipeline: {name}")
-        title.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        title.setFont(QFont("Noto Sans", 11, QFont.Weight.Bold))
 
         self.action_items_top = QHBoxLayout()
 
         close_btn = QPushButton("X", parent=self.details_box)
         close_btn.setObjectName("close_result_details")
-        close_btn.setStyleSheet(close_btn_red_bg())
+        close_btn.setStyleSheet(close_button_style())
         close_btn.setFixedSize(40,30)
         close_btn.clicked.connect(self._on_close_button_click)
         self.action_items_top.addWidget(title)
@@ -202,9 +223,13 @@ class PipelineResultsPage(QWidget):
 
         self.details_layout.addLayout(self.action_items_top)
 
-        # Open Files Tree Window
-        run_dir = f'{self.RUN_DIR}/{name.replace(".tar.gz.enc", "")}'
-        self.open_files_tree(run_dir)
+        if name.endswith(".tar.gz.enc"):
+            notice = QLabel("This run is encrypted. Decrypt it to browse its files.")
+            notice.setObjectName("encryptedRunNotice")
+            notice.setWordWrap(True)
+            self.details_layout.addWidget(notice)
+        else:
+            self.open_files_tree(Path(self.RUN_DIR) / name)
 
         # Actions
         actions = QHBoxLayout()
@@ -314,13 +339,6 @@ class PipelineResultsPage(QWidget):
                 logger.error(cred)
                 QMessageBox.warning(self, "Error", "Credentials does not match")
 
-            # Cleanup UI
-            self.clear_details_layout()
-            self.details_box.hide()
-
-            self.get_local_pipelines_status()
-            self.render_cards()
-
         except Exception as e:
             logger.error(f"Error decrypting pipeline {name}: {e}")
 
@@ -334,6 +352,10 @@ class PipelineResultsPage(QWidget):
             self,
             "Decryption Complete",
             f"{runname} decrypted successfully")
+        self.clear_details_layout()
+        self.details_box.hide()
+        self.get_local_pipelines_status()
+        self.render_cards()
 
     def _on_tar_decrypt_error(self, runname, e):
         if hasattr(self, "loading_dialog"):

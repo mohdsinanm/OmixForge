@@ -41,6 +41,7 @@ class MainWindow(QMainWindow):
             Application initialization handler with system configuration.
         """
         super().__init__()
+        self.setObjectName("mainWindow")
 
         self.initiate = initiate
 
@@ -110,6 +111,7 @@ class MainWindow(QMainWindow):
 
         
         self.toolbar = QToolBar("Main Toolbar")
+        self.toolbar.setObjectName("mainToolbar")
         self.toolbar.setAllowedAreas(Qt.ToolBarArea.LeftToolBarArea)
         self.toolbar.setMovable(False)
         self.toolbar.setIconSize(QSize(16, 16))
@@ -129,16 +131,20 @@ class MainWindow(QMainWindow):
 
         
         self.sidebar = QDockWidget("", self)
+        self.sidebar.setObjectName("navigationDock")
         self.sidebar.setTitleBarWidget(QWidget())
         self.sidebar.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea)
         self.sidebar.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
-        self.sidebar.setMaximumWidth(200)
+        self.sidebar.setMinimumWidth(185)
+        self.sidebar.setMaximumWidth(220)
 
         
 
         self.sidebar_list = QListWidget()
+        self.sidebar_list.setObjectName("mainNavigation")
+        self.sidebar_list.setSpacing(3)
         self.plugin_sidebar_items = {} 
-        self.menu_items_head = QListWidgetItem("Menu\n")
+        self.menu_items_head = QListWidgetItem("WORKSPACE")
         self.menu_items_head.setFlags(Qt.ItemFlag.NoItemFlags) 
         self.sidebar_list.addItem(self.menu_items_head)
         
@@ -153,7 +159,7 @@ class MainWindow(QMainWindow):
         # Create custom widget for Pipeline Status badge
         pipeline_status_widget = QWidget()
         pipeline_status_widget.setStyleSheet("background: transparent;")
-        pipeline_status_widget.setFixedHeight(24)
+        pipeline_status_widget.setFixedHeight(40)
 
         layout = QHBoxLayout(pipeline_status_widget)
         layout.setContentsMargins(4, 2, 4, 2)
@@ -165,30 +171,36 @@ class MainWindow(QMainWindow):
         # layout.addWidget(status_label)
         
         self.badge_label = QLabel()
-        self.badge_label.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+        self.badge_label.setObjectName("pipelineStatusBadge")
+        self.badge_label.setFont(QFont("Noto Sans", 8, QFont.Weight.Bold))
+        self.badge_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.badge_label.setMinimumWidth(24)
+        self.badge_label.setFixedHeight(22)
         self.badge_label.setStyleSheet("""
             QLabel {
-                background-color: #dc3545;
+                background-color: #b74f3b;
                 color: white;
-                border-radius: 8px;
-                padding: 2px 6px;
-                min-width: 18px;
-                qproperty-alignment: AlignCenter;
+                border-radius: 11px;
+                padding: 0 6px;
             }
         """)
         self.badge_label.hide()  # Initially hidden
         
         layout.addStretch()
-        layout.addWidget(self.badge_label)
+        layout.addWidget(
+            self.badge_label,
+            0,
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+        )
         
         self.sidebar_list.setItemWidget(self.pipeline_status_item, pipeline_status_widget)
-        self.pipeline_status_item.setSizeHint(QSize(0, 24))
+        self.pipeline_status_item.setSizeHint(QSize(0, 40))
         
         self.sidebar_list.addItem("Plugin Store")
         self.sidebar_list.addItem("Settings")
         self.sidebar_list.addItem("About")
 
-        self.plugin_header = QListWidgetItem("\nPlugins\n")
+        self.plugin_header = QListWidgetItem("PLUGINS")
         self.plugin_header.setFlags(Qt.ItemFlag.NoItemFlags) 
         self.sidebar_list.addItem(self.plugin_header)
 
@@ -196,6 +208,7 @@ class MainWindow(QMainWindow):
 
         self.plugin_insert_row = self.sidebar_list.row(self.plugin_header) + 1
         self.sidebar_list.itemClicked.connect(self.list_item_clicked)
+        self.sidebar_list.setCurrentRow(1)
 
         self.sidebar.setWidget(self.sidebar_list)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.sidebar)
@@ -221,6 +234,7 @@ class MainWindow(QMainWindow):
         self.update_pipeline_status_badge(self.pipeline_status.run_status.get_running_jobs_count())
 
         self.stack = QStackedWidget()
+        self.stack.setObjectName("mainPageStack")
         self.stack.addWidget(self.pipeline_dashboard.widget)
         self.stack.addWidget(self.sample_prep_page.widget)
         self.stack.addWidget(self.pipeline_status.widget)

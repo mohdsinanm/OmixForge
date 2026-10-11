@@ -1,7 +1,7 @@
 import csv
 from pathlib import Path
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, 
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QHeaderView,
     QTableWidgetItem, QFileDialog, QLabel, QMessageBox, QSpinBox, QInputDialog, QApplication
 )
 from PyQt6.QtCore import Qt
@@ -18,13 +18,16 @@ class SamplePrepPage(QWidget):
     
     def __init__(self):
         super().__init__()
+        self.setObjectName("samplePrepPage")
         self.current_file = None
 
         self.constants = json_read(CONFIG_FILE)
         self.SAMPLE_PREP_DIR =  self.constants.get("folders",{}).get("SAMPLE_PREP_DIR", SAMPLE_PREP_DIR)
 
         
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
         
         # Title
         title = QLabel("Sample Preparation - Data Table")
@@ -72,6 +75,17 @@ class SamplePrepPage(QWidget):
         
         # Table widget with default 5 rows and 3 columns
         self.table = QTableWidget(5, 4)
+        self.table.setObjectName("samplePrepTable")
+        self.table.setAlternatingRowColors(True)
+        self.table.setStyleSheet(
+            "QTableWidget#samplePrepTable { background-color: #ffffff; }"
+            "QTableWidget#samplePrepTable::item { padding: 5px; }"
+            "QTableWidget#samplePrepTable QHeaderView { background-color: #edf3f1; }"
+            "QTableWidget#samplePrepTable QTableCornerButton::section { "
+            "background-color: #edf3f1; border: none; }"
+        )
+        self.table.viewport().setStyleSheet("background-color: #ffffff;")
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setHorizontalHeaderLabels([i for i in ["sample","fastq_1","fastq_2","strandedness"]])
         self.table.setVerticalHeaderLabels([f"{i+1}" for i in range(5)])
         
@@ -90,7 +104,6 @@ class SamplePrepPage(QWidget):
         
         layout.addWidget(self.table)
         
-        self.setLayout(layout)
         self.widget = self
     
     def add_row(self):
@@ -325,21 +338,22 @@ class SamplePrepPage(QWidget):
         dialog.setTextValue(current_text)
         dialog.setStyleSheet("""
             QInputDialog {
-                border: 2px solid #333;
+                background-color: #ffffff;
+                border: 1px solid #dbe6e2;
             }
             QInputDialog QLineEdit {
-                border: 1px solid #999;
-                padding: 4px;
-                border-radius: 3px;
+                background-color: #ffffff;
+                border: 1px solid #cbdad5;
+                padding: 7px 9px;
+                border-radius: 6px;
             }
             QInputDialog QPushButton {
-                border: 1px solid #999;
-                padding: 4px 12px;
-                border-radius: 3px;
-                min-width: 50px;
+                border: 1px solid #cbdad5;
+                padding: 7px 13px;
+                border-radius: 6px;
             }
             QInputDialog QPushButton:hover {
-                background-color: #f0f0f0;
+                background-color: #edf6f3;
             }
         """)
         

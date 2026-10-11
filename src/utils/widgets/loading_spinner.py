@@ -22,7 +22,7 @@ class LoadingSpinner(QWidget):
         # Message label
         self.message_label = QLabel(message)
         self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.message_label.setStyleSheet("font-size: 13px; color: #666; font-weight: 500;")
+        self.message_label.setStyleSheet("font-size: 13px; color: #71847d; font-weight: 500;")
         layout.addWidget(self.message_label)
         
         # Animated progress bar
@@ -38,7 +38,7 @@ class LoadingSpinner(QWidget):
                 height: 8px;
             }
             QProgressBar::chunk {
-                background-color: #4a90e2;
+                background-color: #087f70;
                 border-radius: 4px;
             }
         """)

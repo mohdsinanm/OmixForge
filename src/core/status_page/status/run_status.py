@@ -1,5 +1,5 @@
 
-from src.assets.stylesheet import close_btn_red_bg
+from src.assets.stylesheet import close_button_style
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.constants import RUN_DIR, PIPELINES_RUNS, CONFIG_FILE
 from src.utils.fileops.file_handle import list_files_in_directory, read_from_file, delete_directory, delete_file, json_read
@@ -24,28 +24,31 @@ class PipelineCard(QFrame):
         self.name = name
 
         self.setObjectName("pipelineResultCard")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        accent = {
+            "#fcebe8": "#be5540",
+            "#f0f2f1": "#778780",
+            "#e5f3eb": "#19825c",
+            "#fff3df": "#b87718",
+        }.get(background, "#087f70")
         
         self.setStyleSheet("""
             QFrame#pipelineResultCard {{
-                border: 1px solid #ccc;
-                border-radius: 10px;
-                padding: 12px;
+                border: 1px solid #dbe6e2;
+                border-left: 4px solid {accent};
+                border-radius: 8px;
+                padding: 10px;
                 background: {background};
-                color: #444;
+                color: #263b36;
             }}
             QFrame#pipelineResultCard:hover {{
-                background: #eaeaea;
+                border-color: #9db9b0;
             }}
-            QFrame#pipelineResultCard:hover QLabel {{
-                color: black;
-            }}
-        """.format(background=background))
+        """.format(background=background, accent=accent))
 
         layout = QHBoxLayout()
         label = QLabel(name)
-        
-               
-        label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        label.setObjectName("pipelineCardName")
         layout.addWidget(label)
         layout.addStretch()
         self.setLayout(layout)
@@ -76,6 +79,7 @@ class PipelineRunStatus(QWidget):
         self.cards_grid = QGridLayout()
 
         scroll = QScrollArea()
+        scroll.setObjectName("runStatusScroll")
         scroll.setWidgetResizable(True)
 
         # scroll only in vertical direction
@@ -83,6 +87,7 @@ class PipelineRunStatus(QWidget):
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         scroll_widget = QWidget()
+        scroll_widget.setObjectName("runStatusScrollContent")
         scroll_widget.setLayout(self.cards_grid)
         scroll.setWidget(scroll_widget)
 
@@ -132,13 +137,13 @@ class PipelineRunStatus(QWidget):
             content = read_from_file(f"{self.PIPELINES_RUNS}/{name}")
 
             if "<<exit-code:1>>" in content.lower():
-                card = PipelineCard(name, "#ff4c4c")
+                card = PipelineCard(name, "#fcebe8")
             elif "cancelled" in content.lower():
-                card = PipelineCard(name, "#6c70dc")  # Red for error
+                card = PipelineCard(name, "#f0f2f1")
             elif "<<exit-code:0>>" in content.lower():
-                card = PipelineCard(name, "#4bb543")  # Green for completed
+                card = PipelineCard(name, "#e5f3eb")
             else:
-                card = PipelineCard(name, "#f0ad4e")  # Yellow for running/unknown
+                card = PipelineCard(name, "#fff3df")
             
             card.clicked.connect(self.on_card_clicked)
 
@@ -179,7 +184,7 @@ class PipelineRunStatus(QWidget):
 
         close_btn = QPushButton("X", parent=self.details_box)
         close_btn.setObjectName("close_status_details")
-        close_btn.setStyleSheet(close_btn_red_bg())
+        close_btn.setStyleSheet(close_button_style())
         close_btn.setFixedSize(40,30)
         close_btn.clicked.connect(self._on_close_button_click)
         self.action_items_top.addWidget(QLabel(f"Details for pipeline: {name}"))
@@ -191,11 +196,14 @@ class PipelineRunStatus(QWidget):
         # Read file content and create a label that we will refresh periodically
         content = read_from_file(f"{self.PIPELINES_RUNS}/{name}")
         self._details_content_label = QLabel(content)
+        self._details_content_label.setObjectName("runLogContent")
         self._details_content_label.setWordWrap(True)
         self._details_content_label.setFont(QFont("Courier New", 10))
 
         # Scroll area
         scroll = QScrollArea()
+        scroll.setStyleSheet("QScrollArea { background-color: #ffffff; border: 1px solid #dbe6e2; }")
+        scroll.viewport().setStyleSheet("background-color: #ffffff;")
         scroll.setWidgetResizable(True)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)

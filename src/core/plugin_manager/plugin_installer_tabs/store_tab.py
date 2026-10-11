@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QListWidget, QPushButton,
     QLabel, QMessageBox, QLineEdit
@@ -11,11 +13,15 @@ from src.utils.constants import PLUGINS_API_URL
 
 logger = OmixForgeLogger.get_logger()
 
+if TYPE_CHECKING:
+    from src.core.plugin_manager.plugin_installer import PluginStore
+
 class StoreTab(QWidget):
     """Fetch plugins from public GitHub repo with search functionality"""
 
     def __init__(self, store: "PluginStore"):
         super().__init__()
+        self.setObjectName("pluginStoreTab")
         self.store = store
 
         layout = QVBoxLayout(self)
@@ -28,6 +34,7 @@ class StoreTab(QWidget):
 
         # Plugin list
         self.list_widget = QListWidget()
+        self.list_widget.setObjectName("availablePluginsList")
         layout.addWidget(QLabel("Available plugins:"))
         layout.addWidget(self.list_widget)
 

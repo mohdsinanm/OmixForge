@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QListWidget, QPushButton,
     QLabel, QMessageBox,
@@ -7,6 +9,9 @@ from src.core.plugin_manager.manager import PluginManager
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from pathlib import Path
 logger = OmixForgeLogger.get_logger()
+
+if TYPE_CHECKING:
+    from src.core.plugin_manager.plugin_installer import PluginStore
 
 
 class ManageTab(QWidget):
@@ -21,12 +26,14 @@ class ManageTab(QWidget):
             The plugin store instance for accessing plugins.
         """
         super().__init__()
+        self.setObjectName("pluginManageTab")
         self.store = store
         self.plugin_manager: PluginManager = store.plugin_manager
 
         layout = QVBoxLayout(self)
 
         self.list_widget = QListWidget()
+        self.list_widget.setObjectName("installedPluginsList")
         layout.addWidget(QLabel("Installed plugins:"))
         layout.addWidget(self.list_widget)
 

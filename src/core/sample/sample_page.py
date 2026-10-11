@@ -15,9 +15,12 @@ class Sample(QWidget):
         """Initialize the sample page with sample prep and ENA downloader tabs."""
         super().__init__()
 
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(22, 18, 22, 22)
+        layout.setSpacing(12)
 
-        tab_widget = QTabWidget()
+        tab_widget = QTabWidget(self)
+        tab_widget.setObjectName("samplePageTabs")
 
         sample_prep_tab = SamplePrepPage()
         ena_downloader = ENAFastqDownloader()
@@ -30,8 +33,6 @@ class Sample(QWidget):
 
 
         layout.addWidget(tab_widget)
-
-        self.setLayout(layout)
 
         # expose the widget so callers can embed this dashboard without
         # PipelineDashboard itself forcing it as the main window central widget

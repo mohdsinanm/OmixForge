@@ -1,4 +1,5 @@
 import requests
+import time
 from datetime import datetime
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
@@ -60,23 +61,33 @@ class NfcoreUtils:
         Remote workflows are stored in :attr:`self.remote_workflows` list.
         """
         # List all repositories at nf-core
-        retry = self.max_retry
-        response = {}
-        while retry > 0:
+        nfcore_url = "https://nf-co.re/pipelines.json"
+        last_error = None
+        for attempt in range(1, self.max_retry + 1):
             try: 
-                nfcore_url = "https://nf-co.re/pipelines.json"
                 response = requests.get(nfcore_url, timeout=20)
                 if response.status_code == 200:
-                    return response.json()
+                    try:
+                        return response.json()
+                    except ValueError as exc:
+                        last_error = f"The nf-core API returned invalid JSON: {exc}"
                 else:
-                    logger.error(f"Error retrieving nf-core pipelines: HTTP {response.status_code}")
-                    logger.info(f"Retrying for fetching data {retry}")
-                    retry -= 1
-                return response
+                    last_error = f"nf-core API returned HTTP {response.status_code}"
+                    if response.status_code != 429 and response.status_code < 500:
+                        raise RuntimeError(last_error)
             except requests.RequestException as e:
-                logger.error(f"Error retrieving nf-core pipelines: {e}")
-                retry -= 1
-        return response
+                last_error = str(e)
+
+            logger.warning(
+                f"Error retrieving nf-core pipelines (attempt {attempt}/{self.max_retry}): {last_error}"
+            )
+            if attempt < self.max_retry:
+                time.sleep(min(2 ** (attempt - 1), 4))
+
+        raise RuntimeError(
+            f"Could not load workflows from nf-core after {self.max_retry} attempts: {last_error}. "
+            "Check your network connection and try refreshing again."
+        )
 
 
     def get_pipelines(self):
@@ -84,21 +95,10 @@ class NfcoreUtils:
 
         Remote workflows are stored in :attr:`self.remote_workflows` list.
         """
-        # List all repositories at nf-core
-        retry = self.max_retry
-        response = {}
-        while retry > 0:
-            try: 
-                nfcore_url = "https://nf-co.re/pipelines.json"
-                response = requests.get(nfcore_url, timeout=100)
-                if response.status_code == 200:
-                    repos = response.json()["remote_workflows"]
-                    for repo in repos:
-                        self.wf_list.append(RemoteWorkflowList(repo))
-                    return self.wf_list
-                retry -= 1
-                return self.wf_list
-            except requests.RequestException as e:
-                logger.error(f"Error retrieving nf-core pipelines: {e}")
-                retry -= 1
-        return response
+        payload = self.get_pipelines_json()
+        repos = payload.get("remote_workflows") if isinstance(payload, dict) else None
+        if not isinstance(repos, list):
+            raise RuntimeError("The nf-core API response did not include a workflow list.")
+
+        self.wf_list = [RemoteWorkflowList(repo) for repo in repos]
+        return self.wf_list

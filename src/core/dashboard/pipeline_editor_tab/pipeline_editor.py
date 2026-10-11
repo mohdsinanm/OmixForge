@@ -1,6 +1,6 @@
 
 from pathlib import Path
-from src.assets.stylesheet import close_btn_red_bg
+from src.assets.stylesheet import close_button_style
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.constants import PIPELINE_DIR, CONFIG_FILE
 from src.utils.fileops.file_handle import list_files_in_directory, json_read, file_exists
@@ -27,22 +27,7 @@ class PipelineDataCard(QFrame):
         self.locked = locked
 
         self.setObjectName("pipelineCard")
-
-        self.setStyleSheet("""
-            QFrame#pipelineCard {
-                border: 1px solid #ccc;
-                border-radius: 10px;
-                padding: 12px;
-                color: #444;
-                background: white;
-            }
-            QFrame#pipelineCard:hover {
-                background: #eaeaea;
-            }
-            QFrame#pipelineCard:hover QLabel {
-                color: black;
-            }
-        """)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 8, 12, 8)
@@ -50,6 +35,7 @@ class PipelineDataCard(QFrame):
 
         # Pipeline name
         self.label = QLabel(name)
+        self.label.setObjectName("pipelineCardName")
         self.label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         layout.addWidget(self.label)
 
@@ -76,25 +62,48 @@ class PipelineEditorTab(QWidget):
         self.get_local_pipelines_status()
 
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(18, 16, 18, 16)
+        main_layout.setSpacing(12)
+
+        heading_layout = QHBoxLayout()
+        heading = QLabel("Pipeline files")
+        heading.setObjectName("dashboardSectionTitle")
+        self.pipeline_count = QLabel()
+        self.pipeline_count.setObjectName("dashboardCount")
+        heading_layout.addWidget(heading)
+        heading_layout.addWidget(self.pipeline_count)
+        heading_layout.addStretch()
+        main_layout.addLayout(heading_layout)
 
         # Cards Grid
         self.cards_grid = QGridLayout()
+        self.cards_grid.setContentsMargins(12, 12, 12, 12)
+        self.cards_grid.setVerticalSpacing(10)
 
         scroll = QScrollArea()
+        scroll.setObjectName("pipelineEditorScroll")
+        scroll.viewport().setStyleSheet("background-color: #ffffff;")
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         scroll_widget = QWidget()
+        scroll_widget.setObjectName("pipelineEditorScrollContent")
+        scroll_widget.setStyleSheet("background-color: #ffffff;")
         scroll_widget.setLayout(self.cards_grid)
         scroll.setWidget(scroll_widget)
 
         main_layout.addWidget(scroll, 1)
 
         self.details_box = QFrame()
+        self.details_box.setObjectName("pipelineEditorDetails")
         self.details_box.hide()
         self.details_layout = QVBoxLayout(self.details_box)
         main_layout.addWidget(self.details_box, 1)
+
+        self.empty_state = QLabel("No pipeline files found.", scroll_widget)
+        self.empty_state.setObjectName("dashboardEmptyState")
+        self.empty_state.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.render_cards()
 
@@ -112,12 +121,21 @@ class PipelineEditorTab(QWidget):
     def render_cards(self):
         columns = 1
         row = col = 0
+        self.pipeline_count.setText(f"{len(self.pipeline_runs)} available")
 
         # Clear grid
         for i in reversed(range(self.cards_grid.count())):
             item = self.cards_grid.takeAt(i)
-            if item.widget():
+            if item.widget() and item.widget() is not self.empty_state:
                 item.widget().deleteLater()
+
+        if not self.pipeline_runs:
+            self.cards_grid.addWidget(self.empty_state, 0, 0)
+            self.empty_state.show()
+            return
+
+        self.cards_grid.removeWidget(self.empty_state)
+        self.empty_state.hide()
 
         for name in self.pipeline_runs:
             card = PipelineDataCard(name)
@@ -141,13 +159,13 @@ class PipelineEditorTab(QWidget):
 
         # Title
         title = QLabel(f"Pipeline: {name}")
-        title.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        title.setObjectName("pipelineDetailTitle")
 
         self.action_items_top = QHBoxLayout()
 
         close_btn = QPushButton("X", parent=self.details_box)
         close_btn.setObjectName("close_result_details")
-        close_btn.setStyleSheet(close_btn_red_bg())
+        close_btn.setStyleSheet(close_button_style())
         close_btn.setFixedSize(40,30)
         close_btn.clicked.connect(self._on_close_button_click)
         self.action_items_top.addWidget(title)

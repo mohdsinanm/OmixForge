@@ -18,6 +18,7 @@ class PipelineArgsDialog(QDialog):
 
     def __init__(self, pipeline_name: str, run_dir:str,  pipeline_info :dict, sample_sheet_path=None, parent=None):
         super().__init__(parent)
+        self.setObjectName("pipelineArgsDialog")
         self.setWindowTitle(f"Configure {pipeline_name}")
         self.setGeometry(100, 100, 600, 500)
         self.pipeline_name = pipeline_name
@@ -53,8 +54,10 @@ class PipelineArgsDialog(QDialog):
 
         # Container for dynamically rendered parameter widgets
         self.params_container = QWidget()
+        self.params_container.setStyleSheet("background-color: #ffffff;")
         self.params_layout = QVBoxLayout(self.params_container)
         scroll = QScrollArea()
+        scroll.viewport().setStyleSheet("background-color: #ffffff;")
         scroll.setWidgetResizable(True)
         scroll.setWidget(self.params_container)
         scroll.setFixedHeight(200)
@@ -62,7 +65,7 @@ class PipelineArgsDialog(QDialog):
 
         # Title
         title = QLabel(f"Pipeline Configuration: {pipeline_name}")
-        title.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        title.setFont(QFont("Noto Sans", 12, QFont.Weight.Bold))
         layout.addWidget(title)
         
         # Mandatory args grid
@@ -106,6 +109,7 @@ class PipelineArgsDialog(QDialog):
         
         # Submit to remote server option
         self.submit_to_server_checkbox = QCheckBox("Submit to server")
+        self.submit_to_server_checkbox.setObjectName("submitToServerCheckbox")
         self.submit_to_server_checkbox.stateChanged.connect(self.on_submit_to_server_toggled)
         layout.addWidget(self.submit_to_server_checkbox)
 
@@ -119,7 +123,7 @@ class PipelineArgsDialog(QDialog):
 
         # Optional args section
         opt_label = QLabel("Additional Arguments :")
-        opt_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        opt_label.setFont(QFont("Noto Sans", 10, QFont.Weight.Bold))
         layout.addWidget(opt_label)
         
         self.custom_args = []

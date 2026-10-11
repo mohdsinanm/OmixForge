@@ -106,17 +106,21 @@ class ENAFastqDownloader(QWidget):
         
         # Create scroll area
         scroll_area = QScrollArea()
+        scroll_area.setObjectName("enaDownloaderScroll")
+        scroll_area.viewport().setStyleSheet("background-color: #f3f7f6;")
         scroll_area.setWidgetResizable(True)
         
         # Create content widget and layout
         content_widget = QWidget()
+        content_widget.setObjectName("enaDownloaderContent")
+        content_widget.setStyleSheet("background-color: #f3f7f6;")
         main_layout = QVBoxLayout(content_widget)
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(15, 15, 15, 15)
         
         # Title
         title = QLabel("ENA FASTQ Downloader")
-        title.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+        title.setFont(QFont("Noto Sans", 16, QFont.Weight.Bold))
         main_layout.addWidget(title)
         
         # Instructions
@@ -124,12 +128,12 @@ class ENAFastqDownloader(QWidget):
             "Paste accession numbers (one per line) or upload a file with accession IDs.\n"
             "Supported formats: SRR, ERR, DRR accession numbers"
         )
-        instructions.setStyleSheet("color: #666; font-size: 11px;")
+        instructions.setStyleSheet("color: #71847d; font-size: 12px;")
         main_layout.addWidget(instructions)
         
         # Input section
         input_label = QLabel("Accession List:")
-        input_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        input_label.setFont(QFont("Noto Sans", 12, QFont.Weight.Bold))
         main_layout.addWidget(input_label)
         
         # Text area for pasting accessions
@@ -155,10 +159,11 @@ class ENAFastqDownloader(QWidget):
         button_layout.addStretch()
         
         fetch_btn = QPushButton("Fetch Accessions")
+        fetch_btn.setObjectName("fetchAccessionsButton")
         fetch_btn.setStyleSheet(
-            "QPushButton { background-color: #4a90e2; color: white; "
-            "padding: 8px 20px; border-radius: 5px; font-weight: bold; }"
-            "QPushButton:hover { background-color: #357abd; }"
+            "QPushButton { background-color: #087f70; color: white; "
+            "padding: 8px 20px; border-radius: 6px; font-weight: bold; }"
+            "QPushButton:hover { background-color: #066b60; }"
         )
         fetch_btn.clicked.connect(self._on_fetch_clicked)
         button_layout.addWidget(fetch_btn)
@@ -173,24 +178,28 @@ class ENAFastqDownloader(QWidget):
         
         # Results section
         results_title = QLabel("Fetch Results")
-        results_title.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        results_title.setFont(QFont("Noto Sans", 14, QFont.Weight.Bold))
         results_title.setVisible(False)
         self.results_title = results_title
         main_layout.addWidget(results_title)
         
         # Status frame
         status_frame = QFrame()
-        status_frame.setStyleSheet("background-color: #f5f5f5; border-radius: 5px; padding: 10px;")
+        status_frame.setObjectName("downloadStatusPanel")
+        status_frame.setStyleSheet(
+            "background-color: #edf6f3; border: 1px solid #dbe6e2; "
+            "border-radius: 6px; padding: 10px;"
+        )
         status_frame.setVisible(False)
         self.status_frame = status_frame
         status_layout = QHBoxLayout(status_frame)
         
         self.successful_label = QLabel("Successful: 0")
-        self.successful_label.setStyleSheet("color: #27ae60; font-weight: bold;")
+        self.successful_label.setStyleSheet("color: #187b58; font-weight: bold;")
         status_layout.addWidget(self.successful_label)
         
         self.failed_label = QLabel("Failed: 0")
-        self.failed_label.setStyleSheet("color: #e74c3c; font-weight: bold;")
+        self.failed_label.setStyleSheet("color: #b74f3b; font-weight: bold;")
         status_layout.addWidget(self.failed_label)
         
         status_layout.addStretch()
@@ -198,7 +207,7 @@ class ENAFastqDownloader(QWidget):
         
         # Results table
         results_label = QLabel("Successful Accessions:")
-        results_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        results_label.setFont(QFont("Noto Sans", 11, QFont.Weight.Bold))
         results_label.setVisible(False)
         self.results_label = results_label
         main_layout.addWidget(results_label)
@@ -234,7 +243,7 @@ class ENAFastqDownloader(QWidget):
         
         # Failed accessions
         failed_section_label = QLabel("Failed Accessions:")
-        failed_section_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        failed_section_label.setFont(QFont("Noto Sans", 11, QFont.Weight.Bold))
         failed_section_label.setVisible(False)
         self.failed_section_label = failed_section_label
         main_layout.addWidget(failed_section_label)
@@ -250,7 +259,7 @@ class ENAFastqDownloader(QWidget):
         
         # Download section
         download_label = QLabel("Download Files:")
-        download_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        download_label.setFont(QFont("Noto Sans", 11, QFont.Weight.Bold))
         download_label.setVisible(False)
         self.download_label = download_label
         main_layout.addWidget(download_label)
@@ -299,7 +308,7 @@ class ENAFastqDownloader(QWidget):
         download_btn_layout.addWidget(self.output_dir_btn)
         
         self.output_dir_label = QLabel("No folder selected")
-        self.output_dir_label.setStyleSheet("color: #666;")
+        self.output_dir_label.setStyleSheet("color: #71847d;")
         download_btn_layout.addWidget(self.output_dir_label)
         
         main_layout.addWidget(download_btn_layout_widget)
@@ -314,7 +323,9 @@ class ENAFastqDownloader(QWidget):
         
         # Create fixed fetch progress panel (stays at bottom, doesn't scroll)
         fetch_progress_panel = QFrame()
-        fetch_progress_panel.setStyleSheet("background-color: #f9f9f9; border-top: 1px solid #ddd;")
+        fetch_progress_panel.setStyleSheet(
+            "background-color: #ffffff; border-top: 1px solid #dbe6e2;"
+        )
         fetch_progress_panel.setVisible(False)
         self.fetch_progress_panel = fetch_progress_panel
         fetch_progress_layout = QVBoxLayout(fetch_progress_panel)
@@ -322,7 +333,7 @@ class ENAFastqDownloader(QWidget):
         fetch_progress_layout.setSpacing(5)
         
         fetch_status_label = QLabel("Fetching accessions...")
-        fetch_status_label.setStyleSheet("font-weight: bold; color: #333;")
+        fetch_status_label.setStyleSheet("font-weight: bold; color: #31564c;")
         self.fetch_status_label = fetch_status_label
         fetch_progress_layout.addWidget(fetch_status_label)
         

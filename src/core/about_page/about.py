@@ -24,12 +24,16 @@ class AboutPage(QWidget):
         
         # Create scroll area
         scroll = QScrollArea()
+        scroll.setObjectName("aboutScrollArea")
+        scroll.viewport().setStyleSheet("background-color: #ffffff;")
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         
         # Create content widget
         content_widget = QWidget()
+        content_widget.setObjectName("aboutPageContent")
+        content_widget.setStyleSheet("background-color: #ffffff;")
         content_layout = QVBoxLayout(content_widget)
         content_layout.setSpacing(15)
         
@@ -101,7 +105,7 @@ class AboutPage(QWidget):
         )
         license_text.setWordWrap(True)
         license_text.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        license_text.setStyleSheet("color: #666; font-size: 10px;")
+        license_text.setStyleSheet("color: #71847d; font-size: 10px;")
         content_layout.addWidget(license_text)
         
         # Section: Authors

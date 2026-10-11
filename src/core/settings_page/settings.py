@@ -23,6 +23,8 @@ class SettingsPage(QWidget):
         self.server_section = ServerSettingsSection()
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(22, 18, 22, 22)
+        layout.setSpacing(14)
 
         layout.addWidget(self.folder_section)
         layout.addWidget(self.server_section)
@@ -36,6 +38,7 @@ class SettingsPage(QWidget):
         btn_layout.addStretch()
 
         save_btn = QPushButton("Save")
+        save_btn.setObjectName("saveSettingsButton")
         save_btn.clicked.connect(self.save_settings)
 
         btn_layout.addWidget(save_btn)

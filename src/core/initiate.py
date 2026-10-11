@@ -1,7 +1,7 @@
 
 from src.utils.constants import INITIATE_CACHE_JSON, CONFIG_DIR, CONFIG_FILE, populate_constants
 from src.utils.nfcore_utils import NfcoreUtils
-from src.utils.fileops.file_handle import  json_write, ensure_directory
+from src.utils.fileops.file_handle import json_read, json_write, ensure_directory
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 
 logger = OmixForgeLogger.get_logger()
@@ -19,14 +19,32 @@ class InitiateApp:
         """Load and cache JSON pipeline data from nfcore API."""
         logger.info("Loading initiate cache JSON data.")
         self.nfcore_utils = NfcoreUtils()
-        self.cache_json_data = self.nfcore_utils.get_pipelines_json()
-        if self.cache_json_data:
-            logger.info("Successfully loaded initiate cache JSON data.")
+        try:
+            payload = self.nfcore_utils.get_pipelines_json()
+            if not isinstance(payload, dict) or not isinstance(payload.get("remote_workflows"), list):
+                raise ValueError("nf-core response did not contain a workflow list")
+
+            self.cache_json_data = payload
             ensure_directory(CONFIG_DIR)
             json_write(INITIATE_CACHE_JSON, self.cache_json_data)
-        else:
-            logger.error("Failed to load initiate cache JSON data.")
-            return None
+            logger.info("Successfully loaded initiate cache JSON data.")
+            return
+        except Exception as error:
+            logger.warning(f"Unable to load workflows from nf-core: {error}")
+
+        try:
+            cached_payload = json_read(INITIATE_CACHE_JSON)
+            if isinstance(cached_payload, dict) and isinstance(
+                cached_payload.get("remote_workflows"), list
+            ):
+                self.cache_json_data = cached_payload
+                logger.info("Using cached nf-core workflow data.")
+                return
+        except (OSError, ValueError) as error:
+            logger.warning(f"Could not read cached nf-core workflow data: {error}")
+
+        self.cache_json_data = {"remote_workflows": []}
+        logger.warning("Starting without remote workflows; refresh the pipeline list when online.")
         
     def check_docker_installed(self) -> bool:
         """Check if Docker is installed on the system."""

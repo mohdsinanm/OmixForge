@@ -8,7 +8,7 @@ class RequirementsNotSatisfied():
         # --- Title ---
         title = QLabel("Oops — Requirements Missing")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        title.setFont(QFont("Noto Sans", 14, QFont.Weight.Bold))
         main_layout.addWidget(title)
 
         # --- Requirements layout ---

@@ -21,7 +21,7 @@ from src.utils.fileops.file_handle import ensure_directory, write_to_file, appen
 from src.utils.encryption.handle import encrypt_file, decrypt_file, generate_key
 from src.core.dashboard.pipeline_dash_tab.pipeline_args import PipelineArgsDialog
 from src.core.dashboard.pipeline_dash_tab.pipeline_card import PipelineCard
-from src.assets.stylesheet import close_btn_red_bg
+from src.assets.stylesheet import close_button_style
 
 logger = OmixForgeLogger.get_logger()
 
@@ -196,29 +196,58 @@ class PipelineLocal(QWidget):
         self.get_local_pipelines()
 
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(18, 16, 18, 16)
+        main_layout.setSpacing(12)
+
+        heading_layout = QHBoxLayout()
+        heading_layout.setSpacing(10)
+        heading = QLabel("Installed pipelines")
+        heading.setObjectName("dashboardSectionTitle")
+        self.pipeline_count = QLabel()
+        self.pipeline_count.setObjectName("dashboardCount")
+        heading_layout.addWidget(heading)
+        heading_layout.addWidget(self.pipeline_count)
+        heading_layout.addStretch()
+        refresh_button = QPushButton("Refresh")
+        refresh_button.setObjectName("refresh_local_pipelines")
+        refresh_button.clicked.connect(self.refresh_pipelines)
+        heading_layout.addWidget(refresh_button)
+        main_layout.addLayout(heading_layout)
 
         # GRID LAYOUT FOR CARDS
         self.cards_grid = QGridLayout()
+        self.cards_grid.setContentsMargins(12, 12, 12, 12)
+        self.cards_grid.setHorizontalSpacing(12)
+        self.cards_grid.setVerticalSpacing(12)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
+        self.cards_scroll = QScrollArea()
+        self.cards_scroll.setObjectName("localPipelineScroll")
+        self.cards_scroll.viewport().setStyleSheet("background-color: #f3f7f6;")
+        self.cards_scroll.setWidgetResizable(True)
 
         # scroll only in vertical direction
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.cards_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.cards_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.cards_scroll.setMaximumHeight(16777215)
 
         scroll_widget = QWidget()
+        scroll_widget.setObjectName("localPipelineScrollContent")
+        scroll_widget.setStyleSheet("background-color: #f3f7f6;")
+        self.cards_content = scroll_widget
         scroll_widget.setLayout(self.cards_grid)
-        scroll.setWidget(scroll_widget)
+        self.empty_state = QLabel("No installed pipelines yet.", scroll_widget)
+        self.empty_state.setObjectName("dashboardEmptyState")
+        self.empty_state.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.cards_scroll.setWidget(scroll_widget)
 
-        main_layout.addWidget(scroll)
+        main_layout.addWidget(self.cards_scroll, 1)
 
         # DETAILS BOX
         self.details_box = QFrame()
         self.details_box.hide()
         self.details_box.setObjectName("pipeline_info_box")
         self.details_layout = QVBoxLayout(self.details_box)
-        main_layout.addWidget(self.details_box)
+        main_layout.addWidget(self.details_box, 0)
 
         self.render_cards()
 
@@ -245,18 +274,43 @@ class PipelineLocal(QWidget):
 
     def render_cards(self):
         columns = 3
+        card_height = 70
         row = 0
         col = 0
+        self.pipeline_count.setText(f"{len(self.pipelines)} available")
+
+        if len(self.pipelines) > 15:
+            margins = self.cards_grid.contentsMargins()
+            visible_rows = 5
+            self.cards_scroll.setMaximumHeight(
+                visible_rows * card_height
+                + (visible_rows - 1) * self.cards_grid.verticalSpacing()
+                + margins.top()
+                + margins.bottom()
+                + 2 * self.cards_scroll.frameWidth()
+            )
+        else:
+            self.cards_scroll.setMaximumHeight(16777215)
 
         # Clear existing cards so re-rendering doesn't duplicate widgets
         for i in reversed(range(self.cards_grid.count())):
             item = self.cards_grid.takeAt(i)
-            if item.widget():
+            if item.widget() and item.widget() is not self.empty_state:
                 item.widget().deleteLater()
+
+        if not self.pipelines:
+            self.cards_grid.addWidget(self.empty_state, 0, 0, 1, columns)
+            self.empty_state.show()
+            self.cards_content.setMinimumHeight(0)
+            return
+
+        self.cards_grid.removeWidget(self.empty_state)
+        self.empty_state.hide()
 
         for index, name in enumerate(self.pipelines):
             card = PipelineCard(name)
             card.setMaximumHeight(200) 
+            card.setMinimumHeight(70)
             card.clicked.connect(self.on_card_clicked)
 
             # Add card to grid
@@ -269,6 +323,16 @@ class PipelineLocal(QWidget):
             if col >= columns:
                 col = 0
                 row += 1
+
+        margins = self.cards_grid.contentsMargins()
+        rows = (len(self.pipelines) + columns - 1) // columns
+        content_height = (
+            rows * card_height
+            + (rows - 1) * self.cards_grid.verticalSpacing()
+            + margins.top()
+            + margins.bottom()
+        )
+        self.cards_content.setMinimumHeight(content_height)
 
     def _find_run_for_pipeline(self, pipeline_name: str):
         """Return the run_name key for a running process matching pipeline_name, or None."""
@@ -380,7 +444,7 @@ class PipelineLocal(QWidget):
 
         close_btn = QPushButton("X", parent=self.details_box)
         close_btn.setObjectName("close_pipeline_details")
-        close_btn.setStyleSheet(close_btn_red_bg())
+        close_btn.setStyleSheet(close_button_style())
         close_btn.setFixedSize(40,30)
         close_btn.clicked.connect(self._on_close_button_click)
         self.action_items_top.addStretch()
@@ -389,11 +453,13 @@ class PipelineLocal(QWidget):
         self.details_layout.addLayout(self.action_items_top)
 
         self._details_content_label = QLabel(content)
+        self._details_content_label.setObjectName("pipelineInfoLog")
         self._details_content_label.setWordWrap(True)
         self._details_content_label.setFont(QFont("Courier New", 10))
 
         # Scroll area
         scroll = QScrollArea()
+        scroll.viewport().setStyleSheet("background-color: #ffffff;")
         scroll.setWidgetResizable(True)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)

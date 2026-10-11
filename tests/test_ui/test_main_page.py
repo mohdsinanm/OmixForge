@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, Q
 
 from src.core.about_page.about import AboutPage
 from src.core.dashboard.pipeline_dashboard import PipelineDashboard
+from src.core.dashboard.pipeline_import_tab.pipeline_import import PipelineImport
 from src.core.dashboard.pipeline_dash_tab.local_pipeline import PipelineLocal
 from src.core.dashboard.pipeline_dash_tab.pipeline_card import PipelineCard
 from src.core.dashboard.pipeline_editor_tab.pipeline_editor import PipelineEditorTab, PipelineDataCard as EditorDataCard
@@ -13,6 +14,7 @@ from src.core.plugin_manager.plugin_page import PluginsPage
 from src.core.profile_page.profile import ProfilePage
 from src.core.profile_page.startup_page import AccessModePage
 from src.core.sample.sample_page import Sample
+from src.core.settings_page.sections.folder_path_section import FolderPathsSection
 from src.core.settings_page.settings import SettingsPage
 from src.core.status_page.results.run_results import PipelineResultsPage, PipelineDataCard as ResultsDataCard
 from src.utils.nfcore_utils import NfcoreUtils
@@ -170,9 +172,25 @@ def test_check_pipeline_import_page(window, qtbot, monkeypatch):
     ]
     monkeypatch.setattr(NfcoreUtils, "get_pipelines", lambda self: sample_pipelines)
 
+    window.show()
     window.access_page.public_selected.emit()
+    QApplication.processEvents()
 
     list_widget = window.sidebar.widget()
+    window.badge_label.setText("1")
+    window.badge_label.show()
+    QApplication.processEvents()
+    status_rect = window.sidebar_list.visualItemRect(window.pipeline_status_item)
+    badge_center_y = window.badge_label.mapTo(
+        window.sidebar_list.viewport(), window.badge_label.rect().center()
+    ).y()
+    status_widget = window.sidebar_list.itemWidget(window.pipeline_status_item)
+    assert abs(badge_center_y - status_rect.center().y()) <= 1, (
+        f"badge={window.badge_label.geometry()}, row={status_rect}, "
+        f"widget={status_widget.geometry()}, "
+        f"widget_in_viewport={status_widget.mapTo(window.sidebar_list.viewport(), status_widget.rect().topLeft())}"
+    )
+
     items = list_widget.findItems("Pipeline Dashboard", Qt.MatchFlag.MatchExactly)
     assert items, "Pipeline Dashboard item not found in sidebar"
     pipeline_dash_item = items[0]
@@ -210,6 +228,62 @@ def test_check_pipeline_import_page(window, qtbot, monkeypatch):
 
     qtbot.waitUntil(lambda: get_import_btn() is not None, timeout=15000)
     assert get_import_btn() is not None, "Could not find import button"
+
+
+def test_pipeline_import_search_filters_name_and_topic(qtbot):
+    import_tab = PipelineImport()
+    qtbot.addWidget(import_tab)
+    import_tab._on_pipelines_ready([
+        SimpleNamespace(
+            name="rnaseq",
+            full_name="nf-core/rnaseq",
+            description="RNA workflow",
+            topics=["transcriptomics"],
+            archived=False,
+        ),
+        SimpleNamespace(
+            name="chipseq",
+            full_name="nf-core/chipseq",
+            description="ChIP workflow",
+            topics=["epigenomics"],
+            archived=False,
+        ),
+    ])
+
+    import_tab.search_input.setText("EPI")
+
+    assert import_tab.combobox.count() == 1
+    assert import_tab.combobox.currentText() == "chipseq"
+    assert import_tab.status_label.text() == "Showing 1 of 2 workflows."
+
+    import_tab.search_input.setText("rnaseq")
+    assert import_tab.combobox.count() == 1
+    assert import_tab.combobox.currentText() == "rnaseq"
+
+    import_tab.search_input.setText("no-match")
+
+    assert import_tab.combobox.count() == 0
+    assert "Adjust or clear your search" in import_tab.status_label.text()
+
+
+def test_pipeline_import_empty_results_offer_refresh_guidance(qtbot):
+    import_tab = PipelineImport()
+    qtbot.addWidget(import_tab)
+
+    import_tab._on_pipelines_ready([])
+
+    assert import_tab.combobox.count() == 0
+    assert "refresh to try again" in import_tab.status_label.text()
+
+
+def test_git_import_error_shows_inline_retry_guidance(qtbot):
+    import_tab = PipelineImport()
+    qtbot.addWidget(import_tab)
+
+    import_tab._on_git_import_error("connection timed out")
+
+    assert "Check the repository URL and your network connection" in import_tab.status_label.text()
+    assert import_tab.url_import_btn.isEnabled()
 
 
 def test_access_page_requirement_warning_on_missing_tools():
@@ -290,6 +364,48 @@ def test_settings_page_save_and_load_round_trip(tmp_path, monkeypatch):
     assert restored.server_section.servers[0].host_edit.text() == "example.com"
 
 
+def test_settings_folder_path_inputs_are_aligned(qtbot):
+    section = FolderPathsSection()
+    qtbot.addWidget(section)
+    section.resize(900, 250)
+    section.show()
+    QApplication.processEvents()
+
+    inputs = [
+        section.data_dir,
+        section.run_dir,
+        section.pipeline_runs,
+        section.sample_prep_dir,
+    ]
+    assert len({field.geometry().left() for field in inputs}) == 1
+
+
+def test_pipeline_cards_scroll_after_fifteenth_pipeline(qtbot, monkeypatch):
+    import src.core.dashboard.pipeline_dash_tab.local_pipeline as local_pipeline_module
+
+    monkeypatch.setattr(
+        local_pipeline_module,
+        "run_shell_command",
+        lambda _: SimpleNamespace(stdout=""),
+    )
+    monkeypatch.setattr(local_pipeline_module, "json_read", lambda _: {})
+
+    page = PipelineLocal()
+    qtbot.addWidget(page)
+    page.resize(900, 600)
+    page.show()
+
+    page.pipelines = [f"nf-core/test-{index}" for index in range(15)]
+    page.render_cards()
+    QApplication.processEvents()
+    assert page.cards_scroll.verticalScrollBar().maximum() == 0
+
+    page.pipelines.append("nf-core/test-15")
+    page.render_cards()
+    QApplication.processEvents()
+    assert page.cards_scroll.verticalScrollBar().maximum() > 0
+
+
 def test_access_page_public_card_renders_expected_titles():
     page = AccessModePage(True, True)
     public_card = page.findChild(QWidget, "public_access_card")
@@ -363,6 +479,69 @@ def test_pipeline_status_page_has_expected_tabs_and_cards(tmp_path, monkeypatch)
 
     cards = page.findChildren(PipelineCard)
     assert any(card.name == "demo_run.log" for card in cards)
+
+
+def test_pipeline_result_cards_show_run_status(monkeypatch, qtbot):
+    from pathlib import Path
+    from tempfile import TemporaryDirectory
+
+    import src.core.status_page.results.run_results as results_module
+
+    with TemporaryDirectory() as temp_dir:
+        run_root = Path(temp_dir)
+        run_logs = run_root / "logs"
+        run_logs.mkdir()
+        (run_logs / "complete.txt").write_text("<<exit-code:0>>")
+        (run_logs / "failed.txt").write_text("<<exit-code:1>>")
+        (run_logs / "cancelled.txt").write_text("Pipeline run cancelled by user.")
+        (run_logs / "running.txt").write_text("Running pipeline: nf-core/demo")
+        (run_logs / "failed_with_cancel_text.txt").write_text(
+            "A task was cancelled after an upstream failure.\n<<exit-code:1>>"
+        )
+        (run_logs / "locked_failure.txt").write_text("<<exit-code:1>>")
+
+        monkeypatch.setattr(
+            results_module,
+            "json_read",
+            lambda *_args, **_kwargs: {
+                "folders": {"RUN_DIR": str(run_root), "PIPELINES_RUNS": str(run_logs)}
+            },
+        )
+        monkeypatch.setattr(
+            results_module,
+            "list_files_in_directory",
+            lambda *_args, **_kwargs: [
+                "complete",
+                "failed",
+                "cancelled",
+                "running",
+                "failed_with_cancel_text",
+                "locked.tar.gz.enc",
+                "locked_failure.tar.gz.enc",
+            ],
+        )
+
+        page = PipelineResultsPage()
+        qtbot.addWidget(page)
+        statuses = {card.name: card.status for card in page.findChildren(ResultsDataCard)}
+
+        assert statuses == {
+            "complete": "Completed",
+            "failed": "Failed",
+            "cancelled": "Cancelled",
+            "running": "Running",
+            "failed_with_cancel_text": "Failed",
+            "locked.tar.gz.enc": "Encrypted",
+            "locked_failure.tar.gz.enc": "Failed",
+        }
+        encrypted_card = next(
+            card for card in page.findChildren(ResultsDataCard)
+            if card.name == "locked.tar.gz.enc"
+        )
+        assert encrypted_card.status_group_layout.indexOf(encrypted_card.status_badge) < (
+            encrypted_card.status_group_layout.indexOf(encrypted_card.lock_icon)
+        )
+        page._refresh_timer.stop()
 
 
 def test_plugin_store_page_has_tabs_and_search_field():

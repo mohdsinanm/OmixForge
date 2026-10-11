@@ -15,6 +15,7 @@ class PluginStore(QWidget):
         main_window: reference to MainWindow
         """
         super().__init__()
+        self.setObjectName("pluginStorePage")
         self.main_window = main_window
         self.plugin_manager: PluginManager = main_window.plugin_manager
 

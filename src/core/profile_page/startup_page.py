@@ -22,6 +22,7 @@ class AccessModePage(QWidget):
             Whether Nextflow is installed on the system.
         """
         super().__init__()
+        self.setObjectName("welcomePage")
 
         self.loading_dialog = None
         self._selected_mode = None
@@ -160,16 +161,17 @@ class AccessModePage(QWidget):
             info_btn.setFixedSize(20, 20)
             info_btn.setStyleSheet("""
                 QToolButton {
-                    border: 1px solid gray;
+                    border: 1px solid #cbdad5;
                     border-radius: 10px;
                     font-size: 12px;
                     font-weight: bold;
                     padding: 0px;
-                    background: transparent;
+                    background: #ffffff;
+                    color: #536a63;
                 }
                 QToolButton:hover {
-                    border: 1px solid #4a90e2;
-                    color: #4a90e2;
+                    border: 1px solid #087f70;
+                    color: #087f70;
                 }
             """)
 
@@ -210,37 +212,45 @@ class AccessModePage(QWidget):
     def stylesheet(self):
         """Return CSS stylesheet for the access mode selection page."""
         return """
+        QWidget#welcomePage {
+            background-color: #f3f7f6;
+            font-family: "Noto Sans";
+        }
+
         QLabel#titleLabel {
-            font-size: 40px;
-            font-weight: 800;
-            letter-spacing: 1px;
+            color: #193b34;
+            font-size: 38px;
+            font-weight: 700;
         }
 
         QLabel#subtitleLabel {
+            color: #71847d;
             font-size: 15px;
             margin-bottom: 12px;
-            opacity: 0.7;
         }
         QFrame#public_access_card,
         QFrame#private_access_card,
         QFrame#accessCard {
-            border-radius: 16px;
-            padding: 20px;
-            border: 1px solid rgba(120,120,120,0.4);
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 18px;
+            border: 1px solid #d5e1dd;
         }
         QFrame#public_access_card:hover,
         QFrame#private_access_card:hover,
         QFrame#accessCard:hover {
-            border: 1px solid #4a90e2;
+            background-color: #fbfefd;
+            border: 1px solid #087f70;
         }
 
         QLabel#cardTitle {
+            color: #203a34;
             font-size: 20px;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         QLabel#cardSubtitle {
+            color: #71847d;
             font-size: 14px;
-            opacity: 0.75;
         }
         """
