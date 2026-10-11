@@ -9,7 +9,7 @@ logger = OmixForgeLogger.get_logger()
 class InitiateApp:
     def __init__(self):
         """Initialize the application with system checks and configuration loading."""
-        self.load_json_data() 
+        # self.load_json_data() 
         self.docker_installed = self.check_docker_installed()
         self.nextflow_installed = self.check_nextflow_installed()     
         self.constants = populate_constants(CONFIG_FILE)  

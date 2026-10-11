@@ -16,6 +16,8 @@ class FolderPathsSection(SettingsSection):
         self.run_dir = self._add_path_row("Run directory")
         self.pipeline_runs = self._add_path_row("Pipeline run directory")
         self.sample_prep_dir = self._add_path_row("Sample preperation directory")
+        self.plugin_dir = self._add_path_row("Plugin directory")
+        self.pipeline_dir = self._add_path_row("Pipeline directory")
 
     def _add_path_row(self, label_text):
         label = QLabel(label_text)
@@ -36,7 +38,9 @@ class FolderPathsSection(SettingsSection):
             "DATA_DIR": self.data_dir.text(),
             "RUN_DIR": self.run_dir.text(),
             "PIPELINES_RUNS": self.pipeline_runs.text(),
-            "SAMPLE_PREP_DIR": self.sample_prep_dir.text()
+            "SAMPLE_PREP_DIR": self.sample_prep_dir.text(),
+            "PLUGIN_DIR": self.plugin_dir.text(),   
+            "PIPELINE_DIR": self.pipeline_dir.text()
         }
 
     def load_settings(self, data):
@@ -44,6 +48,8 @@ class FolderPathsSection(SettingsSection):
         self.run_dir.setText(data.get("RUN_DIR", ""))
         self.pipeline_runs.setText(data.get("PIPELINES_RUNS", ""))
         self.sample_prep_dir.setText(data.get("SAMPLE_PREP_DIR", ""))
+        self.plugin_dir.setText(data.get("PLUGIN_DIR", ""))
+        self.pipeline_dir.setText(data.get("PIPELINE_DIR", ""))
 
     def _browse_folder(self, line_edit):
         path = QFileDialog.getExistingDirectory(self, "Select folder")

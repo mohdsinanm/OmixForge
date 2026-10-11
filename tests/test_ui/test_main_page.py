@@ -266,6 +266,20 @@ def test_pipeline_import_search_filters_name_and_topic(qtbot):
     assert "Adjust or clear your search" in import_tab.status_label.text()
 
 
+def test_pipeline_import_empty_state_keeps_controls_at_top(qtbot):
+    import_tab = PipelineImport()
+    qtbot.addWidget(import_tab)
+    import_tab.resize(1000, 600)
+    import_tab.show()
+    QApplication.processEvents()
+
+    title = import_tab.content.findChild(QLabel, "dashboardSectionTitle")
+    assert title is not None
+    assert title.height() < 50
+    assert import_tab.url_input.y() < 100
+    assert import_tab.status_label.height() < 60
+
+
 def test_pipeline_import_empty_results_offer_refresh_guidance(qtbot):
     import_tab = PipelineImport()
     qtbot.addWidget(import_tab)
@@ -457,6 +471,26 @@ def test_pipeline_local_editor_and_results_pages_render_cards(monkeypatch, tmp_p
     assert any(card.name == "result_run" for card in results_page.findChildren(ResultsDataCard))
 
 
+def test_pipeline_editor_refresh_is_manual(qtbot, monkeypatch):
+    import src.core.dashboard.pipeline_editor_tab.pipeline_editor as editor_module
+
+    pipeline_lists = iter([["first"], ["first", "second"]])
+    monkeypatch.setattr(editor_module, "json_read", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(
+        editor_module,
+        "list_files_in_directory",
+        lambda *_args, **_kwargs: next(pipeline_lists),
+    )
+
+    page = PipelineEditorTab()
+    qtbot.addWidget(page)
+
+    assert not hasattr(page, "_refresh_timer")
+    assert len(page.findChildren(EditorDataCard)) == 1
+    page.findChild(QPushButton, "refreshPipelineEditorButton").click()
+    assert len(page.findChildren(EditorDataCard)) == 2
+
+
 def test_pipeline_status_page_has_expected_tabs_and_cards(tmp_path, monkeypatch):
     from src.core.status_page.pipeline_status import PipelineStatus
     from src.core.status_page.status.run_status import PipelineCard
@@ -544,8 +578,30 @@ def test_pipeline_result_cards_show_run_status(monkeypatch, qtbot):
         page._refresh_timer.stop()
 
 
-def test_plugin_store_page_has_tabs_and_search_field():
+def test_plugin_store_page_has_tabs_search_and_refresh(qtbot, monkeypatch):
     from src.core.plugin_manager.plugin_installer import PluginStore
+    import src.core.plugin_manager.plugin_installer_tabs.store_tab as store_tab_module
+
+    responses = iter([
+        [{"name": "charts.py"}, {"name": "calculator.py"}],
+        [{"name": "charts.py"}, {"name": "calculator.py"}, {"name": "new_chart.py"}],
+    ])
+
+    class Response:
+        def __init__(self, contents):
+            self.contents = contents
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.contents
+
+    monkeypatch.setattr(
+        store_tab_module.requests,
+        "get",
+        lambda *_args, **_kwargs: Response(next(responses)),
+    )
 
     class DummyPluginManager:
         def __init__(self):
@@ -560,9 +616,20 @@ def test_plugin_store_page_has_tabs_and_search_field():
 
     window = DummyWindow()
     page = PluginStore(window)
+    qtbot.addWidget(page)
 
     tab_widget = page.findChild(QTabWidget)
     assert tab_widget is not None
     assert tab_widget.tabText(0) == "Store"
     assert tab_widget.tabText(1) == "Manage"
     assert page.store_tab.findChild(QLineEdit) is not None
+    assert page.store_tab.refresh_button.text() == "Refresh"
+
+    page.store_tab.search_input.setText("chart")
+    page.store_tab.refresh_button.click()
+
+    assert page.store_tab.available_plugins == ["charts.py", "calculator.py", "new_chart.py"]
+    assert [
+        page.store_tab.list_widget.item(index).text()
+        for index in range(page.store_tab.list_widget.count())
+    ] == ["charts.py", "new_chart.py"]

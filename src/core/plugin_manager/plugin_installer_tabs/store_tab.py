@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QListWidget, QPushButton,
-    QLabel, QMessageBox, QLineEdit
+    QLabel, QMessageBox, QLineEdit, QHBoxLayout
 )
 from src.utils.resource import get_plugins_dir
 import requests
@@ -26,11 +26,18 @@ class StoreTab(QWidget):
 
         layout = QVBoxLayout(self)
 
-        # Search bar
+        # Search and refresh controls
+        search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search plugins...")
         self.search_input.textChanged.connect(self.filter_plugins)
-        layout.addWidget(self.search_input)
+        search_layout.addWidget(self.search_input, 1)
+
+        self.refresh_button = QPushButton("Refresh")
+        self.refresh_button.setObjectName("refreshPluginStoreButton")
+        self.refresh_button.clicked.connect(self.fetch_available_plugins)
+        search_layout.addWidget(self.refresh_button)
+        layout.addLayout(search_layout)
 
         # Plugin list
         self.list_widget = QListWidget()
@@ -57,8 +64,7 @@ class StoreTab(QWidget):
             r.raise_for_status()
             contents = r.json()
             self.available_plugins = [f['name'] for f in contents if f['name'].endswith(".py") and f['name'] !='check_plugins.py']
-            self.filtered_plugins = self.available_plugins.copy()
-            self.update_list()
+            self.filter_plugins(self.search_input.text())
         except Exception as e:
             logger.error(f"Failed to fetch plugins: {e}")
             QMessageBox.warning(self, "Error", f"Failed to fetch plugins: {e}")

@@ -60,6 +60,7 @@ class PipelineImport(QWidget):
         # Header label
         label = QLabel("Import a workflow")
         label.setObjectName("dashboardSectionTitle")
+        label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         self.content_layout.addWidget(label)
 
 
@@ -98,10 +99,12 @@ class PipelineImport(QWidget):
         self.status_label = QLabel("Refresh to load available pipelines.", parent=self.content)
         self.status_label.setObjectName("pipeline_import_status")
         self.status_label.setWordWrap(True)
+        self.status_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         self.content_layout.addWidget(self.status_label)
 
         # Container to keep track of dynamically-added detail widgets
         self.detail_widgets = []
+        self.content_layout.addStretch()
 
         # Set up scroll area so the content fits the screen and scrolls vertically
         self.scroll = QScrollArea(parent=self)
@@ -279,7 +282,7 @@ class PipelineImport(QWidget):
                     self.archived,
                     self.import_btn
                 ):
-                    self.content_layout.addWidget(w)
+                    self._insert_content_widget(w)
                     self.detail_widgets.append(w)
                 return
 
@@ -295,6 +298,9 @@ class PipelineImport(QWidget):
             except Exception:
                 pass
             w.deleteLater()
+
+    def _insert_content_widget(self, widget):
+        self.content_layout.insertWidget(self.content_layout.count() - 1, widget)
     
     def import_pipeline(self):
         """Import pipeline asynchronously with spinner."""
@@ -333,8 +339,8 @@ class PipelineImport(QWidget):
         self.active_import_spinner = self.import_spinner  # Track as active
         spinner_label = QLabel("Importing pipeline...")
         spinner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.content_layout.addWidget(self.import_spinner)
-        self.content_layout.addWidget(spinner_label)
+        self._insert_content_widget(self.import_spinner)
+        self._insert_content_widget(spinner_label)
         self.detail_widgets.extend([self.import_spinner, spinner_label])
         
         # Create worker thread
@@ -464,8 +470,8 @@ class PipelineImport(QWidget):
         self.active_git_spinner = self.git_spinner
         spinner_label = QLabel("Cloning repository...")
         spinner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.content_layout.addWidget(self.git_spinner)
-        self.content_layout.addWidget(spinner_label)
+        self._insert_content_widget(self.git_spinner)
+        self._insert_content_widget(spinner_label)
         self.detail_widgets.extend([self.git_spinner, spinner_label])
 
         # Create git worker and thread
