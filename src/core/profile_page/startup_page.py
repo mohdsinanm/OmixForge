@@ -28,13 +28,11 @@ class AccessModePage(QWidget):
 
         brand_row = QHBoxLayout()
         brand_row.setSpacing(10)
-        logo = QLabel()
-        logo.setObjectName("brandLogo")
-        pixmap = QPixmap(resource_path("src/assets/omixforge.png"))
-        if not pixmap.isNull():
-            logo.setPixmap(pixmap.scaledToWidth(40, Qt.TransformationMode.SmoothTransformation))
-        brand_row.addWidget(logo)
-        brand_name = QLabel("OimxForge")
+        self.logo_label = QLabel()
+        self.logo_label.setObjectName("brandLogo")
+        self._update_logo()
+        brand_row.addWidget(self.logo_label)
+        brand_name = QLabel("OmixForge")
         brand_name.setObjectName("brandName")
         brand_row.addWidget(brand_name)
         brand_row.addStretch(1)
@@ -150,9 +148,17 @@ class AccessModePage(QWidget):
         self.setStyleSheet(self.stylesheet())
         theme_manager.theme_changed.connect(self._on_theme_changed)
 
+    def _update_logo(self):
+        """Update brand logo according to active theme."""
+        if hasattr(self, "logo_label") and self.logo_label:
+            pixmap = QPixmap(theme_manager.get_logo_path())
+            if not pixmap.isNull():
+                self.logo_label.setPixmap(pixmap.scaledToWidth(40, Qt.TransformationMode.SmoothTransformation))
+
     def _on_theme_changed(self, theme_name: str):
         """Update startup page styling and assets when theme changes."""
         self.setStyleSheet(self.stylesheet())
+        self._update_logo()
         if hasattr(self, "private_mode_button") and self.private_mode_button:
             self.private_mode_button.setIcon(theme_manager.get_icon("lock"))
         if hasattr(self, "illustration") and self.illustration:

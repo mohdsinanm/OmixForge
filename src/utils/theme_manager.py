@@ -1131,6 +1131,8 @@ class ThemeManager(QObject):
             "lock": "lock_dark.svg" if is_dark_mode else "lock_light.svg",
             "logout": "logout_dark.svg" if is_dark_mode else "logout_light.svg",
             "theme": "sun.svg" if is_dark_mode else "moon.svg",
+            "logo": "logo_light.png" if is_dark_mode else "omixforge.png",
+            "omixforge": "logo_light.png" if is_dark_mode else "omixforge.png",
         }
 
         filename = variant_map.get(icon_name)
@@ -1148,6 +1150,15 @@ class ThemeManager(QObject):
             return QIcon(png_path)
 
         return QIcon()
+
+    def get_logo_path(self, theme_name: Optional[str] = None) -> str:
+        """Return the filesystem path to the logo matching the active theme."""
+        is_dark_mode = (theme_name or self._current_theme_name) == "dark"
+        filename = "logo_light.png" if is_dark_mode else "omixforge.png"
+        path = resource_path(f"src/assets/{filename}")
+        if os.path.exists(path):
+            return path
+        return resource_path("src/assets/omixforge.png")
 
     def get_svg_path(self, asset_name: str, theme_name: Optional[str] = None) -> str:
         """Return the filesystem path to an SVG asset matching the active theme."""

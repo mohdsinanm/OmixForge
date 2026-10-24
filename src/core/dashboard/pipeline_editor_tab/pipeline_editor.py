@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
 
 from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtGui import QFont
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer,pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 
 
 class PipelineDataCard(QFrame):
@@ -73,6 +73,10 @@ class PipelineEditorTab(QWidget):
         heading_layout.addWidget(heading)
         heading_layout.addWidget(self.pipeline_count)
         heading_layout.addStretch()
+        self.refresh_button = QPushButton("Refresh")
+        self.refresh_button.setObjectName("refreshPipelineEditorButton")
+        self.refresh_button.clicked.connect(self.refresh_pipelines)
+        heading_layout.addWidget(self.refresh_button)
         main_layout.addLayout(heading_layout)
 
         # Cards Grid
@@ -115,12 +119,6 @@ class PipelineEditorTab(QWidget):
         self.empty_state.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.render_cards()
-
-        # Periodic refresh
-        self._refresh_timer = QTimer(self)
-        self._refresh_timer.setInterval(2000)
-        self._refresh_timer.timeout.connect(self._periodic_refresh)
-        self._refresh_timer.start()
 
 
     def get_local_pipelines_status(self):
@@ -262,9 +260,6 @@ class PipelineEditorTab(QWidget):
                 widget.setParent(None)
                 widget.deleteLater()
 
-    def _periodic_refresh(self):
-        try:
-            self.get_local_pipelines_status()
-            self.render_cards()
-        except Exception:
-            pass
+    def refresh_pipelines(self):
+        self.get_local_pipelines_status()
+        self.render_cards()

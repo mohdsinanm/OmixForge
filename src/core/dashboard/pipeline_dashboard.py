@@ -50,7 +50,7 @@ class PipelineDashboard(QWidget):
         self.widget = self
 
         self.setStyleSheet(self.get_custom_stylesheet())
-        theme_manager.theme_changed.connect(lambda: self.setStyleSheet(self.get_custom_stylesheet()))
+        theme_manager.theme_changed.connect(self._on_theme_changed)
 
     @property
     def widget(self):
@@ -59,6 +59,9 @@ class PipelineDashboard(QWidget):
     @widget.setter
     def widget(self, val):
         pass
+
+    def _on_theme_changed(self, _theme_name: str):
+        self.setStyleSheet(self.get_custom_stylesheet())
 
     def get_custom_stylesheet(self):
         t = theme_manager.get_tokens()

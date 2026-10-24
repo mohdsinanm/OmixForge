@@ -160,13 +160,11 @@ class MainWindow(QMainWindow):
         self.toolbar.setIconSize(QSize(16, 16))
         self.addToolBar(self.toolbar)
 
-        icon_path = resource_path("src/assets/omixforge.png")
-
-        toggle_sidebar_action = QAction(QIcon(icon_path), "Toggle Sidebar", self)
-        toggle_sidebar_action.setCheckable(True)
-        toggle_sidebar_action.setChecked(True)
-        toggle_sidebar_action.triggered.connect(self.toggle_sidebar)
-        self.toolbar.addAction(toggle_sidebar_action)
+        self.toggle_sidebar_action = QAction(theme_manager.get_icon("logo"), "Toggle Sidebar", self)
+        self.toggle_sidebar_action.setCheckable(True)
+        self.toggle_sidebar_action.setChecked(True)
+        self.toggle_sidebar_action.triggered.connect(self.toggle_sidebar)
+        self.toolbar.addAction(self.toggle_sidebar_action)
 
         self.logout_toolbar = QToolBar("Session actions", self)
         self.logout_toolbar.setObjectName("sessionActionsToolbar")
@@ -352,6 +350,8 @@ class MainWindow(QMainWindow):
             self.logout_button.setIcon(QIcon(theme_manager.get_icon("logout")))
         if hasattr(self, "theme_toggle_button") and self.theme_toggle_button:
             self.theme_toggle_button.setIcon(QIcon(theme_manager.get_icon("theme")))
+        if hasattr(self, "toggle_sidebar_action") and self.toggle_sidebar_action:
+            self.toggle_sidebar_action.setIcon(theme_manager.get_icon("logo"))
 
     def _show_session_navigation(self, visible: bool):
         """Show navigation while a workspace is open; hide it on access screens."""

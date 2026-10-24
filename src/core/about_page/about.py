@@ -42,15 +42,9 @@ class AboutPage(QWidget):
         # Logo section
         logo_layout = QHBoxLayout()
         logo_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        try:
-            logo_path = resource_path("src/assets/omixforge.png")
-            logo_label = QLabel()
-            pixmap = QPixmap(logo_path)
-            scaled_pixmap = pixmap.scaledToWidth(100, Qt.TransformationMode.SmoothTransformation)
-            logo_label.setPixmap(scaled_pixmap)
-            logo_layout.addWidget(logo_label)
-        except Exception:
-            pass
+        self.logo_label = QLabel()
+        self._update_logo()
+        logo_layout.addWidget(self.logo_label)
         content_layout.addLayout(logo_layout)
         
         # Title
@@ -173,6 +167,13 @@ class AboutPage(QWidget):
         self._scroll.setWidget(content_widget)
         main_layout.addWidget(self._scroll)
 
+    def _update_logo(self):
+        """Update logo image based on the active theme."""
+        if hasattr(self, "logo_label") and self.logo_label:
+            pixmap = QPixmap(theme_manager.get_logo_path())
+            if not pixmap.isNull():
+                self.logo_label.setPixmap(pixmap.scaledToWidth(100, Qt.TransformationMode.SmoothTransformation))
+
     def _apply_license_color(self):
         """Set the license text color from the active theme token."""
         color = theme_manager.get_color("text_secondary")
@@ -180,5 +181,6 @@ class AboutPage(QWidget):
 
     def _on_theme_changed(self, _theme_name: str):
         """Respond to theme changes: update dynamic colors."""
+        self._update_logo()
         self._apply_license_color()
         self._scroll.viewport().setStyleSheet("background: transparent;")

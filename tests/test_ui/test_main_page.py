@@ -339,30 +339,35 @@ def test_pipeline_schema_is_found_in_nextflow_clone(tmp_path):
 def test_starts_on_access_page(window):
     assert window.centralWidget().__class__.__name__ == "AccessModePage"
     title = window.findChild(QLabel, "titleLabel")
-    title.text() == "OmixForge"
+    assert title.text() == "Your science,\nin motion."
+    brand_name = window.findChild(QLabel, "brandName")
+    assert brand_name.text() == "OmixForge"
 
     subtitleLabel = window.findChild(QLabel, "subtitleLabel")
-    assert subtitleLabel.text() == "Offline Bioinformatics Pipeline Execution"
+    assert subtitleLabel.text() == (
+        "Bring samples, pipelines, and results together in one calm workspace.\n"
+        "Build a reproducible path from raw data to discovery."
+    )
 
 
 def test_public_access_button(window):
     start_button = window.findChild(QPushButton, "publicStartButton")
     assert start_button is not None
-    assert start_button.text() == "Start"
+    assert start_button.text() == "Start a workspace"
 
 
 def test_access_page_uses_original_padding(window):
     margins = window.access_page.layout().contentsMargins()
-    assert margins.left() <= 20
-    assert margins.right() <= 20
-    assert margins.bottom() <= 20
+    assert margins.left() == 56
+    assert margins.right() == 56
+    assert margins.bottom() == 30
 
 
 def test_private_access_button(window):
     private_button = window.findChild(QToolButton, "privateModeButton")
     assert private_button is not None
     assert not private_button.icon().isNull()
-    assert "encrypted" in private_button.toolTip()
+    assert "encrypted" in private_button.toolTip().lower()
 
 
 def test_public_mode_loads_main_ui(window, sidebar_items):
@@ -766,7 +771,7 @@ def test_pipeline_cards_scroll_after_fifteenth_pipeline(qtbot, monkeypatch):
     assert page.cards_scroll.verticalScrollBar().maximum() > 0
 
 
-def test_access_page_renders_compact_mode_controls(qtbot):
+def test_access_page_renders_mode_controls(qtbot):
     page = AccessModePage(True, True)
     qtbot.addWidget(page)
     page.resize(800, 600)
@@ -775,16 +780,16 @@ def test_access_page_renders_compact_mode_controls(qtbot):
 
     assert page.findChild(QWidget, "public_access_card") is None
     assert page.findChild(QWidget, "private_access_card") is None
-    assert page.public_start_button.text() == "Start"
+    assert page.public_start_button.text() == "Start a workspace"
     assert not page.private_mode_button.icon().isNull()
-    assert page.public_start_button.size().width() == 112
+    assert page.public_start_button.minimumWidth() == 190
     assert page.public_start_button.size().height() == 48
-    assert page.private_mode_button.size().width() == 48
+    assert page.private_mode_button.size().width() == 154
     assert page.private_mode_button.size().height() == 48
     assert page.private_mode_button.y() > page.findChild(QLabel, "titleLabel").y()
     margins = page.layout().contentsMargins()
-    assert margins.left() == 44
-    assert margins.bottom() == 44
+    assert margins.left() == 56
+    assert margins.bottom() == 30
 
 
 def test_access_mode_buttons_emit_their_existing_signals(qtbot):
@@ -990,6 +995,7 @@ def test_plugin_store_page_has_tabs_search_and_refresh(qtbot, monkeypatch):
     assert page.store_tab.findChild(QLineEdit) is not None
     assert page.store_tab.refresh_button.text() == "Refresh"
 
+    page.store_tab.fetch_available_plugins()
     page.store_tab.search_input.setText("chart")
     page.store_tab.refresh_button.click()
 

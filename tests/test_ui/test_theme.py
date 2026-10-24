@@ -248,6 +248,29 @@ class TestIconHelpers:
         assert isinstance(path, str)
         assert "sun" in path.lower()
 
+    def test_get_logo_path_returns_light_logo_for_dark_theme(self, qapp):
+        """Dark theme should use the light-colored logo for contrast."""
+        from src.utils.theme_manager import theme_manager
+        theme_manager.set_theme("dark")
+        logo_path = theme_manager.get_logo_path()
+        assert "logo_light" in logo_path
+
+    def test_get_logo_path_returns_standard_logo_for_light_theme(self, qapp):
+        """Light theme should use the standard dark-colored logo."""
+        from src.utils.theme_manager import theme_manager
+        theme_manager.set_theme("light")
+        logo_path = theme_manager.get_logo_path()
+        assert "omixforge.png" in logo_path
+
+    def test_get_icon_logo_is_valid(self, qapp):
+        from src.utils.theme_manager import theme_manager
+        theme_manager.set_theme("dark")
+        icon_dark = theme_manager.get_icon("logo")
+        assert not icon_dark.isNull()
+        theme_manager.set_theme("light")
+        icon_light = theme_manager.get_icon("logo")
+        assert not icon_light.isNull()
+
 
 # ---------------------------------------------------------------------------
 # 7. Persistence

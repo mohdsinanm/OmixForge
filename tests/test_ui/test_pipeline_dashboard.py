@@ -58,7 +58,21 @@ def test_check_pipline_card(window, qtbot):
         pipeline_delete_btn = dashboard.findChild(QPushButton, "pipeline_delete_btn")
         assert pipeline_delete_btn, "Failed to find delete button"
 
-def test_check_pipeline_import_page(window, qtbot):
+def test_check_pipeline_import_page(window, qtbot, monkeypatch):
+    from src.utils.nfcore_utils import RemoteWorkflowList
+
+    monkeypatch.setattr(
+        "src.core.dashboard.pipeline_import_tab.refresh_worker.NfcoreUtils.get_pipelines",
+        lambda _self: [
+            RemoteWorkflowList({
+                "name": "demo",
+                "full_name": "nf-core/demo",
+                "description": "Demo workflow",
+                "topics": ["test"],
+                "archived": False,
+            })
+        ],
+    )
 
     # click the public mode
     window.access_page.public_selected.emit()
