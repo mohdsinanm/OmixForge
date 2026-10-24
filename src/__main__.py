@@ -334,32 +334,55 @@ class MainWindow(QMainWindow):
             setattr(self, attr, None)
 
     def logout_to_startup(self):
-        """Return to startup, with a choice for any active local pipeline runs."""
+        """Return to startup after choosing how active runs should be handled."""
         local_pipeline = self.pipeline_dashboard.local_pipeline_tab
         running_processes = local_pipeline.get_active_run_names()
+        private_runs = [
+            run_name for run_name in running_processes
+            if local_pipeline.processes.get(run_name, {}).get("metadata", {}).get("encrypted")
+        ]
+        app = QApplication.instance()
+        private_session = bool(getattr(app, "cred", None)) if app is not None else False
 
         if running_processes:
             prompt = QMessageBox(self)
             prompt.setWindowTitle("Pipeline is running")
-            prompt.setText(
-                f"{len(running_processes)} pipeline process(es) are running. "
-                "Choose whether to keep them running while you return to startup."
-            )
             prompt.setIcon(QMessageBox.Icon.Question)
-            background_button = prompt.addButton(
-                "Continue in background", QMessageBox.ButtonRole.AcceptRole
-            )
-            cancel_button = prompt.addButton(
-                "Cancel process and log out", QMessageBox.ButtonRole.DestructiveRole
-            )
-            prompt.addButton("Stay here", QMessageBox.ButtonRole.RejectRole)
-            prompt.exec()
-            chosen = prompt.clickedButton()
-            if chosen is cancel_button:
-                local_pipeline.cancel_active_runs()
-            elif chosen is not background_button:
-                return
+            if private_runs and not private_session:
+                prompt.setText(
+                    "A private pipeline is running. Log out to return to startup, "
+                    "then sign in privately to cancel it, or stay here."
+                )
+                logout_button = prompt.addButton(
+                    "Log out to cancel from private mode", QMessageBox.ButtonRole.AcceptRole
+                )
+                prompt.addButton("Stay here", QMessageBox.ButtonRole.RejectRole)
+                prompt.exec()
+                if prompt.clickedButton() is not logout_button:
+                    return
+            else:
+                prompt.setText(
+                    f"{len(running_processes)} pipeline process(es) are running. "
+                    "Choose whether to keep them running while you return to startup."
+                )
+                background_button = prompt.addButton(
+                    "Continue in background", QMessageBox.ButtonRole.AcceptRole
+                )
+                cancel_button = prompt.addButton(
+                    "Cancel process and log out", QMessageBox.ButtonRole.DestructiveRole
+                )
+                prompt.addButton("Stay here", QMessageBox.ButtonRole.RejectRole)
+                prompt.exec()
+                chosen = prompt.clickedButton()
+                if chosen is cancel_button:
+                    local_pipeline.cancel_active_runs()
+                elif chosen is not background_button:
+                    return
 
+        self._complete_logout()
+
+    def _complete_logout(self):
+        """Clear session credentials and return to the access-mode screen."""
         app = QApplication.instance()
         if app is not None:
             app.cred = None
@@ -388,6 +411,8 @@ class MainWindow(QMainWindow):
         """
         if self._main_ui_loaded:
             local_pipeline = self.pipeline_dashboard.local_pipeline_tab
+            app = QApplication.instance()
+            private_session = bool(getattr(app, "cred", None)) if app is not None else False
             running_processes = local_pipeline.get_active_run_names()
             private_runs = [
                 run_name for run_name in running_processes
@@ -404,10 +429,14 @@ class MainWindow(QMainWindow):
                     "Pipeline is running" if running_processes else "Encryption is pending"
                 )
                 if running_processes:
-                    message = (
-                        f"{len(running_processes)} pipeline process(es) are running. "
-                        "Choose whether they should continue after OmixForge closes."
-                    )
+                    message = f"{len(running_processes)} pipeline process(es) are running. "
+                    if private_runs and not private_session:
+                        message += (
+                            "Private runs cannot be cancelled from this session; "
+                            "they may continue in the background."
+                        )
+                    else:
+                        message += "Choose whether they should continue after OmixForge closes."
                 else:
                     message = "Private pipeline results are still being encrypted."
                 if pending_private_encryption:
@@ -418,19 +447,36 @@ class MainWindow(QMainWindow):
                     )
                 prompt.setText(message)
                 prompt.setIcon(QMessageBox.Icon.Question)
-                continue_button = prompt.addButton(
-                    "Close; encrypt on next login" if pending_private_encryption
-                    else "Continue after closing",
-                    QMessageBox.ButtonRole.AcceptRole,
-                )
+                switch_to_private_button = None
+                continue_button = None
+                if running_processes and private_runs and not private_session:
+                    message += (
+                        " Log out and cancel the private run from private mode, "
+                        "or keep the app open."
+                    )
+                    prompt.setText(message)
+                    switch_to_private_button = prompt.addButton(
+                        "Log out and cancel from private mode",
+                        QMessageBox.ButtonRole.AcceptRole,
+                    )
+                else:
+                    continue_button = prompt.addButton(
+                        "Close; encrypt on next login" if pending_private_encryption
+                        else "Continue after closing",
+                        QMessageBox.ButtonRole.AcceptRole,
+                    )
                 cancel_button = None
-                if running_processes:
+                if running_processes and (private_session or not private_runs):
                     cancel_button = prompt.addButton(
                         "Cancel runs and close", QMessageBox.ButtonRole.DestructiveRole
                     )
                 prompt.addButton("Keep app open", QMessageBox.ButtonRole.RejectRole)
                 prompt.exec()
                 chosen = prompt.clickedButton()
+                if switch_to_private_button is not None and chosen is switch_to_private_button:
+                    e.ignore()
+                    self._complete_logout()
+                    return
                 if cancel_button is not None and chosen is cancel_button:
                     local_pipeline.cancel_active_runs()
                 elif chosen is not continue_button:

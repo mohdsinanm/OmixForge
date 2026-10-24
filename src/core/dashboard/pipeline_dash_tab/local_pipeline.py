@@ -630,6 +630,16 @@ class PipelineLocal(QWidget):
                 continue
         return None
 
+    def _can_cancel_run(self, run_name: str) -> bool:
+        """Allow private runs to be cancelled only in an authenticated private session."""
+        entry = self.processes.get(run_name, {})
+        is_private_run = entry.get("metadata", {}).get("encrypted", False)
+        if not is_private_run:
+            return True
+
+        app = QApplication.instance()
+        return bool(getattr(app, "cred", None)) if app is not None else False
+
 
     def on_card_clicked(self, name):
         """Handle pipeline card click - start async info fetch with spinner."""
@@ -767,7 +777,10 @@ class PipelineLocal(QWidget):
         running_rn = self._find_run_for_pipeline(name)
         if running_rn:
             self.run_btn.setEnabled(False)
-            self.cancel_btn.setEnabled(running_rn != getattr(self, "remote_run_name", None))
+            self.cancel_btn.setEnabled(
+                running_rn != getattr(self, "remote_run_name", None)
+                and self._can_cancel_run(running_rn)
+            )
             # set current run tracking so cancel will refer to the right process
             self.current_run_name = running_rn
             self.current_pipeline = name
@@ -1083,7 +1096,10 @@ class PipelineLocal(QWidget):
         existing_run = self._find_run_for_pipeline(pipeline)
         if existing_run:
             self.run_btn.setEnabled(False)
-            self.cancel_btn.setEnabled(existing_run != getattr(self, "remote_run_name", None))
+            self.cancel_btn.setEnabled(
+                existing_run != getattr(self, "remote_run_name", None)
+                and self._can_cancel_run(existing_run)
+            )
             self.current_run_name = existing_run
             self.current_pipeline = pipeline
             return
@@ -1295,6 +1311,13 @@ class PipelineLocal(QWidget):
         if not hasattr(self, 'current_run_name') or not self.current_run_name:
             return
         rn = self.current_run_name
+        if not self._can_cancel_run(rn):
+            QMessageBox.information(
+                self,
+                "Private pipeline is running",
+                "Log in with the private account that started this run to cancel it.",
+            )
+            return
         entry = self.processes.get(rn)
         if not entry:
             return

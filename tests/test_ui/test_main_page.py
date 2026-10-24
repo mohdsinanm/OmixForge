@@ -2,6 +2,7 @@ import json
 from types import SimpleNamespace
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QToolButton, QLineEdit, QTabWidget, QComboBox, QPushButton, QApplication
 
 from src.core.about_page.about import AboutPage
@@ -60,6 +61,272 @@ def test_png_file_viewer_loads_image_not_text(tmp_path, qtbot):
     assert viewer.image_label.pixmap() is not None
     assert viewer.image_label.pixmap().size().width() == 8
     assert not hasattr(viewer, "editor")
+
+
+def test_close_prompt_respects_run_mode_permissions(window, monkeypatch):
+    import src.__main__ as main_module
+
+    class Prompt:
+        class Icon:
+            Question = object()
+
+        class ButtonRole:
+            AcceptRole = object()
+            DestructiveRole = object()
+            RejectRole = object()
+
+        instances = []
+
+        def __init__(self, _parent):
+            self.buttons = []
+            self.instances.append(self)
+
+        def setWindowTitle(self, _title):
+            pass
+
+        def setText(self, _text):
+            pass
+
+        def setIcon(self, _icon):
+            pass
+
+        def addButton(self, label, _role):
+            self.buttons.append(label)
+            return label
+
+        def exec(self):
+            pass
+
+        def clickedButton(self):
+            return self.buttons[0]
+
+    monkeypatch.setattr(main_module, "QMessageBox", Prompt)
+    app = QApplication.instance()
+    monkeypatch.setattr(app, "cred", None, raising=False)
+
+    local_pipeline = SimpleNamespace(
+        get_active_run_names=lambda: ["demo_run"],
+        processes={"demo_run": {"metadata": {"encrypted": False}}},
+        _encrypting_runs=set(),
+        completed_detached_runs={},
+        cancel_active_runs=lambda: None,
+    )
+    window._main_ui_loaded = True
+    window.pipeline_dashboard = SimpleNamespace(local_pipeline_tab=local_pipeline)
+    window.plugin_manager = SimpleNamespace(unload_all=lambda: None)
+
+    window.closeEvent(QCloseEvent())
+    assert Prompt.instances[-1].buttons == [
+        "Continue after closing", "Cancel runs and close", "Keep app open"
+    ]
+
+    local_pipeline.processes["demo_run"]["metadata"]["encrypted"] = True
+    access_page_calls = []
+    window.show_access_page = lambda: access_page_calls.append(True)
+    window.closeEvent(QCloseEvent())
+    assert Prompt.instances[-1].buttons == [
+        "Log out and cancel from private mode", "Keep app open"
+    ]
+    assert access_page_calls
+
+    app.cred = {"user": "private-user", "password": "test-password"}
+    window.closeEvent(QCloseEvent())
+    assert "Cancel runs and close" in Prompt.instances[-1].buttons
+    assert "Close; encrypt on next login" in Prompt.instances[-1].buttons
+
+
+def test_public_session_cannot_cancel_private_pipeline_run(qtbot, monkeypatch):
+    import src.core.dashboard.pipeline_dash_tab.local_pipeline as local_pipeline_module
+
+    app = QApplication.instance()
+    monkeypatch.setattr(app, "cred", None, raising=False)
+    cancel_calls = []
+    information_calls = []
+    local_pipeline = SimpleNamespace(
+        current_run_name="private_run",
+        processes={"private_run": {"metadata": {"encrypted": True}, "detached": True}},
+        _can_cancel_run=lambda run_name: PipelineLocal._can_cancel_run(local_pipeline, run_name),
+        _cancel_detached_run=lambda run_name: cancel_calls.append(run_name),
+        run_btn=SimpleNamespace(setEnabled=lambda _enabled: None),
+        cancel_btn=SimpleNamespace(setEnabled=lambda _enabled: None),
+    )
+    monkeypatch.setattr(
+        local_pipeline_module.QMessageBox,
+        "information",
+        lambda *args: information_calls.append(args),
+    )
+
+    PipelineLocal.on_cancel_clicked(local_pipeline)
+
+    assert not cancel_calls
+    assert information_calls
+
+
+def test_public_logout_can_switch_to_private_mode_for_private_run(window, monkeypatch):
+    import src.__main__ as main_module
+
+    class Prompt:
+        class Icon:
+            Question = object()
+
+        class ButtonRole:
+            AcceptRole = object()
+            DestructiveRole = object()
+            RejectRole = object()
+
+        instances = []
+
+        def __init__(self, _parent):
+            self.buttons = []
+            self.instances.append(self)
+
+        def setWindowTitle(self, _title):
+            pass
+
+        def setText(self, _text):
+            pass
+
+        def setIcon(self, _icon):
+            pass
+
+        def addButton(self, label, _role):
+            self.buttons.append(label)
+            return label
+
+        def exec(self):
+            pass
+
+        def clickedButton(self):
+            return self.buttons[0]
+
+    monkeypatch.setattr(main_module, "QMessageBox", Prompt)
+    app = QApplication.instance()
+    monkeypatch.setattr(app, "cred", None, raising=False)
+    cancel_calls = []
+    local_pipeline = SimpleNamespace(
+        get_active_run_names=lambda: ["demo_run"],
+        processes={"demo_run": {"metadata": {"encrypted": True}}},
+        cancel_active_runs=lambda: cancel_calls.append(True),
+    )
+    window.pipeline_dashboard = SimpleNamespace(local_pipeline_tab=local_pipeline)
+    logout_calls = []
+    window.show_access_page = lambda: logout_calls.append(True)
+
+    window.logout_to_startup()
+
+    assert app.cred is None
+    assert logout_calls
+    assert Prompt.instances[-1].buttons == [
+        "Log out to cancel from private mode", "Stay here"
+    ]
+    assert not cancel_calls
+
+
+def test_private_logout_can_leave_run_in_background(window, monkeypatch):
+    import src.__main__ as main_module
+
+    class Prompt:
+        class Icon:
+            Question = object()
+
+        class ButtonRole:
+            AcceptRole = object()
+            DestructiveRole = object()
+            RejectRole = object()
+
+        def __init__(self, _parent):
+            self.buttons = []
+
+        def setWindowTitle(self, _title):
+            pass
+
+        def setText(self, _text):
+            pass
+
+        def setIcon(self, _icon):
+            pass
+
+        def addButton(self, label, _role):
+            self.buttons.append(label)
+            return label
+
+        def exec(self):
+            pass
+
+        def clickedButton(self):
+            return self.buttons[0]
+
+    monkeypatch.setattr(main_module, "QMessageBox", Prompt)
+    app = QApplication.instance()
+    monkeypatch.setattr(app, "cred", {"user": "private-user"}, raising=False)
+    cancel_calls = []
+    local_pipeline = SimpleNamespace(
+        get_active_run_names=lambda: ["demo_run"],
+        processes={"demo_run": {"metadata": {"encrypted": True}}},
+        cancel_active_runs=lambda: cancel_calls.append(True),
+    )
+    window.pipeline_dashboard = SimpleNamespace(local_pipeline_tab=local_pipeline)
+    logout_calls = []
+    window.show_access_page = lambda: logout_calls.append(True)
+
+    window.logout_to_startup()
+
+    assert app.cred is None
+    assert logout_calls
+    assert not cancel_calls
+
+
+def test_public_pipeline_logout_keeps_existing_choices(window, monkeypatch):
+    import src.__main__ as main_module
+
+    class Prompt:
+        class Icon:
+            Question = object()
+
+        class ButtonRole:
+            AcceptRole = object()
+            DestructiveRole = object()
+            RejectRole = object()
+
+        def __init__(self, _parent):
+            self.buttons = []
+
+        def setWindowTitle(self, _title):
+            pass
+
+        def setText(self, _text):
+            pass
+
+        def setIcon(self, _icon):
+            pass
+
+        def addButton(self, label, _role):
+            self.buttons.append(label)
+            return label
+
+        def exec(self):
+            pass
+
+        def clickedButton(self):
+            return self.buttons[0]
+
+    monkeypatch.setattr(main_module, "QMessageBox", Prompt)
+    app = QApplication.instance()
+    monkeypatch.setattr(app, "cred", None, raising=False)
+    cancel_calls = []
+    local_pipeline = SimpleNamespace(
+        get_active_run_names=lambda: ["demo_run"],
+        processes={"demo_run": {"metadata": {"encrypted": False}}},
+        cancel_active_runs=lambda: cancel_calls.append(True),
+    )
+    window.pipeline_dashboard = SimpleNamespace(local_pipeline_tab=local_pipeline)
+    logout_calls = []
+    window.show_access_page = lambda: logout_calls.append(True)
+
+    window.logout_to_startup()
+
+    assert logout_calls
+    assert not cancel_calls
 
 
 def test_pipeline_schema_is_found_in_nextflow_clone(tmp_path):
