@@ -54,7 +54,7 @@ class StoreTab(QWidget):
         self.available_plugins = []       # Full list
         self.filtered_plugins = []        # Filtered by search
 
-        self.fetch_available_plugins()
+        # self.fetch_available_plugins()
 
     def fetch_available_plugins(self):
         """Fetch plugin files from GitHub repo"""

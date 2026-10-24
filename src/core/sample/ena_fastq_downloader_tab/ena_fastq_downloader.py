@@ -114,7 +114,7 @@ class ENAFastqDownloader(QWidget):
         # Create content widget and layout
         content_widget = QWidget()
         content_widget.setObjectName("enaDownloaderContent")
-        content_widget.setStyleSheet("background: transparent;")
+        content_widget.setStyleSheet("QWidget#enaDownloaderContent { background: transparent; }")
         main_layout = QVBoxLayout(content_widget)
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(15, 15, 15, 15)
@@ -159,10 +159,12 @@ class ENAFastqDownloader(QWidget):
         
         button_layout.addStretch()
         
-        fetch_btn = QPushButton("Fetch Accessions")
-        fetch_btn.setObjectName("fetchAccessionsButton")
-        fetch_btn.clicked.connect(self._on_fetch_clicked)
-        button_layout.addWidget(fetch_btn)
+        self.fetch_btn = QPushButton("Fetch Accessions")
+        self.fetch_btn.setObjectName("fetchAccessionsButton")
+        self.fetch_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.fetch_btn.clicked.connect(self._on_fetch_clicked)
+        self._apply_fetch_button_style()
+        button_layout.addWidget(self.fetch_btn)
         
         main_layout.addLayout(button_layout)
         
@@ -344,8 +346,38 @@ class ENAFastqDownloader(QWidget):
         # Store output directory
         self.output_dir = None
 
+    def _apply_fetch_button_style(self):
+        """Apply solid primary accent styling to the Fetch Accessions button for both themes."""
+        if not hasattr(self, "fetch_btn") or self.fetch_btn is None:
+            return
+        t = theme_manager.get_tokens()
+        self.fetch_btn.setStyleSheet(f"""
+            QPushButton#fetchAccessionsButton {{
+                background-color: {t.btn_primary_bg};
+                border: 1px solid {t.btn_primary_border};
+                border-radius: 6px;
+                color: {t.btn_primary_fg};
+                font-weight: 700;
+                padding: 8px 20px;
+                font-size: 13px;
+            }}
+            QPushButton#fetchAccessionsButton:hover {{
+                background-color: {t.btn_primary_hover_bg};
+                border-color: {t.btn_primary_hover_bg};
+            }}
+            QPushButton#fetchAccessionsButton:pressed {{
+                background-color: {t.btn_primary_pressed_bg};
+            }}
+            QPushButton#fetchAccessionsButton:disabled {{
+                background-color: {t.btn_primary_disabled_bg};
+                border-color: {t.btn_primary_disabled_bg};
+                color: {t.btn_primary_disabled_fg};
+            }}
+        """)
+
     def _on_theme_changed(self, theme_name: str):
         """Update colors when active theme changes."""
+        self._apply_fetch_button_style()
         self.status_frame.setStyleSheet(
             f"background-color: {theme_manager.get_color('secondary_surface_bg')}; border: 1px solid {theme_manager.get_color('border_divider')}; "
             "border-radius: 6px; padding: 10px;"
