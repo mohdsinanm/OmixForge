@@ -49,6 +49,8 @@ class MainWindow(QMainWindow):
         self.initiate = initiate
 
         self.setWindowTitle("OmixForge")
+        self.setMinimumWidth(1100)
+        self.setMinimumHeight(600)
 
         # Flags
         self._main_ui_loaded = False

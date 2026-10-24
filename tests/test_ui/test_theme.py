@@ -271,6 +271,26 @@ class TestIconHelpers:
         icon_light = theme_manager.get_icon("logo")
         assert not icon_light.isNull()
 
+    def test_get_svg_path_startup_bioinformatics(self, qapp):
+        import os
+        from PyQt6.QtSvgWidgets import QSvgWidget
+        from src.utils.theme_manager import theme_manager
+
+        theme_manager.set_theme("light")
+        light_path = theme_manager.get_svg_path("startup_bioinformatics")
+        assert os.path.exists(light_path)
+        assert "startup_bioinformatics.svg" in light_path
+        w_light = QSvgWidget(light_path)
+        assert w_light.renderer().isValid()
+
+        theme_manager.set_theme("dark")
+        dark_path = theme_manager.get_svg_path("startup_bioinformatics")
+        assert os.path.exists(dark_path)
+        assert "startup_bioinformatics_dark.svg" in dark_path
+        w_dark = QSvgWidget(dark_path)
+        assert w_dark.renderer().isValid()
+
+
 
 # ---------------------------------------------------------------------------
 # 7. Persistence
