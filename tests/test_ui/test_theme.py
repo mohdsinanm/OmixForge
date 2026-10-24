@@ -202,6 +202,23 @@ class TestStylesheetGeneration:
         theme_manager.set_theme("dark")
         assert global_style_sheet() == theme_manager.get_stylesheet()
 
+    def test_page_header_uses_dashboard_title_style_and_theme(self, qtbot):
+        from PyQt6.QtWidgets import QLabel
+        from src.utils.theme_manager import theme_manager
+        from src.utils.widgets.page_header import PageHeader
+
+        theme_manager.set_theme("light")
+        header = PageHeader("Settings")
+        qtbot.addWidget(header)
+        title = header.findChild(QLabel, "dashboardTitle")
+
+        assert title.text() == "Settings"
+        assert "23px" in title.styleSheet()
+        assert theme_manager.get_tokens().text_heading in title.styleSheet()
+
+        theme_manager.set_theme("dark")
+        assert theme_manager.get_tokens().text_heading in title.styleSheet()
+
 
 # ---------------------------------------------------------------------------
 # 6. Icon helpers

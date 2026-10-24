@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt
 from src.utils.resource import resource_path
 from src.utils.version import APP_VERSION
 from src.utils.theme_manager import theme_manager
+from src.utils.widgets.page_header import PageHeader
 
 
 class AboutPage(QWidget):
@@ -21,8 +22,9 @@ class AboutPage(QWidget):
     def init_ui(self):
         """Initialize the UI components."""
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(22, 18, 22, 22)
+        main_layout.setSpacing(14)
+        main_layout.addWidget(PageHeader("About", self))
         
         # Create scroll area – transparent so the global theme controls background
         self._scroll = QScrollArea()

@@ -353,7 +353,7 @@ def test_starts_on_access_page(window):
 def test_public_access_button(window):
     start_button = window.findChild(QPushButton, "publicStartButton")
     assert start_button is not None
-    assert start_button.text() == "Start a workspace"
+    assert start_button.text() == "Open workspace"
 
 
 def test_access_page_uses_original_padding(window):
@@ -671,6 +671,7 @@ def test_profile_page_renders_signup_form(monkeypatch):
 def test_about_page_is_populated():
     page = AboutPage()
     labels = [label.text() for label in page.findChildren(QLabel) if label.text()]
+    assert page.findChild(QLabel, "dashboardTitle").text() == "About"
     assert any("OmixForge" in text for text in labels)
     assert any("Version:" in text for text in labels)
     assert any("License" in text for text in labels)
@@ -679,6 +680,7 @@ def test_about_page_is_populated():
 
 def test_sample_page_has_expected_tabs():
     page = Sample()
+    assert page.findChild(QLabel, "dashboardTitle").text() == "Sample Prep"
     tab_widget = page.findChild(QTabWidget)
     assert tab_widget is not None
     assert tab_widget.tabText(0) == "Sample Prep"
@@ -687,11 +689,13 @@ def test_sample_page_has_expected_tabs():
 
 def test_plugins_page_can_register_and_show_widget():
     page = PluginsPage(object())
+    assert page.findChild(QLabel, "dashboardTitle").text() == "Plugins"
     widget = QWidget()
     widget.setObjectName("plugin_widget")
     page.add_plugin_widget("Alpha", widget)
     page.show_plugin("Alpha")
     assert page.stack.currentWidget() is widget
+    assert page.findChild(QLabel, "dashboardTitle").text() == "Alpha"
 
 
 def test_settings_page_save_and_load_round_trip(tmp_path, monkeypatch):
@@ -704,6 +708,7 @@ def test_settings_page_save_and_load_round_trip(tmp_path, monkeypatch):
     monkeypatch.setattr(settings_module, "CONFIG_FILE", config_file)
 
     page = SettingsPage()
+    assert page.findChild(QLabel, "dashboardTitle").text() == "Settings"
     page.folder_section.data_dir.setText("/tmp/data")
     page.folder_section.run_dir.setText("/tmp/run")
     page.folder_section.pipeline_runs.setText("/tmp/pipeline-runs")
@@ -780,7 +785,7 @@ def test_access_page_renders_mode_controls(qtbot):
 
     assert page.findChild(QWidget, "public_access_card") is None
     assert page.findChild(QWidget, "private_access_card") is None
-    assert page.public_start_button.text() == "Start a workspace"
+    assert page.public_start_button.text() == "Open workspace"
     assert not page.private_mode_button.icon().isNull()
     assert page.public_start_button.minimumWidth() == 190
     assert page.public_start_button.size().height() == 48
@@ -809,6 +814,7 @@ def test_pipeline_dashboard_has_expected_tabs(monkeypatch):
     monkeypatch.setattr(local_module, "json_read", lambda *_args, **_kwargs: {"folders": {"RUN_DIR": "/tmp", "PIPELINES_RUNS": "/tmp", "SAMPLE_PREP_DIR": "/tmp"}})
 
     page = PipelineDashboard()
+    assert page.findChild(QLabel, "dashboardTitle").text() == "Pipeline workspace"
     tab_widget = page.findChild(QTabWidget)
     assert tab_widget is not None
     assert tab_widget.tabText(0) == "Pipeline"
@@ -876,6 +882,7 @@ def test_pipeline_status_page_has_expected_tabs_and_cards(tmp_path, monkeypatch)
     monkeypatch.setattr(run_status_module, "json_read", lambda *_args, **_kwargs: {"folders": {"RUN_DIR": str(run_dir), "PIPELINES_RUNS": str(run_dir)}})
 
     page = PipelineStatus()
+    assert page.findChild(QLabel, "dashboardTitle").text() == "Pipeline Status"
     tab_widget = page.findChild(QTabWidget)
     assert tab_widget is not None
     assert tab_widget.tabText(0) == "Status"
@@ -988,6 +995,7 @@ def test_plugin_store_page_has_tabs_search_and_refresh(qtbot, monkeypatch):
     page = PluginStore(window)
     qtbot.addWidget(page)
 
+    assert page.findChild(QLabel, "dashboardTitle").text() == "Plugin Store"
     tab_widget = page.findChild(QTabWidget)
     assert tab_widget is not None
     assert tab_widget.tabText(0) == "Store"

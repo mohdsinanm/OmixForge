@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QToolButton, QPushButton,
-    QFrame, QSizePolicy,
+    QSizePolicy,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QSize
 from PyQt6.QtGui import QPixmap, QIcon
@@ -49,53 +49,57 @@ class AccessModePage(QWidget):
         copy = QVBoxLayout()
         copy.setSpacing(0)
         copy.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-        kicker = QLabel("FROM SEQUENCE TO SCIENTIFIC INSIGHT")
-        kicker.setObjectName("kickerLabel")
-        copy.addWidget(kicker)
-
-        title = QLabel("Your science,\nin motion.")
-        title.setObjectName("titleLabel")
-        title.setWordWrap(True)
-        copy.addWidget(title)
-
-        subtitle = QLabel(
-            "Bring samples, pipelines, and results together in one calm workspace.\n"
-            "Build a reproducible path from raw data to discovery."
-        )
-        subtitle.setObjectName("subtitleLabel")
-        subtitle.setWordWrap(True)
-        copy.addWidget(subtitle)
-
-        workflow = QHBoxLayout()
-        workflow.setSpacing(10)
-        workflow.setContentsMargins(0, 24, 0, 26)
-        for number, heading, detail in (
-            ("01", "Prepare", "Samples & metadata"),
-            ("02", "Execute", "Nextflow pipelines"),
-            ("03", "Explore", "Outputs & results"),
-        ):
-            item = QVBoxLayout()
-            item.setSpacing(4)
-            step = QLabel(number)
-            step.setObjectName("stepNumber")
-            item.addWidget(step)
-            name = QLabel(heading)
-            name.setObjectName("stepName")
-            item.addWidget(name)
-            desc = QLabel(detail)
-            desc.setObjectName("stepDetail")
-            item.addWidget(desc)
-            workflow.addLayout(item)
-            if number != "03":
-                arrow = QLabel("→")
-                arrow.setObjectName("stepArrow")
-                workflow.addWidget(arrow, alignment=Qt.AlignmentFlag.AlignTop)
-        copy.addLayout(workflow)
 
         if docker_installed and nextflow_installed:
+            
+            kicker = QLabel("FROM SEQUENCE TO SCIENTIFIC INSIGHT")
+            kicker.setObjectName("kickerLabel")
+            copy.addWidget(kicker)
+    
+            title = QLabel("Your science,\nin motion.")
+            title.setObjectName("titleLabel")
+            title.setWordWrap(True)
+            copy.addWidget(title)
+    
+            subtitle = QLabel(
+                "Bring samples, pipelines, and results together in one calm workspace.\n"
+                "Build a reproducible path from raw data to discovery."
+            )
+            subtitle.setObjectName("subtitleLabel")
+            subtitle.setWordWrap(True)
+            copy.addWidget(subtitle)
+    
+            workflow = QHBoxLayout()
+            workflow.setSpacing(10)
+            workflow.setContentsMargins(0, 24, 0, 26)
+            for number, heading, detail in (
+                ("01", "Prepare", "Samples & metadata"),
+                ("02", "Execute", "Nextflow pipelines"),
+                ("03", "Explore", "Outputs & results"),
+            ):
+                item = QVBoxLayout()
+                item.setSpacing(4)
+                step = QLabel(number)
+                step.setObjectName("stepNumber")
+                item.addWidget(step)
+                name = QLabel(heading)
+                name.setObjectName("stepName")
+                item.addWidget(name)
+                desc = QLabel(detail)
+                desc.setObjectName("stepDetail")
+                item.addWidget(desc)
+                workflow.addLayout(item)
+                if number != "03":
+                    arrow = QLabel("→")
+                    arrow.setObjectName("stepArrow")
+                    arrow.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+                    workflow.addWidget(arrow, alignment=Qt.AlignmentFlag.AlignTop)
+            workflow.addStretch(2)
+            copy.addLayout(workflow)
+
             actions = QHBoxLayout()
             actions.setSpacing(12)
-            self.public_start_button = QPushButton("Start a workspace")
+            self.public_start_button = QPushButton("Open workspace")
             self.public_start_button.setObjectName("publicStartButton")
             self.public_start_button.setMinimumSize(190, 48)
             self.public_start_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -108,8 +112,14 @@ class AccessModePage(QWidget):
             self.private_mode_button.setIconSize(QSize(19, 19))
             self.private_mode_button.setText("  Private mode")
             self.private_mode_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-            self.private_mode_button.setMinimumSize(154, 48)
+            self.private_mode_button.setMinimumSize(190, 48)
             self.private_mode_button.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.private_mode_button.setStyleSheet("""
+                QToolButton#privateModeButton {
+                    text-align: center;
+                    padding: 0px 30px;
+                }
+            """)
             self.private_mode_button.setToolTip("Encrypted workspace; requires login")
             self.private_mode_button.setAccessibleName("Private mode (encrypted)")
             self.private_mode_button.clicked.connect(self.private_selected.emit)
@@ -120,12 +130,8 @@ class AccessModePage(QWidget):
             self.loading_spinner = LoadingSpinner("Preparing your workspace…", parent=self)
             copy.addWidget(self.loading_spinner)
         else:
-            self.requirements_frame = QFrame()
-            self.requirements_frame.setObjectName("requirementsPanel")
-            req_layout = QVBoxLayout(self.requirements_frame)
-            req_layout.setContentsMargins(16, 12, 16, 12)
-            self.req_page = RequirementsNotSatisfied(req_layout, docker_installed, nextflow_installed)
-            copy.addWidget(self.requirements_frame)
+            self.req_widget = RequirementsNotSatisfied(docker_installed, nextflow_installed, parent=self)
+            copy.addWidget(self.req_widget)
 
         copy.addStretch(1)
         content.addLayout(copy, 5)
@@ -191,13 +197,12 @@ class AccessModePage(QWidget):
         QLabel#stepNumber {{ color: {t.warning}; font-size: 10px; font-weight: 800; letter-spacing: 1px; }}
         QLabel#stepName {{ color: {t.text_primary}; font-size: 13px; font-weight: 700; }}
         QLabel#stepDetail {{ color: {t.text_secondary}; font-size: 10px; }}
-        QLabel#stepArrow {{ color: {t.text_disabled}; font-size: 18px; margin: 0 3px; }}
+        QLabel#stepArrow {{ color: {t.text_disabled}; font-size: 16px; margin: 8px 4px 0 4px; }}
         QPushButton#publicStartButton {{ background: {t.btn_primary_bg}; border: 1px solid {t.btn_primary_border}; border-radius: 7px; color: {t.btn_primary_fg}; font-size: 13px; font-weight: 700; padding: 0 18px; }}
         QPushButton#publicStartButton:hover {{ background: {t.btn_primary_hover_bg}; }}
         QPushButton#publicStartButton:disabled {{ background: {t.btn_primary_disabled_bg}; color: {t.btn_primary_disabled_fg}; }}
         QToolButton#privateModeButton {{ background: {t.btn_default_bg}; border: 1px solid {t.btn_default_border}; border-radius: 7px; color: {t.btn_default_fg}; font-weight: 600; padding: 0 12px; }}
         QToolButton#privateModeButton:hover {{ background: {t.btn_default_hover_bg}; border-color: {t.btn_default_hover_border}; }}
         QToolButton#privateModeButton:disabled {{ color: {t.btn_default_disabled_fg}; }}
-        QFrame#requirementsPanel {{ background: {t.elevated_card_bg}; border: 1px solid {t.border_divider}; border-radius: 8px; }}
         QWidget#workflowIllustration {{ background: transparent; }}
         """

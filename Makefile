@@ -8,6 +8,7 @@ DESKTOP_FILE = $(APP_NAME).desktop
 ICON_NAME = $(APP_NAME).png
 ICON_SOURCE = src/assets/$(ICON_NAME)
 VERSION_SCRIPT = python3 scripts/sync_version.py
+ASSET_ARGS = $(shell find src/assets -type f ! -name '*.py' ! -name '*.pyc' ! -path '*/__pycache__/*' -printf '--add-data "%p:%h" ')
 
 .PHONY: all clean build-deb build-bin sync-version release
 
@@ -21,7 +22,7 @@ release: sync-version
 
 build-bin: sync-version
 	@echo "Building PyInstaller executable..."
-	poetry run pyinstaller --name $(BIN_NAME) --onefile --noconsole $(ENTRY_POINT) --add-data "src/assets/omixforge.png:src/assets" --add-data "src/assets/users-alt.svg:src/assets" --add-data "src/assets/lock.svg:src/assets"
+	poetry run pyinstaller --name $(BIN_NAME) --onefile --noconsole $(ENTRY_POINT) $(ASSET_ARGS)
 	@echo "Executable built at dist/$(BIN_NAME)"
 	split -b 80M dist/omixforge dist/omixforge.part.
 

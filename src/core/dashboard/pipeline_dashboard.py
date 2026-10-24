@@ -1,5 +1,5 @@
 
-from PyQt6.QtWidgets import QLabel, QHBoxLayout, QWidget, QVBoxLayout, QTabWidget
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTabWidget
 
 from src.core.dashboard.pipeline_import_tab.pipeline_import import PipelineImport
 from src.core.dashboard.pipeline_dash_tab.local_pipeline import PipelineLocal
@@ -7,6 +7,7 @@ from src.core.dashboard.pipeline_editor_tab.pipeline_editor import PipelineEdito
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.theme_manager import theme_manager
+from src.utils.widgets.page_header import PageHeader
 
 logger = OmixForgeLogger.get_logger()
 
@@ -20,15 +21,7 @@ class PipelineDashboard(QWidget):
         layout.setContentsMargins(22, 18, 22, 22)
         layout.setSpacing(14)
 
-        header = QWidget(self)
-        header.setObjectName("dashboardHeader")
-        header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(2, 0, 2, 2)
-        title = QLabel("Pipeline workspace", header)
-        title.setObjectName("dashboardTitle")
-        header_layout.addWidget(title)
-        header_layout.addStretch()
-        layout.addWidget(header)
+        layout.addWidget(PageHeader("Pipeline workspace", self))
 
         tab_widget = QTabWidget(self)
         tab_widget.setObjectName("pipelineDashboardTabs")

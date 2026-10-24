@@ -1,10 +1,9 @@
 
-from PyQt6.QtWidgets import QLabel, QMainWindow, QHBoxLayout, QWidget, QVBoxLayout, QTabWidget
-from PyQt6.QtGui import QColor, QPalette
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTabWidget
 
 from src.core.sample.sample_prep_tab.sample_prep import SamplePrepPage
 from src.core.sample.ena_fastq_downloader_tab.ena_fastq_downloader import ENAFastqDownloader
+from src.utils.widgets.page_header import PageHeader
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 
@@ -17,7 +16,9 @@ class Sample(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(22, 18, 22, 22)
-        layout.setSpacing(12)
+        layout.setSpacing(14)
+
+        layout.addWidget(PageHeader("Sample Prep", self))
 
         tab_widget = QTabWidget(self)
         tab_widget.setObjectName("samplePageTabs")

@@ -9,6 +9,7 @@ from src.core.settings_page.sections.server_setting_section import ServerSetting
 from src.utils.constants import CONFIG_DIR, CONFIG_FILE, populate_constants
 from src.utils.fileops.file_handle import ensure_directory, json_read, json_write, file_exists
 from src.utils.theme_manager import theme_manager
+from src.utils.widgets.page_header import PageHeader
 import json
 
 
@@ -27,6 +28,7 @@ class SettingsPage(QWidget):
         layout.setContentsMargins(22, 18, 22, 22)
         layout.setSpacing(14)
 
+        layout.addWidget(PageHeader("Settings", self))
         layout.addWidget(self.folder_section)
         layout.addWidget(self.server_section)
         layout.addWidget(self.app_section)
