@@ -8,6 +8,7 @@ from src.core.settings_page.sections.app_settings_section import AppSettingsSect
 from src.core.settings_page.sections.server_setting_section import ServerSettingsSection
 from src.utils.constants import CONFIG_DIR, CONFIG_FILE, populate_constants
 from src.utils.fileops.file_handle import ensure_directory, json_read, json_write, file_exists
+from src.utils.theme_manager import theme_manager
 import json
 
 
@@ -28,9 +29,9 @@ class SettingsPage(QWidget):
 
         layout.addWidget(self.folder_section)
         layout.addWidget(self.server_section)
+        layout.addWidget(self.app_section)
         # TBD
         # layout.addWidget(self.profile_section)
-        # layout.addWidget(self.app_section)
         layout.addStretch()
 
         # Buttons
@@ -59,6 +60,10 @@ class SettingsPage(QWidget):
         ensure_directory(CONFIG_DIR)
         json_write(CONFIG_FILE, config)
 
+        # Also persist the theme preference via theme_manager so it survives
+        # even if the user switches theme but never clicks Save
+        theme_manager.save_theme(theme_manager.current_theme())
+
         QMessageBox.information(self, "Settings", "Settings saved successfully. Restart the app to reflect the changes")
 
     def load_settings(self):
@@ -71,4 +76,3 @@ class SettingsPage(QWidget):
         self.profile_section.load_settings(data.get("profile", {}))
         self.app_section.load_settings(data.get("app", {}))
         self.server_section.load_settings(data.get("server", []))
-

@@ -6,6 +6,7 @@ from src.core.dashboard.pipeline_dash_tab.local_pipeline import PipelineLocal
 from src.core.dashboard.pipeline_editor_tab.pipeline_editor import PipelineEditorTab
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
+from src.utils.theme_manager import theme_manager
 
 logger = OmixForgeLogger.get_logger()
 
@@ -45,164 +46,182 @@ class PipelineDashboard(QWidget):
 
         layout.addWidget(tab_widget, 1)
 
-        self.setStyleSheet("""
-            QWidget#pipelineDashboardRoot {
-                background-color: #f3f7f6;
-                color: #203a34;
+        # Expose self.widget so callers (e.g. MainWindow.stack) can embed it
+        self.widget = self
+
+        self.setStyleSheet(self.get_custom_stylesheet())
+        theme_manager.theme_changed.connect(lambda: self.setStyleSheet(self.get_custom_stylesheet()))
+
+    @property
+    def widget(self):
+        return self
+
+    @widget.setter
+    def widget(self, val):
+        pass
+
+    def get_custom_stylesheet(self):
+        t = theme_manager.get_tokens()
+        return f"""
+            QWidget#pipelineDashboardRoot {{
+                background-color: {t.main_bg};
+                color: {t.text_primary};
                 font-family: "Noto Sans";
                 font-size: 13px;
-            }
-            QLabel#dashboardTitle {
-                color: #193b34;
+            }}
+            QLabel#dashboardTitle {{
+                color: {t.text_heading};
                 font-size: 23px;
                 font-weight: 700;
-            }
-            QLabel#dashboardSectionTitle {
-                color: #203a34;
+            }}
+            QLabel#dashboardSectionTitle {{
+                color: {t.text_heading};
                 font-size: 17px;
                 font-weight: 700;
-            }
-            QLabel#pipelineDetailTitle {
-                color: #203a34;
+            }}
+            QLabel#pipelineDetailTitle {{
+                color: {t.text_heading};
                 font-size: 15px;
                 font-weight: 700;
-            }
-            QTabWidget#pipelineDashboardTabs::pane {
-                background: #ffffff;
-                border: 1px solid #dbe6e2;
+            }}
+            QTabWidget#pipelineDashboardTabs::pane {{
+                background: {t.primary_content_bg};
+                border: 1px solid {t.border_divider};
                 border-radius: 8px;
                 top: -1px;
-            }
-            QTabWidget#pipelineDashboardTabs QTabBar::tab {
-                background: #e7efec;
-                border: 1px solid #dbe6e2;
+            }}
+            QTabWidget#pipelineDashboardTabs QTabBar::tab {{
+                background: {t.tab_bg};
+                border: 1px solid {t.tab_border};
                 border-bottom: none;
                 border-top-left-radius: 6px;
                 border-top-right-radius: 6px;
-                color: #657a73;
+                color: {t.tab_fg};
                 margin-right: 4px;
                 padding: 10px 16px;
-            }
-            QTabWidget#pipelineDashboardTabs QTabBar::tab:selected {
-                background: #ffffff;
-                border-bottom: 2px solid #111111;
-                color: #111111;
+            }}
+            QTabWidget#pipelineDashboardTabs QTabBar::tab:selected {{
+                background: {t.primary_content_bg};
+                border-bottom: 2px solid {t.tab_selected_border};
+                color: {t.tab_selected_fg};
                 font-weight: 700;
-            }
-            QTabWidget#pipelineDashboardTabs QTabBar::tab:hover:!selected {
-                background: #dce9e5;
-                color: #284b42;
-            }
-            QLineEdit, QComboBox {
-                background: #ffffff;
-                border: 1px solid #cbdad5;
+            }}
+            QTabWidget#pipelineDashboardTabs QTabBar::tab:hover:!selected {{
+                background: {t.tab_hover_bg};
+                color: {t.tab_hover_fg};
+            }}
+            QLineEdit, QComboBox {{
+                background: {t.input_bg};
+                border: 1px solid {t.border_standard};
                 border-radius: 6px;
-                color: #203a34;
+                color: {t.text_primary};
                 min-height: 20px;
                 padding: 7px 9px;
-                selection-background-color: #111111;
-            }
-            QLineEdit:focus, QComboBox:focus {
-                border: 1px solid #111111;
-            }
-            QPushButton {
-                background: #ffffff;
-                border: 1px solid #cbdad5;
+                selection-background-color: {t.selection_bg};
+                selection-color: {t.selection_fg};
+            }}
+            QLineEdit:focus, QComboBox:focus {{
+                border: 1px solid {t.border_focus};
+            }}
+            QPushButton {{
+                background: {t.btn_default_bg};
+                border: 1px solid {t.btn_default_border};
                 border-radius: 6px;
-                color: #31564c;
+                color: {t.btn_default_fg};
                 padding: 8px 13px;
-            }
-            QPushButton:hover {
-                background: #edf6f3;
-                border-color: #7a8580;
-            }
-            QPushButton:pressed {
-                background: #dceee8;
-            }
-            QPushButton:disabled {
-                background: #edf1ef;
-                border-color: #d8e0dd;
-                color: #95a49f;
-            }
+            }}
+            QPushButton:hover {{
+                background: {t.btn_default_hover_bg};
+                border-color: {t.btn_default_hover_border};
+            }}
+            QPushButton:pressed {{
+                background: {t.btn_default_pressed_bg};
+            }}
+            QPushButton:disabled {{
+                background: {t.btn_default_disabled_bg};
+                border-color: {t.btn_default_disabled_border};
+                color: {t.btn_default_disabled_fg};
+            }}
             QPushButton#dashboardPrimaryButton,
             QPushButton#import_from_url,
             QPushButton#import_selected_pipeline,
-            QPushButton#pipeline_run_btn {
-                background: #111111;
-                border-color: #111111;
-                color: #ffffff;
+            QPushButton#pipeline_run_btn {{
+                background: {t.btn_primary_bg};
+                border-color: {t.btn_primary_border};
+                color: {t.btn_primary_fg};
                 font-weight: 700;
-            }
+            }}
             QPushButton#dashboardPrimaryButton:hover,
             QPushButton#import_from_url:hover,
             QPushButton#import_selected_pipeline:hover,
-            QPushButton#pipeline_run_btn:hover {
-                background: #292929;
-                border-color: #292929;
-            }
+            QPushButton#pipeline_run_btn:hover {{
+                background: {t.btn_primary_hover_bg};
+                border-color: {t.btn_primary_hover_bg};
+            }}
             QPushButton#import_from_url:disabled,
             QPushButton#import_selected_pipeline:disabled,
-            QPushButton#pipeline_run_btn:disabled {
-                background: #555555;
-                border-color: #555555;
-                color: #d0d0d0;
-            }
-            QScrollArea {
+            QPushButton#pipeline_run_btn:disabled {{
+                background: {t.btn_primary_disabled_bg};
+                border-color: {t.btn_primary_disabled_bg};
+                color: {t.btn_primary_disabled_fg};
+            }}
+            QScrollArea {{
                 background: transparent;
                 border: none;
-            }
-            QWidget#dashboardScrollContent {
+            }}
+            QWidget#dashboardScrollContent {{
                 background: transparent;
-            }
-            QFrame#pipelineCard {
-                background: #ffffff;
-                border: 1px solid #dbe6e2;
+            }}
+            QFrame#pipelineCard {{
+                background: {t.elevated_card_bg};
+                border: 1px solid {t.border_divider};
                 border-radius: 8px;
-            }
-            QFrame#pipelineCard:hover {
-                background: #f1f8f5;
-                border-color: #7a8580;
-            }
-            QLabel#pipelineCardName {
-                color: #203a34;
+            }}
+            QFrame#pipelineCard:hover {{
+                background: {t.hover_bg};
+                border-color: {t.border_handle_hover};
+            }}
+            QLabel#pipelineCardName {{
+                color: {t.text_heading};
                 font-size: 14px;
                 font-weight: 700;
-            }
-            QLabel#dashboardCount {
-                color: #b45c32;
+            }}
+            QLabel#dashboardCount {{
+                color: {t.warning};
                 font-size: 12px;
                 font-weight: 700;
-            }
-            QLabel#dashboardEmptyState {
-                background: #f7faf9;
-                border: 1px dashed #cbdad5;
+            }}
+            QLabel#dashboardEmptyState {{
+                background: {t.subtle_surface_bg};
+                border: 1px dashed {t.border_standard};
                 border-radius: 8px;
-                color: #71847d;
+                color: {t.text_placeholder};
                 padding: 28px;
-            }
-            QFrame#pipeline_info_box, QFrame#pipelineEditorDetails {
-                background: #f7faf9;
-                border: 1px solid #dbe6e2;
+            }}
+            QFrame#pipeline_info_box, QFrame#pipelineEditorDetails {{
+                background: {t.subtle_surface_bg};
+                border: 1px solid {t.border_divider};
                 border-radius: 8px;
-            }
-            QFrame#pipelineImportDetails {
-                background: #f7faf9;
-                color: #203a34;
-                border: 1px solid #dbe6e2;
+                color: {t.text_primary};
+            }}
+            QFrame#pipelineImportDetails {{
+                background: {t.subtle_surface_bg};
+                color: {t.text_primary};
+                border: 1px solid {t.border_divider};
                 border-radius: 8px;
-            }
-            QWidget#pipelineImportDetailsContent {
-                background: #f7faf9;
-                color: #203a34;
-            }
-            QLabel#pipeline_import_status {
-                background: #edf6f3;
-                border-left: 3px solid #111111;
+            }}
+            QWidget#pipelineImportDetailsContent {{
+                background: {t.subtle_surface_bg};
+                color: {t.text_primary};
+            }}
+            QLabel#pipeline_import_status {{
+                background: {t.secondary_surface_bg};
+                border-left: 3px solid {t.accent_primary};
                 border-radius: 4px;
-                color: #31564c;
+                color: {t.text_heading};
                 padding: 9px 11px;
-            }
-        """)
+            }}
+        """
 
         # expose the widget so callers can embed this dashboard without
         # PipelineDashboard itself forcing it as the main window central widget

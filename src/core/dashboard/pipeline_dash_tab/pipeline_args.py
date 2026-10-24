@@ -68,10 +68,10 @@ class PipelineArgsDialog(QDialog):
 
         # Container for dynamically rendered parameter widgets
         self.params_container = QWidget()
-        self.params_container.setStyleSheet("background-color: #ffffff;")
+        self.params_container.setStyleSheet("background: transparent;")
         self.params_layout = QVBoxLayout(self.params_container)
         scroll = QScrollArea()
-        scroll.viewport().setStyleSheet("background-color: #ffffff;")
+        scroll.viewport().setStyleSheet("background: transparent;")
         scroll.setWidgetResizable(True)
         scroll.setWidget(self.params_container)
         scroll.setFixedHeight(200)

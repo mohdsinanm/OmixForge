@@ -25,6 +25,7 @@ from src.utils.encryption.handle import encrypt_file, decrypt_file, generate_key
 from src.core.dashboard.pipeline_dash_tab.pipeline_args import PipelineArgsDialog
 from src.core.dashboard.pipeline_dash_tab.pipeline_card import PipelineCard
 from src.assets.stylesheet import close_button_style
+from src.utils.theme_manager import theme_manager
 
 logger = OmixForgeLogger.get_logger()
 
@@ -230,7 +231,7 @@ class PipelineLocal(QWidget):
 
         self.cards_scroll = QScrollArea()
         self.cards_scroll.setObjectName("localPipelineScroll")
-        self.cards_scroll.viewport().setStyleSheet("background-color: #f3f7f6;")
+        self.cards_scroll.viewport().setStyleSheet("background: transparent;")
         self.cards_scroll.setWidgetResizable(True)
 
         # scroll only in vertical direction
@@ -240,7 +241,7 @@ class PipelineLocal(QWidget):
 
         scroll_widget = QWidget()
         scroll_widget.setObjectName("localPipelineScrollContent")
-        scroll_widget.setStyleSheet("background-color: #f3f7f6;")
+        scroll_widget.setStyleSheet("background: transparent;")
         self.cards_content = scroll_widget
         scroll_widget.setLayout(self.cards_grid)
         self.empty_state = QLabel("No installed pipelines yet.", scroll_widget)
@@ -263,10 +264,6 @@ class PipelineLocal(QWidget):
         self.content_splitter.addWidget(self.details_box)
         self.content_splitter.setStretchFactor(0, 2)
         self.content_splitter.setStretchFactor(1, 3)
-        self.content_splitter.setStyleSheet("""
-            QSplitter#pipelineInfoSplitter::handle { background-color: #dbe6e2; }
-            QSplitter#pipelineInfoSplitter::handle:hover { background-color: #111111; }
-        """)
         self._details_splitter_initialized = False
         main_layout.addWidget(self.content_splitter, 1)
 
@@ -747,7 +744,7 @@ class PipelineLocal(QWidget):
 
         # Scroll area
         scroll = QScrollArea()
-        scroll.viewport().setStyleSheet("background-color: #ffffff;")
+        scroll.viewport().setStyleSheet("background: transparent;")
         scroll.setWidgetResizable(True)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -850,7 +847,7 @@ class PipelineLocal(QWidget):
         
         # Show error
         error_label = QLabel(f"Error loading pipeline info:\n{error_msg}")
-        error_label.setStyleSheet("color: red;")
+        error_label.setStyleSheet(f"color: {theme_manager.get_color('error')};")
         error_label.setWordWrap(True)
         self.details_layout.addWidget(error_label)
     
@@ -917,7 +914,7 @@ class PipelineLocal(QWidget):
                     if resp2 != QMessageBox.StandardButton.Yes:
                         try:
                             err_label = QLabel("Delete aborted by user. Pipeline not removed.")
-                            err_label.setStyleSheet("color: red;")
+                            err_label.setStyleSheet(f"color: {theme_manager.get_color('error')};")
                             err_label.setWordWrap(True)
                             self.details_layout.addWidget(err_label)
                         except Exception:
@@ -1032,7 +1029,7 @@ class PipelineLocal(QWidget):
                     logger.error(f"Failed to delete pipeline {pipeline}: {message}")
                     try:
                         err_label = QLabel(f"Delete failed: {message}")
-                        err_label.setStyleSheet("color: red;")
+                        err_label.setStyleSheet(f"color: {theme_manager.get_color('error')};")
                         err_label.setWordWrap(True)
                         self.details_layout.addWidget(err_label)
                     except Exception:
@@ -1047,7 +1044,7 @@ class PipelineLocal(QWidget):
                 logger.error(f"Error deleting pipeline: {err}")
                 try:
                     err_label = QLabel(f"Delete error: {err}")
-                    err_label.setStyleSheet("color: red;")
+                    err_label.setStyleSheet(f"color: {theme_manager.get_color('error')};")
                     err_label.setWordWrap(True)
                     self.details_layout.addWidget(err_label)
                 except Exception:

@@ -13,6 +13,7 @@ from pyqtwaitingspinner import WaitingSpinner
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.core.sample.ena_fastq_downloader_tab.ena_fetcher_worker import ENAFetcherWorker
 from src.utils.widgets.loading_spinner import LoadingSpinner
+from src.utils.theme_manager import theme_manager
 
 logger = OmixForgeLogger.get_logger()
 
@@ -107,13 +108,13 @@ class ENAFastqDownloader(QWidget):
         # Create scroll area
         scroll_area = QScrollArea()
         scroll_area.setObjectName("enaDownloaderScroll")
-        scroll_area.viewport().setStyleSheet("background-color: #f3f7f6;")
+        scroll_area.viewport().setStyleSheet("background: transparent;")
         scroll_area.setWidgetResizable(True)
         
         # Create content widget and layout
         content_widget = QWidget()
         content_widget.setObjectName("enaDownloaderContent")
-        content_widget.setStyleSheet("background-color: #f3f7f6;")
+        content_widget.setStyleSheet("background: transparent;")
         main_layout = QVBoxLayout(content_widget)
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(15, 15, 15, 15)
@@ -160,11 +161,6 @@ class ENAFastqDownloader(QWidget):
         
         fetch_btn = QPushButton("Fetch Accessions")
         fetch_btn.setObjectName("fetchAccessionsButton")
-        fetch_btn.setStyleSheet(
-            "QPushButton { background-color: #111111; color: white; "
-            "padding: 8px 20px; border-radius: 6px; font-weight: bold; }"
-            "QPushButton:hover { background-color: #292929; }"
-        )
         fetch_btn.clicked.connect(self._on_fetch_clicked)
         button_layout.addWidget(fetch_btn)
         
@@ -187,7 +183,7 @@ class ENAFastqDownloader(QWidget):
         status_frame = QFrame()
         status_frame.setObjectName("downloadStatusPanel")
         status_frame.setStyleSheet(
-            "background-color: #edf6f3; border: 1px solid #dbe6e2; "
+            f"background-color: {theme_manager.get_color('secondary_surface_bg')}; border: 1px solid {theme_manager.get_color('border_divider')}; "
             "border-radius: 6px; padding: 10px;"
         )
         status_frame.setVisible(False)
@@ -195,11 +191,11 @@ class ENAFastqDownloader(QWidget):
         status_layout = QHBoxLayout(status_frame)
         
         self.successful_label = QLabel("Successful: 0")
-        self.successful_label.setStyleSheet("color: #187b58; font-weight: bold;")
+        self.successful_label.setStyleSheet(f"color: {theme_manager.get_color('success')}; font-weight: bold;")
         status_layout.addWidget(self.successful_label)
         
         self.failed_label = QLabel("Failed: 0")
-        self.failed_label.setStyleSheet("color: #b74f3b; font-weight: bold;")
+        self.failed_label.setStyleSheet(f"color: {theme_manager.get_color('error')}; font-weight: bold;")
         status_layout.addWidget(self.failed_label)
         
         status_layout.addStretch()
@@ -308,7 +304,7 @@ class ENAFastqDownloader(QWidget):
         download_btn_layout.addWidget(self.output_dir_btn)
         
         self.output_dir_label = QLabel("No folder selected")
-        self.output_dir_label.setStyleSheet("color: #71847d;")
+        self.output_dir_label.setStyleSheet(f"color: {theme_manager.get_color('text_secondary')};")
         download_btn_layout.addWidget(self.output_dir_label)
         
         main_layout.addWidget(download_btn_layout_widget)
@@ -324,7 +320,7 @@ class ENAFastqDownloader(QWidget):
         # Create fixed fetch progress panel (stays at bottom, doesn't scroll)
         fetch_progress_panel = QFrame()
         fetch_progress_panel.setStyleSheet(
-            "background-color: #ffffff; border-top: 1px solid #dbe6e2;"
+            f"background-color: {theme_manager.get_color('secondary_surface_bg')}; border-top: 1px solid {theme_manager.get_color('border_divider')};"
         )
         fetch_progress_panel.setVisible(False)
         self.fetch_progress_panel = fetch_progress_panel
@@ -333,7 +329,7 @@ class ENAFastqDownloader(QWidget):
         fetch_progress_layout.setSpacing(5)
         
         fetch_status_label = QLabel("Fetching accessions...")
-        fetch_status_label.setStyleSheet("font-weight: bold; color: #31564c;")
+        fetch_status_label.setStyleSheet(f"font-weight: bold; color: {theme_manager.get_color('accent_primary')};")
         self.fetch_status_label = fetch_status_label
         fetch_progress_layout.addWidget(fetch_status_label)
         
@@ -343,9 +339,24 @@ class ENAFastqDownloader(QWidget):
         fetch_progress_layout.addWidget(fetch_progress_bar)
         
         outer_layout.addWidget(fetch_progress_panel)
+        theme_manager.theme_changed.connect(self._on_theme_changed)
         
         # Store output directory
         self.output_dir = None
+
+    def _on_theme_changed(self, theme_name: str):
+        """Update colors when active theme changes."""
+        self.status_frame.setStyleSheet(
+            f"background-color: {theme_manager.get_color('secondary_surface_bg')}; border: 1px solid {theme_manager.get_color('border_divider')}; "
+            "border-radius: 6px; padding: 10px;"
+        )
+        self.successful_label.setStyleSheet(f"color: {theme_manager.get_color('success')}; font-weight: bold;")
+        self.failed_label.setStyleSheet(f"color: {theme_manager.get_color('error')}; font-weight: bold;")
+        self.output_dir_label.setStyleSheet(f"color: {theme_manager.get_color('text_secondary')};")
+        self.fetch_progress_panel.setStyleSheet(
+            f"background-color: {theme_manager.get_color('secondary_surface_bg')}; border-top: 1px solid {theme_manager.get_color('border_divider')};"
+        )
+        self.fetch_status_label.setStyleSheet(f"font-weight: bold; color: {theme_manager.get_color('accent_primary')};")
     
     def _upload_accession_file(self):
         """Handle file upload for accession list."""
@@ -494,7 +505,7 @@ class ENAFastqDownloader(QWidget):
             
             # Status
             status_item = QTableWidgetItem("✓ Ready")
-            status_item.setForeground(QColor("#27ae60"))
+            status_item.setForeground(QColor(theme_manager.get_color("success")))
             self.results_table.setItem(row_pos, 5, status_item)
         
         # Populate failed accessions only if there are any
@@ -510,7 +521,7 @@ class ENAFastqDownloader(QWidget):
                 self.failed_table.setItem(row_pos, 0, item)
                 
                 error_item = QTableWidgetItem(error)
-                error_item.setForeground(QColor("#e74c3c"))
+                error_item.setForeground(QColor(theme_manager.get_color("error")))
                 self.failed_table.setItem(row_pos, 1, error_item)
         else:
             # Hide failed section if no failures

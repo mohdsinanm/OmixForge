@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt
 
 from src.utils.resource import resource_path
 from src.utils.version import APP_VERSION
+from src.utils.theme_manager import theme_manager
 
 
 class AboutPage(QWidget):
@@ -15,25 +16,26 @@ class AboutPage(QWidget):
         super().__init__(parent)
         self.widget = self
         self.init_ui()
-    
+        theme_manager.theme_changed.connect(self._on_theme_changed)
+
     def init_ui(self):
         """Initialize the UI components."""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(20)
         
-        # Create scroll area
-        scroll = QScrollArea()
-        scroll.setObjectName("aboutScrollArea")
-        scroll.viewport().setStyleSheet("background-color: #ffffff;")
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        # Create scroll area – transparent so the global theme controls background
+        self._scroll = QScrollArea()
+        self._scroll.setObjectName("aboutScrollArea")
+        self._scroll.viewport().setStyleSheet("background: transparent;")
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self._scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         
         # Create content widget
         content_widget = QWidget()
         content_widget.setObjectName("aboutPageContent")
-        content_widget.setStyleSheet("background-color: #ffffff;")
+        content_widget.setStyleSheet("background: transparent;")
         content_layout = QVBoxLayout(content_widget)
         content_layout.setSpacing(15)
         
@@ -92,7 +94,7 @@ class AboutPage(QWidget):
         license_title.setFont(license_title_font)
         content_layout.addWidget(license_title)
         
-        license_text = QLabel(
+        self._license_text = QLabel(
             "OmixForge is released under the MIT License.\n\n"
             "Permission is hereby granted, free of charge, to any person obtaining a copy "
             "of this software and associated documentation files (the \"Software\"), to deal "
@@ -103,10 +105,11 @@ class AboutPage(QWidget):
             "notice and this permission notice shall be included in all copies or substantial "
             "portions of the Software."
         )
-        license_text.setWordWrap(True)
-        license_text.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        license_text.setStyleSheet("color: #71847d; font-size: 10px;")
-        content_layout.addWidget(license_text)
+        self._license_text.setWordWrap(True)
+        self._license_text.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self._license_text.setObjectName("aboutLicenseText")
+        self._apply_license_color()
+        content_layout.addWidget(self._license_text)
         
         # Section: Authors
         authors_title = QLabel("Authors & Contributors")
@@ -167,5 +170,15 @@ class AboutPage(QWidget):
         # Add stretch at the end
         content_layout.addStretch()
         
-        scroll.setWidget(content_widget)
-        main_layout.addWidget(scroll)
+        self._scroll.setWidget(content_widget)
+        main_layout.addWidget(self._scroll)
+
+    def _apply_license_color(self):
+        """Set the license text color from the active theme token."""
+        color = theme_manager.get_color("text_secondary")
+        self._license_text.setStyleSheet(f"color: {color}; font-size: 10px;")
+
+    def _on_theme_changed(self, _theme_name: str):
+        """Respond to theme changes: update dynamic colors."""
+        self._apply_license_color()
+        self._scroll.viewport().setStyleSheet("background: transparent;")

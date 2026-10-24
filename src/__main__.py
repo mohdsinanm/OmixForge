@@ -31,6 +31,7 @@ from src.core.plugin_manager.manager import PluginManager
 from src.core.plugin_manager.plugin_installer import PluginStore
 from src.core.about_page.about import AboutPage
 from src.assets.stylesheet import global_style_sheet
+from src.utils.theme_manager import theme_manager
 
 
 class MainWindow(QMainWindow):
@@ -62,6 +63,8 @@ class MainWindow(QMainWindow):
         self.session_start_page = None
         self.session_login_page = None
 
+        self.statusBar().hide()
+
         self.show_access_page()
 
 
@@ -83,6 +86,10 @@ class MainWindow(QMainWindow):
         if cw:
             cw.deleteLater()
             self.setCentralWidget(None)
+
+        sb = self.statusBar()
+        if sb is not None:
+            sb.hide()
 
         self._main_ui_loaded = False
 
@@ -171,9 +178,22 @@ class MainWindow(QMainWindow):
             QSizePolicy.Policy.Preferred,
         )
         self.logout_toolbar.addWidget(toolbar_spacer)
+
+        # Theme toggle button (sun ↔ moon)
+        self.theme_toggle_button = QPushButton(self.logout_toolbar)
+        self.theme_toggle_button.setObjectName("themeToggleButton")
+        self.theme_toggle_button.setIcon(QIcon(theme_manager.get_icon("theme")))
+        self.theme_toggle_button.setIconSize(QSize(20, 20))
+        self.theme_toggle_button.setFixedSize(42, 40)
+        self.theme_toggle_button.setToolTip("Toggle dark / light mode")
+        self.theme_toggle_button.setAccessibleName("Toggle theme")
+        self.theme_toggle_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.theme_toggle_button.clicked.connect(theme_manager.toggle_theme)
+        self.logout_toolbar.addWidget(self.theme_toggle_button)
+
         self.logout_button = QPushButton(self.logout_toolbar)
         self.logout_button.setObjectName("logoutButton")
-        self.logout_button.setIcon(QIcon(resource_path("src/assets/logout.svg")))
+        self.logout_button.setIcon(QIcon(theme_manager.get_icon("logout")))
         self.logout_button.setIconSize(QSize(20, 20))
         self.logout_button.setFixedSize(42, 40)
         self.logout_button.setToolTip("Log out")
@@ -181,7 +201,14 @@ class MainWindow(QMainWindow):
         self.logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.logout_button.clicked.connect(self.logout_to_startup)
         self.logout_toolbar.addWidget(self.logout_button)
+        toolbar_end_spacer = QWidget(self.logout_toolbar)
+        toolbar_end_spacer.setFixedWidth(8)
+        self.logout_toolbar.addWidget(toolbar_end_spacer)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.logout_toolbar)
+
+        # Update toolbar icons and badge whenever the theme changes
+        theme_manager.theme_changed.connect(self._on_theme_changed)
+
 
         # back_btn = QPushButton("Back")
         # back_btn.clicked.connect(self.show_access_page)
@@ -313,11 +340,27 @@ class MainWindow(QMainWindow):
         # Hide loading dialog after main app finishes loading
         QTimer.singleShot(500, self._hide_loading_spinner)
 
+    def _on_theme_changed(self, _theme_name: str):
+        """React to theme changes: refresh stylesheet, icons, and badge colors."""
+        # Re-apply the global application stylesheet
+        app = QApplication.instance()
+        if app:
+            app.setStyleSheet(global_style_sheet())
+
+        # Update toolbar icons
+        if self.logout_button:
+            self.logout_button.setIcon(QIcon(theme_manager.get_icon("logout")))
+        if hasattr(self, "theme_toggle_button") and self.theme_toggle_button:
+            self.theme_toggle_button.setIcon(QIcon(theme_manager.get_icon("theme")))
+
     def _show_session_navigation(self, visible: bool):
         """Show navigation while a workspace is open; hide it on access screens."""
         for widget in (self.toolbar, self.logout_toolbar, self.sidebar):
             if widget is not None:
                 widget.setVisible(visible)
+        sb = self.statusBar()
+        if sb is not None:
+            sb.setVisible(visible)
 
     def _clear_session_pages(self):
         """Remove temporary access/login pages after returning to the workspace."""
@@ -555,6 +598,10 @@ class MainWindow(QMainWindow):
 def main():
     app = QApplication(sys.argv)
 
+    # Load the user's saved theme preference BEFORE creating the main window
+    # so the initial palette is set and there is no flash of the wrong theme.
+    theme_manager.load_saved_theme()
+    app.setPalette(theme_manager.get_palette())
     app.setStyleSheet(global_style_sheet())
 
     initiate = InitiateApp()

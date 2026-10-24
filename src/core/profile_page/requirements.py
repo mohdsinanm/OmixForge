@@ -55,8 +55,10 @@ class RequirementsNotSatisfied():
         pair = QHBoxLayout()
         pair.setSpacing(6)   # gap between label + mark
 
+        from src.utils.theme_manager import theme_manager
+
         mark = "✔" if installed else "✖"
-        color = "green" if installed else "red"
+        color = theme_manager.get_color("success") if installed else theme_manager.get_color("error")
 
         label = QLabel(f"<b>{name}</b>")
         status = QLabel(f"<span style='color:{color}; font-size:16px'>{mark}</span>")

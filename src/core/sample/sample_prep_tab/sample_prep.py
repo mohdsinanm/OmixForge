@@ -10,6 +10,7 @@ from PyQt6.QtGui import QKeySequence
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.constants import SAMPLE_PREP_DIR, CONFIG_FILE
 from src.utils.fileops.file_handle import ensure_directory, json_read
+from src.utils.theme_manager import theme_manager
 logger = OmixForgeLogger.get_logger()
 
 
@@ -77,14 +78,7 @@ class SamplePrepPage(QWidget):
         self.table = QTableWidget(5, 4)
         self.table.setObjectName("samplePrepTable")
         self.table.setAlternatingRowColors(True)
-        self.table.setStyleSheet(
-            "QTableWidget#samplePrepTable { background-color: #ffffff; }"
-            "QTableWidget#samplePrepTable::item { padding: 5px; }"
-            "QTableWidget#samplePrepTable QHeaderView { background-color: #edf3f1; }"
-            "QTableWidget#samplePrepTable QTableCornerButton::section { "
-            "background-color: #edf3f1; border: none; }"
-        )
-        self.table.viewport().setStyleSheet("background-color: #ffffff;")
+        self.table.setStyleSheet("QTableWidget#samplePrepTable::item { padding: 5px; }")
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setHorizontalHeaderLabels([i for i in ["sample","fastq_1","fastq_2","strandedness"]])
         self.table.setVerticalHeaderLabels([f"{i+1}" for i in range(5)])
@@ -336,25 +330,33 @@ class SamplePrepPage(QWidget):
         dialog.setWindowTitle("Edit Column Header")
         dialog.setLabelText(f"Enter new name for Column {col + 1}:")
         dialog.setTextValue(current_text)
-        dialog.setStyleSheet("""
-            QInputDialog {
-                background-color: #ffffff;
-                border: 1px solid #dbe6e2;
-            }
-            QInputDialog QLineEdit {
-                background-color: #ffffff;
-                border: 1px solid #cbdad5;
+        t = theme_manager.get_tokens()
+        dialog.setStyleSheet(f"""
+            QInputDialog {{
+                background-color: {t.secondary_surface_bg};
+                color: {t.text_primary};
+                border: 1px solid {t.border_standard};
+            }}
+            QInputDialog QLabel {{
+                color: {t.text_primary};
+            }}
+            QInputDialog QLineEdit {{
+                background-color: {t.input_bg};
+                color: {t.text_primary};
+                border: 1px solid {t.border_standard};
                 padding: 7px 9px;
                 border-radius: 6px;
-            }
-            QInputDialog QPushButton {
-                border: 1px solid #cbdad5;
+            }}
+            QInputDialog QPushButton {{
+                background-color: {t.btn_default_bg};
+                color: {t.btn_default_fg};
+                border: 1px solid {t.btn_default_border};
                 padding: 7px 13px;
                 border-radius: 6px;
-            }
-            QInputDialog QPushButton:hover {
-                background-color: #edf6f3;
-            }
+            }}
+            QInputDialog QPushButton:hover {{
+                background-color: {t.btn_default_hover_bg};
+            }}
         """)
         
         ok = dialog.exec()

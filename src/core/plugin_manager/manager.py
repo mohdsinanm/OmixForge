@@ -6,6 +6,7 @@ from typing import List
 from src.core.plugin_manager.plugin_api import PluginBase, API_VERSION
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.constants import PLUGIN_DIR
+from src.utils.theme_manager import theme_manager
 
 
 logger  = OmixForgeLogger.get_logger()
@@ -16,8 +17,10 @@ class PluginManager:
         """Initialize the PluginManager and discover plugins directory."""
         self.plugins_dir = self.get_plugins_dir()
         self.loaded_plugins: List[PluginBase] = []
-
         self.plugins = {}
+
+        # Notify all loaded plugins whenever the application theme changes
+        theme_manager.theme_changed.connect(self._on_theme_changed)
 
     def discover_plugin_files(self):
         """Discover all plugin Python files in the plugins directory.
@@ -119,4 +122,16 @@ class PluginManager:
         plugins = PLUGIN_DIR
         plugins.mkdir(parents=True, exist_ok=True)
         return plugins
+    def _on_theme_changed(self, theme_name: str):
+        """Dispatch theme change event to all loaded plugins.
 
+        Parameters
+        ----------
+        theme_name : str
+            Either "light" or "dark".
+        """
+        for plugin in self.loaded_plugins:
+            try:
+                plugin.on_theme_changed(theme_name)
+            except Exception as e:
+                logger.error(f"Plugin {plugin.name()} raised error in on_theme_changed: {e}")

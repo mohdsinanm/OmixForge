@@ -140,10 +140,6 @@ class PipelineImport(QWidget):
         self.content_splitter.addWidget(self.details_box)
         self.content_splitter.setStretchFactor(0, 2)
         self.content_splitter.setStretchFactor(1, 3)
-        self.content_splitter.setStyleSheet("""
-            QSplitter#pipelineImportSplitter::handle { background-color: #dbe6e2; }
-            QSplitter#pipelineImportSplitter::handle:hover { background-color: #111111; }
-        """)
         self._details_splitter_initialized = False
         self.main_layout.addWidget(self.content_splitter, 1)
 

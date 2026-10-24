@@ -10,6 +10,7 @@ from src.utils.widgets.loading import LoadingDialog
 from src.utils.resource import resource_path
 from src.utils.widgets.credential_popup import CredentialsDialog
 from src.core.status_page.run_state import classify_run_log, is_private_run
+from src.utils.theme_manager import theme_manager
 logger = OmixForgeLogger.get_logger()
 
 from PyQt6.QtWidgets import (
@@ -92,7 +93,7 @@ class PipelineDataCard(QFrame):
         self.status_group_layout.addWidget(self.status_badge)
 
         if locked:
-            self.lock_icon = QSvgWidget(resource_path("src/assets/lock.svg"))
+            self.lock_icon = QSvgWidget(theme_manager.get_svg_path("lock"))
             self.lock_icon.setFixedSize(16, 16)
             self.status_group_layout.addWidget(
                 self.lock_icon, 0, Qt.AlignmentFlag.AlignVCenter
@@ -100,10 +101,18 @@ class PipelineDataCard(QFrame):
 
         layout.addWidget(self.status_group, 0, Qt.AlignmentFlag.AlignVCenter)
 
-    
+    def update_lock_icon(self):
+        """Refresh the lock icon for the active theme."""
+        if self.locked and hasattr(self, "lock_icon"):
+            try:
+                self.lock_icon.load(theme_manager.get_svg_path("lock"))
+            except Exception:
+                pass
+
     def mousePressEvent(self, event):
         self.clicked.emit(self.name)
         event.accept()
+
 
 
 class PipelineResultsPage(QWidget):
@@ -150,10 +159,6 @@ class PipelineResultsPage(QWidget):
         self.content_splitter.addWidget(self.details_box)
         self.content_splitter.setStretchFactor(0, 2)
         self.content_splitter.setStretchFactor(1, 3)
-        self.content_splitter.setStyleSheet("""
-            QSplitter#runResultsSplitter::handle { background-color: #dbe6e2; }
-            QSplitter#runResultsSplitter::handle:hover { background-color: #111111; }
-        """)
         self._details_splitter_initialized = False
         main_layout.addWidget(self.content_splitter, 1)
 
@@ -164,6 +169,9 @@ class PipelineResultsPage(QWidget):
         self._refresh_timer.setInterval(2000)
         self._refresh_timer.timeout.connect(self._periodic_refresh)
         self._refresh_timer.start()
+
+        # Re-render cards on theme change so lock icons update
+        theme_manager.theme_changed.connect(self._on_theme_changed)
 
 
     def get_local_pipelines_status(self):
@@ -461,6 +469,13 @@ class PipelineResultsPage(QWidget):
             selected = getattr(self, "_selected_run", None)
             if selected and selected not in self.pipeline_runs:
                 self._on_close_button_click()
+            self.render_cards()
+        except Exception:
+            pass
+
+    def _on_theme_changed(self, _theme_name: str):
+        """Re-render cards with updated theme (lock icons, badge colors)."""
+        try:
             self.render_cards()
         except Exception:
             pass

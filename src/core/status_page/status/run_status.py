@@ -7,6 +7,7 @@ from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.constants import RUN_DIR, PIPELINES_RUNS, CONFIG_FILE
 from src.utils.fileops.file_handle import list_files_in_directory, read_from_file, delete_directory, delete_file, json_read
 from src.core.status_page.run_state import classify_run_log, is_private_run
+from src.utils.theme_manager import theme_manager
 
 logger = OmixForgeLogger.get_logger()
 
@@ -23,49 +24,63 @@ from src.core.dashboard.pipeline_dash_tab.local_pipeline import PipelineLocal
 class PipelineCard(QFrame):
     clicked = pyqtSignal(str)
 
-    def __init__(self, name, background, status="UNKNOWN", pid=None):
+    # Maps run status to (accent_token, bg_token) theme token attribute names
+    _STATUS_TOKENS = {
+        "FAILED":      ("error",   "error_bg"),
+        "INTERRUPTED": ("error",   "error_bg"),
+        "COMPLETED":   ("success", "success_bg"),
+        "RUNNING":     ("warning", "warning_bg"),
+        "CANCELLED":   ("badge_neutral_border", "badge_neutral_bg"),
+    }
+
+    def __init__(self, name, status="UNKNOWN", pid=None):
         super().__init__()
         self.name = name
+        self.status = status
 
         self.setObjectName("pipelineResultCard")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        accent = {
-            "#fcebe8": "#be5540",
-            "#f0f2f1": "#778780",
-            "#e5f3eb": "#19825c",
-            "#fff3df": "#b87718",
-        }.get(background, "#111111")
-        
-        self.setStyleSheet("""
-            QFrame#pipelineResultCard {{
-                border: 1px solid #dbe6e2;
-                border-left: 4px solid {accent};
-                border-radius: 8px;
-                padding: 10px;
-                background: {background};
-                color: #263b36;
-            }}
-            QFrame#pipelineResultCard:hover {{
-                border-color: #9db9b0;
-            }}
-        """.format(background=background, accent=accent))
 
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(5)
-        name_label = QLabel(name)
-        name_label.setObjectName("pipelineCardName")
-        layout.addWidget(name_label)
+        self._name_label = QLabel(name)
+        self._name_label.setObjectName("pipelineCardName")
+        layout.addWidget(self._name_label)
 
-        detail = QLabel(f"PID {pid}  ·  {status}" if pid else status)
-        detail.setObjectName("pipelineCardRunStatus")
-        layout.addWidget(detail)
+        self._detail_label = QLabel(f"PID {pid}  ·  {status}" if pid else status)
+        self._detail_label.setObjectName("pipelineCardRunStatus")
+        layout.addWidget(self._detail_label)
         self.setLayout(layout)
 
-    
+        self.update_style()
+
+    def update_style(self):
+        """Refresh card colors from the active theme tokens."""
+        t = theme_manager.get_tokens()
+        accent_attr, bg_attr = self._STATUS_TOKENS.get(
+            self.status, ("badge_neutral_border", "badge_neutral_bg")
+        )
+        accent = getattr(t, accent_attr)
+        bg = getattr(t, bg_attr)
+        self.setStyleSheet(f"""
+            QFrame#pipelineResultCard {{
+                border: 1px solid {t.border_standard};
+                border-left: 4px solid {accent};
+                border-radius: 8px;
+                padding: 10px;
+                background: {bg};
+                color: {t.text_primary};
+            }}
+            QFrame#pipelineResultCard:hover {{
+                border-color: {t.accent_primary};
+            }}
+        """)
+
     def mousePressEvent(self, event):
         self.clicked.emit(self.name)
         event.accept()
+
 
 
 class PipelineRunStatus(QWidget):
@@ -112,14 +127,6 @@ class PipelineRunStatus(QWidget):
         self.content_splitter.setObjectName("runStatusSplitter")
         self.content_splitter.setHandleWidth(8)
         self.content_splitter.setChildrenCollapsible(False)
-        self.content_splitter.setStyleSheet("""
-            QSplitter#runStatusSplitter::handle {
-                background-color: #dbe6e2;
-            }
-            QSplitter#runStatusSplitter::handle:hover {
-                background-color: #111111;
-            }
-        """)
         self.content_splitter.addWidget(scroll)
         self.content_splitter.addWidget(self.details_box)
         self.content_splitter.setStretchFactor(0, 2)
@@ -137,6 +144,9 @@ class PipelineRunStatus(QWidget):
 
         # Timer used to refresh the details content when a run is selected
         self._details_timer = None
+
+        # Apply theme and respond to future theme changes
+        theme_manager.theme_changed.connect(self._on_theme_changed)
 
 
     def get_local_pipelines_status(self):
@@ -177,15 +187,8 @@ class PipelineRunStatus(QWidget):
         for index, name in enumerate(self.pipeline_runs):
             content = read_from_file(f"{self.PIPELINES_RUNS}/{name}")
             status, pid = self._run_card_status(name, content)
-            background = {
-                "FAILED": "#fcebe8",
-                "INTERRUPTED": "#fcebe8",
-                "CANCELLED": "#f0f2f1",
-                "COMPLETED": "#e5f3eb",
-                "RUNNING": "#fff3df",
-            }.get(status, "#fff3df")
-            card = PipelineCard(name, background, status, pid)
-            
+            card = PipelineCard(name, status, pid)
+
             card.clicked.connect(self.on_card_clicked)
 
             card.setMaximumHeight(200)
@@ -257,10 +260,11 @@ class PipelineRunStatus(QWidget):
         self._details_content_label.setWordWrap(True)
         self._details_content_label.setFont(QFont("Courier New", 10))
 
-        # Scroll area
+        # Scroll area – transparent so the global theme controls the background
         scroll = QScrollArea()
-        scroll.setStyleSheet("QScrollArea { background-color: #ffffff; border: 1px solid #dbe6e2; }")
-        scroll.viewport().setStyleSheet("background-color: #ffffff;")
+        scroll.setObjectName("runStatusDetailsScroll")
+        scroll.setStyleSheet("QScrollArea#runStatusDetailsScroll { border: 1px solid; border-color: palette(mid); }")
+        scroll.viewport().setStyleSheet("background: transparent;")
         scroll.setWidgetResizable(True)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -398,5 +402,12 @@ class PipelineRunStatus(QWidget):
             content = read_from_file(f"{self.PIPELINES_RUNS}/{name}")
             if hasattr(self, '_details_content_label') and self._details_content_label:
                 self._details_content_label.setText(content)
+        except Exception:
+            pass
+
+    def _on_theme_changed(self, _theme_name: str):
+        """Re-render cards with the new theme colors."""
+        try:
+            self.render_cards()
         except Exception:
             pass
