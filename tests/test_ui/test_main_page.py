@@ -8,6 +8,7 @@ from src.core.about_page.about import AboutPage
 from src.core.dashboard.pipeline_dashboard import PipelineDashboard
 from src.core.dashboard.pipeline_import_tab.pipeline_import import PipelineImport
 from src.core.dashboard.pipeline_dash_tab.local_pipeline import PipelineLocal
+from src.core.dashboard.pipeline_dash_tab.pipeline_args import _find_pipeline_schema
 from src.core.dashboard.pipeline_dash_tab.pipeline_card import PipelineCard
 from src.core.dashboard.pipeline_editor_tab.pipeline_editor import PipelineEditorTab, PipelineDataCard as EditorDataCard
 from src.core.plugin_manager.plugin_page import PluginsPage
@@ -18,6 +19,14 @@ from src.core.settings_page.sections.folder_path_section import FolderPathsSecti
 from src.core.settings_page.settings import SettingsPage
 from src.core.status_page.results.run_results import PipelineResultsPage, PipelineDataCard as ResultsDataCard
 from src.utils.nfcore_utils import NfcoreUtils
+
+
+def test_pipeline_schema_is_found_in_nextflow_clone(tmp_path):
+    schema_path = tmp_path / "clones" / "revision" / "nextflow_schema.json"
+    schema_path.parent.mkdir(parents=True)
+    schema_path.write_text("{}", encoding="utf-8")
+
+    assert _find_pipeline_schema(tmp_path) == schema_path
 
 def test_starts_on_access_page(window):
     assert window.centralWidget().__class__.__name__ == "AccessModePage"

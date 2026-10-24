@@ -1,8 +1,16 @@
 import base64
 from cryptography.fernet import Fernet
 import hashlib
+import os
+import tempfile
+from pathlib import Path
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 logger = OmixForgeLogger.get_logger()
+
+
+def _fernet_key(key):
+    """Accept the URL-safe string keys returned by generate_key and Fernet bytes."""
+    return key.encode("ascii") if isinstance(key, str) else key
 
 def generate_encrypted_file(data: str, filepath: str, key: bytes):
     """
@@ -15,7 +23,7 @@ def generate_encrypted_file(data: str, filepath: str, key: bytes):
     :param key: Encryption key
     :type key: bytes
     """
-    fernet = Fernet(key)
+    fernet = Fernet(_fernet_key(key))
     encrypted_data = fernet.encrypt(data.encode())
     with open(filepath, 'wb') as file:
         file.write(encrypted_data)
@@ -28,11 +36,24 @@ def encrypt_file(path:str, key: bytes):
     :param path: Path to the file to be encrypted
     :param key: Encryption key
     """
-    fernet = Fernet(key)
+    fernet = Fernet(_fernet_key(key))
     with open(path, 'rb') as original_file:
         encrypted = fernet.encrypt(original_file.read())
-    with open(path + ".enc", 'wb') as encrypted_file:
-        encrypted_file.write(encrypted)
+    output_path = Path(path + ".enc")
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb", dir=output_path.parent,
+            prefix=f".{output_path.name}.", suffix=".tmp", delete=False,
+        ) as encrypted_file:
+            temp_path = Path(encrypted_file.name)
+            encrypted_file.write(encrypted)
+            encrypted_file.flush()
+            os.fsync(encrypted_file.fileno())
+        os.replace(temp_path, output_path)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
 
 
 def decrypt_file(filepath: str, key: bytes, need_data: bool = False):
@@ -44,7 +65,7 @@ def decrypt_file(filepath: str, key: bytes, need_data: bool = False):
     - Safe for binary files (.tar.gz, .pdf, etc.)
     """
     try:
-        fernet = Fernet(key)
+        fernet = Fernet(_fernet_key(key))
 
         with open(filepath, "rb") as file:
             encrypted_data = file.read()

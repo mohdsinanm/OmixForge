@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QLabel, QWidget, QVBoxLayout, QComboBox, QScrollArea, QSizePolicy, QPushButton, QLineEdit, QHBoxLayout, QMessageBox
+from PyQt6.QtWidgets import QLabel, QWidget, QVBoxLayout, QComboBox, QScrollArea, QSizePolicy, QPushButton, QLineEdit, QHBoxLayout, QMessageBox, QFrame, QSplitter
 from PyQt6.QtCore import QThread, QObject, pyqtSignal, Qt
 from pyqtwaitingspinner import WaitingSpinner
 
@@ -112,8 +112,40 @@ class PipelineImport(QWidget):
         self.scroll.setWidget(self.content)
         self.scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        # Add scroll area to main layout
-        self.main_layout.addWidget(self.scroll)
+        self.details_box = QFrame(self)
+        self.details_box.setObjectName("pipelineImportDetails")
+        self.details_box.setMinimumHeight(160)
+        self.details_box.hide()
+        self.details_layout = QVBoxLayout(self.details_box)
+        self.details_layout.setContentsMargins(10, 10, 10, 10)
+        self.details_layout.setSpacing(8)
+
+        self.details_scroll = QScrollArea(self.details_box)
+        self.details_scroll.setObjectName("pipelineImportDetailsScroll")
+        self.details_scroll.setWidgetResizable(True)
+        self.details_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.details_content = QWidget()
+        self.details_content.setObjectName("pipelineImportDetailsContent")
+        self.details_content_layout = QVBoxLayout(self.details_content)
+        self.details_content_layout.setContentsMargins(4, 4, 4, 4)
+        self.details_content_layout.setSpacing(8)
+        self.details_scroll.setWidget(self.details_content)
+        self.details_layout.addWidget(self.details_scroll, 1)
+
+        self.content_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.content_splitter.setObjectName("pipelineImportSplitter")
+        self.content_splitter.setHandleWidth(8)
+        self.content_splitter.setChildrenCollapsible(False)
+        self.content_splitter.addWidget(self.scroll)
+        self.content_splitter.addWidget(self.details_box)
+        self.content_splitter.setStretchFactor(0, 2)
+        self.content_splitter.setStretchFactor(1, 3)
+        self.content_splitter.setStyleSheet("""
+            QSplitter#pipelineImportSplitter::handle { background-color: #dbe6e2; }
+            QSplitter#pipelineImportSplitter::handle:hover { background-color: #111111; }
+        """)
+        self._details_splitter_initialized = False
+        self.main_layout.addWidget(self.content_splitter, 1)
 
     def refresh_pipelines(self):
         """Refresh pipelines asynchronously with spinner."""
@@ -270,9 +302,15 @@ class PipelineImport(QWidget):
                 self.topics.setWordWrap(True)
                 self.archived = QLabel(f"Archived: {pipeline.archived}")
 
-                self.import_btn = QPushButton("Import Pipelines", parent=self.content)
+                self.import_btn = QPushButton("Import Pipelines", parent=self.details_box)
                 self.import_btn.clicked.connect(self.import_pipeline)
                 self.import_btn.setObjectName("import_selected_pipeline")
+                self.import_btn.setMinimumHeight(42)
+                self.import_btn.setMaximumHeight(48)
+                self.import_btn.setSizePolicy(
+                    QSizePolicy.Policy.Expanding,
+                    QSizePolicy.Policy.Fixed,
+                )
 
                 for w in (
                     self.pipeline_name,
@@ -284,6 +322,7 @@ class PipelineImport(QWidget):
                 ):
                     self._insert_content_widget(w)
                     self.detail_widgets.append(w)
+                self._show_details_pane()
                 return
 
         # If we get here no matching pipeline found -> show nothing
@@ -291,16 +330,33 @@ class PipelineImport(QWidget):
 
     def clear_details(self):
         """Remove previously-added detail widgets from the layout and delete them."""
+        self.details_box.hide()
         while self.detail_widgets:
             w = self.detail_widgets.pop()
             try:
-                self.content_layout.removeWidget(w)
+                self.details_layout.removeWidget(w)
+                self.details_content_layout.removeWidget(w)
             except Exception:
                 pass
             w.deleteLater()
 
     def _insert_content_widget(self, widget):
-        self.content_layout.insertWidget(self.content_layout.count() - 1, widget)
+        if widget is getattr(self, "import_btn", None):
+            self.details_layout.addWidget(widget)
+        else:
+            self.details_content_layout.addWidget(widget)
+
+    def _show_details_pane(self):
+        self.details_box.show()
+        if self._details_splitter_initialized:
+            return
+        available_height = max(self.content_splitter.height(), 400)
+        detail_height = max(200, int(available_height * 0.52))
+        self.content_splitter.setSizes([
+            max(160, available_height - detail_height),
+            detail_height,
+        ])
+        self._details_splitter_initialized = True
     
     def import_pipeline(self):
         """Import pipeline asynchronously with spinner."""

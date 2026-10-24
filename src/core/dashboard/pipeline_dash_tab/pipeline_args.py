@@ -1,8 +1,22 @@
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.constants import RUN_DIR, SAMPLE_PREP_DIR, CONFIG_FILE
 from src.utils.fileops.file_handle import json_read
+from pathlib import Path
 
 logger = OmixForgeLogger.get_logger()
+
+
+def _find_pipeline_schema(local_path):
+    schema_path = Path(local_path) / "nextflow_schema.json"
+    if schema_path.is_file():
+        return schema_path
+
+    clone_schemas = sorted(
+        Path(local_path).glob("clones/*/nextflow_schema.json"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    return clone_schemas[0] if clone_schemas else schema_path
 
 from PyQt6.QtWidgets import (
      QVBoxLayout, QLabel,
@@ -365,7 +379,8 @@ class PipelineArgsDialog(QDialog):
     def params_extraction(self):
         """Extract parameters into a list of command-line arguments."""
         try:
-            json_content = json_read(f"{self.pipeline_info['local path']}/nextflow_schema.json")
+            schema_path = _find_pipeline_schema(self.pipeline_info["local path"])
+            json_content = json_read(str(schema_path))
             self.params_list = json_content.get("definitions", {})
             if "$defs" in json_content.keys():
                 self.params_list = json_content.get("$defs", {})

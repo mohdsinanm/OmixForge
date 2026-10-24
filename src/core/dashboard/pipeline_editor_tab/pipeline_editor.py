@@ -10,7 +10,7 @@ logger = OmixForgeLogger.get_logger()
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea,
-    QHBoxLayout, QGridLayout, QPushButton
+    QHBoxLayout, QGridLayout, QPushButton, QSplitter
 )
 
 from PyQt6.QtSvgWidgets import QSvgWidget
@@ -93,13 +93,26 @@ class PipelineEditorTab(QWidget):
         scroll_widget.setLayout(self.cards_grid)
         scroll.setWidget(scroll_widget)
 
-        main_layout.addWidget(scroll, 1)
-
         self.details_box = QFrame()
         self.details_box.setObjectName("pipelineEditorDetails")
         self.details_box.hide()
+        self.details_box.setMinimumHeight(160)
         self.details_layout = QVBoxLayout(self.details_box)
-        main_layout.addWidget(self.details_box, 1)
+
+        self.content_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.content_splitter.setObjectName("pipelineEditorSplitter")
+        self.content_splitter.setHandleWidth(8)
+        self.content_splitter.setChildrenCollapsible(False)
+        self.content_splitter.addWidget(scroll)
+        self.content_splitter.addWidget(self.details_box)
+        self.content_splitter.setStretchFactor(0, 2)
+        self.content_splitter.setStretchFactor(1, 3)
+        self.content_splitter.setStyleSheet("""
+            QSplitter#pipelineEditorSplitter::handle { background-color: #dbe6e2; }
+            QSplitter#pipelineEditorSplitter::handle:hover { background-color: #111111; }
+        """)
+        self._details_splitter_initialized = False
+        main_layout.addWidget(self.content_splitter, 1)
 
         self.empty_state = QLabel("No pipeline files found.", scroll_widget)
         self.empty_state.setObjectName("dashboardEmptyState")
@@ -178,7 +191,19 @@ class PipelineEditorTab(QWidget):
         self.open_files_tree(pipeline_dir)
 
         # Actions
+        self._show_details_pane()
+
+    def _show_details_pane(self):
         self.details_box.show()
+        if self._details_splitter_initialized:
+            return
+        available_height = max(self.content_splitter.height(), 400)
+        detail_height = max(200, int(available_height * 0.52))
+        self.content_splitter.setSizes([
+            max(160, available_height - detail_height),
+            detail_height,
+        ])
+        self._details_splitter_initialized = True
 
     
     def clear_layout(self, layout):

@@ -140,6 +140,13 @@ class PipelineDashboard(QWidget):
                 background: #292929;
                 border-color: #292929;
             }
+            QPushButton#import_from_url:disabled,
+            QPushButton#import_selected_pipeline:disabled,
+            QPushButton#pipeline_run_btn:disabled {
+                background: #555555;
+                border-color: #555555;
+                color: #d0d0d0;
+            }
             QScrollArea {
                 background: transparent;
                 border: none;
@@ -177,6 +184,16 @@ class PipelineDashboard(QWidget):
                 background: #f7faf9;
                 border: 1px solid #dbe6e2;
                 border-radius: 8px;
+            }
+            QFrame#pipelineImportDetails {
+                background: #f7faf9;
+                color: #203a34;
+                border: 1px solid #dbe6e2;
+                border-radius: 8px;
+            }
+            QWidget#pipelineImportDetailsContent {
+                background: #f7faf9;
+                color: #203a34;
             }
             QLabel#pipeline_import_status {
                 background: #edf6f3;

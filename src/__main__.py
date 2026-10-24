@@ -1,5 +1,5 @@
 import sys
-from PyQt6.QtCore import QSize, Qt, QTimer, QProcess
+from PyQt6.QtCore import QSize, Qt, QTimer
 from PyQt6.QtGui import QAction, QIcon, QFont
 from PyQt6.QtWidgets import (
     QApplication,
@@ -134,6 +134,10 @@ class MainWindow(QMainWindow):
     def load_main_app(self):
         """Initialize and load the main application UI with all components and plugins."""
         if self._main_ui_loaded:
+            app = QApplication.instance()
+            credential = getattr(app, "cred", None) if app is not None else None
+            if isinstance(credential, dict):
+                self.pipeline_dashboard.local_pipeline_tab.attach_private_credentials(credential)
             self._clear_session_pages()
             self.stack.setCurrentWidget(self.pipeline_dashboard.widget)
             self._show_session_navigation(True)
@@ -167,8 +171,13 @@ class MainWindow(QMainWindow):
             QSizePolicy.Policy.Preferred,
         )
         self.logout_toolbar.addWidget(toolbar_spacer)
-        self.logout_button = QPushButton("Log out", self.logout_toolbar)
+        self.logout_button = QPushButton(self.logout_toolbar)
         self.logout_button.setObjectName("logoutButton")
+        self.logout_button.setIcon(QIcon(resource_path("src/assets/logout.svg")))
+        self.logout_button.setIconSize(QSize(20, 20))
+        self.logout_button.setFixedSize(42, 40)
+        self.logout_button.setToolTip("Log out")
+        self.logout_button.setAccessibleName("Log out")
         self.logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.logout_button.clicked.connect(self.logout_to_startup)
         self.logout_toolbar.addWidget(self.logout_button)
@@ -274,6 +283,11 @@ class MainWindow(QMainWindow):
 
         self.plugin_manager = PluginManager()
 
+        app = QApplication.instance()
+        credential = getattr(app, "cred", None) if app is not None else None
+        if isinstance(credential, dict):
+            self.pipeline_dashboard.local_pipeline_tab.attach_private_credentials(credential)
+
         self.plugins_page = PluginsPage(self.plugin_manager)
         self.plugin_store = PluginStore(self)
 
@@ -322,11 +336,7 @@ class MainWindow(QMainWindow):
     def logout_to_startup(self):
         """Return to startup, with a choice for any active local pipeline runs."""
         local_pipeline = self.pipeline_dashboard.local_pipeline_tab
-        running_processes = [
-            process for process in local_pipeline.processes.values()
-            if process.get("proc") is not None
-            and process["proc"].state() != QProcess.ProcessState.NotRunning
-        ]
+        running_processes = local_pipeline.get_active_run_names()
 
         if running_processes:
             prompt = QMessageBox(self)
@@ -353,6 +363,9 @@ class MainWindow(QMainWindow):
         app = QApplication.instance()
         if app is not None:
             app.cred = None
+        if hasattr(self, "pipeline_status"):
+            self.pipeline_status.run_status.refresh_visibility()
+            self.pipeline_status.results_page.refresh_visibility()
         self.show_access_page()
 
     def _hide_loading_spinner(self):
@@ -373,6 +386,57 @@ class MainWindow(QMainWindow):
         e : QCloseEvent
             The close event object.
         """
+        if self._main_ui_loaded:
+            local_pipeline = self.pipeline_dashboard.local_pipeline_tab
+            running_processes = local_pipeline.get_active_run_names()
+            private_runs = [
+                run_name for run_name in running_processes
+                if local_pipeline.processes.get(run_name, {}).get("metadata", {}).get("encrypted")
+            ]
+            pending_private_encryption = bool(private_runs or local_pipeline._encrypting_runs) or any(
+                metadata.get("encrypted")
+                for metadata, _exit_code in local_pipeline.completed_detached_runs.values()
+            )
+
+            if running_processes or pending_private_encryption:
+                prompt = QMessageBox(self)
+                prompt.setWindowTitle(
+                    "Pipeline is running" if running_processes else "Encryption is pending"
+                )
+                if running_processes:
+                    message = (
+                        f"{len(running_processes)} pipeline process(es) are running. "
+                        "Choose whether they should continue after OmixForge closes."
+                    )
+                else:
+                    message = "Private pipeline results are still being encrypted."
+                if pending_private_encryption:
+                    message += (
+                        "\n\nIf OmixForge closes before encryption finishes, the run data "
+                        "will remain unencrypted until you reopen OmixForge and sign in "
+                        "with the same private account. Encryption will then resume."
+                    )
+                prompt.setText(message)
+                prompt.setIcon(QMessageBox.Icon.Question)
+                continue_button = prompt.addButton(
+                    "Close; encrypt on next login" if pending_private_encryption
+                    else "Continue after closing",
+                    QMessageBox.ButtonRole.AcceptRole,
+                )
+                cancel_button = None
+                if running_processes:
+                    cancel_button = prompt.addButton(
+                        "Cancel runs and close", QMessageBox.ButtonRole.DestructiveRole
+                    )
+                prompt.addButton("Keep app open", QMessageBox.ButtonRole.RejectRole)
+                prompt.exec()
+                chosen = prompt.clickedButton()
+                if cancel_button is not None and chosen is cancel_button:
+                    local_pipeline.cancel_active_runs()
+                elif chosen is not continue_button:
+                    e.ignore()
+                    return
+
         if self.plugin_manager:
             self.plugin_manager.unload_all()
         super().closeEvent(e)

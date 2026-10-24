@@ -47,17 +47,17 @@ def global_style_sheet():
     }
 
     QPushButton#logoutButton {
-        background-color: #111111;
-        border: 1px solid #111111;
+        background-color: transparent;
+        border: 1px solid transparent;
         border-radius: 6px;
-        color: #ffffff;
+        color: #111111;
         font-weight: 700;
-        padding: 7px 16px;
+        padding: 0;
     }
 
     QPushButton#logoutButton:hover {
-        background-color: #292929;
-        border-color: #292929;
+        background-color: #dfe7e4;
+        border-color: #dfe7e4;
     }
 
     QDockWidget#navigationDock {

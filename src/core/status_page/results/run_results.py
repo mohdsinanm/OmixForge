@@ -9,11 +9,12 @@ from src.utils.widgets.filetree import FilesTreeWidget
 from src.utils.widgets.loading import LoadingDialog
 from src.utils.resource import resource_path
 from src.utils.widgets.credential_popup import CredentialsDialog
+from src.core.status_page.run_state import classify_run_log, is_private_run
 logger = OmixForgeLogger.get_logger()
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea,
-    QHBoxLayout, QGridLayout, QPushButton, QApplication, QMessageBox, QDialog
+    QHBoxLayout, QGridLayout, QPushButton, QApplication, QMessageBox, QDialog, QSplitter
 )
 
 from PyQt6.QtSvgWidgets import QSvgWidget
@@ -136,12 +137,25 @@ class PipelineResultsPage(QWidget):
         scroll_widget.setLayout(self.cards_grid)
         scroll.setWidget(scroll_widget)
 
-        main_layout.addWidget(scroll, 1)
-
         self.details_box = QFrame()
         self.details_box.hide()
+        self.details_box.setMinimumHeight(160)
         self.details_layout = QVBoxLayout(self.details_box)
-        main_layout.addWidget(self.details_box, 1)
+
+        self.content_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.content_splitter.setObjectName("runResultsSplitter")
+        self.content_splitter.setHandleWidth(8)
+        self.content_splitter.setChildrenCollapsible(False)
+        self.content_splitter.addWidget(scroll)
+        self.content_splitter.addWidget(self.details_box)
+        self.content_splitter.setStretchFactor(0, 2)
+        self.content_splitter.setStretchFactor(1, 3)
+        self.content_splitter.setStyleSheet("""
+            QSplitter#runResultsSplitter::handle { background-color: #dbe6e2; }
+            QSplitter#runResultsSplitter::handle:hover { background-color: #111111; }
+        """)
+        self._details_splitter_initialized = False
+        main_layout.addWidget(self.content_splitter, 1)
 
         self.render_cards()
 
@@ -153,7 +167,21 @@ class PipelineResultsPage(QWidget):
 
 
     def get_local_pipelines_status(self):
-        self.pipeline_runs = list_files_in_directory(self.RUN_DIR )
+        items = list_files_in_directory(self.RUN_DIR)
+        app = QApplication.instance()
+        private_session = bool(getattr(app, "cred", None))
+        self.pipeline_runs = [
+            name for name in items
+            if name != ".private_runs"
+            and (private_session or not is_private_run(name, self.RUN_DIR))
+        ]
+
+    def refresh_visibility(self):
+        self.get_local_pipelines_status()
+        selected = getattr(self, "_selected_run", None)
+        if selected and selected not in self.pipeline_runs:
+            self._on_close_button_click()
+        self.render_cards()
 
 
     def render_cards(self):
@@ -188,21 +216,22 @@ class PipelineResultsPage(QWidget):
         except OSError:
             return "Encrypted" if locked else "Unknown"
 
-        if "<<exit-code:0>>" in log_content:
-            return "Completed"
-        if "pipeline run cancelled by user" in log_content:
-            return "Cancelled"
-        if "<<exit-code:" in log_content:
-            return "Failed"
+        status = classify_run_log(log_content)
+        if status != "Unknown":
+            return status
         if locked:
             return "Encrypted"
-        if "running pipeline:" in log_content:
-            return "Running"
         return "Unknown"
 
 
     def on_card_clicked(self, name: str):
         """Open file tree window + show delete action"""
+        if name not in self.pipeline_runs:
+            return
+        app = QApplication.instance()
+        if not getattr(app, "cred", None) and is_private_run(name, self.RUN_DIR):
+            return
+        self._selected_run = name
 
         # Clear previous details
         self.clear_details_layout()
@@ -254,7 +283,19 @@ class PipelineResultsPage(QWidget):
             actions.addWidget(delete_btn)
 
         self.details_layout.addLayout(actions)
+        self._show_details_pane()
+
+    def _show_details_pane(self):
         self.details_box.show()
+        if self._details_splitter_initialized:
+            return
+        available_height = max(self.content_splitter.height(), 400)
+        detail_height = max(200, int(available_height * 0.52))
+        self.content_splitter.setSizes([
+            max(160, available_height - detail_height),
+            detail_height,
+        ])
+        self._details_splitter_initialized = True
 
     
     def clear_layout(self, layout):
@@ -272,6 +313,7 @@ class PipelineResultsPage(QWidget):
 
     def _on_close_button_click(self):
         self.details_box.hide()
+        self._selected_run = None
 
         try:
             self.clear_layout(self.details_layout)
@@ -377,7 +419,6 @@ class PipelineResultsPage(QWidget):
                 delete_file(f"{self.RUN_DIR}/{name}")
             else:
                 delete_directory(f"{self.RUN_DIR}/{name}")
-
             logger.info(f"Deleted pipeline: {name}")
 
             # Cleanup UI
@@ -414,6 +455,9 @@ class PipelineResultsPage(QWidget):
     def _periodic_refresh(self):
         try:
             self.get_local_pipelines_status()
+            selected = getattr(self, "_selected_run", None)
+            if selected and selected not in self.pipeline_runs:
+                self._on_close_button_click()
             self.render_cards()
         except Exception:
             pass
