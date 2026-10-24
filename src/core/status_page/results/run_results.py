@@ -330,7 +330,10 @@ class PipelineResultsPage(QWidget):
 
         self.files_tree_window = FilesTreeWidget(
             root_dir=run_dir,
-            allowed_exts=[".md", ".MD", ".txt", ".json", ".csv", ".config", ".yaml", ".yml"],
+            allowed_exts=[
+                ".md", ".MD", ".txt", ".json", ".csv", ".config", ".yaml", ".yml",
+                ".pdf", ".png", ".svg",
+            ],
             parent=self.details_box,
             exclude_dirs=[".nextflow", "work",]
         )

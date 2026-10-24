@@ -11,6 +11,7 @@ from src.core.dashboard.pipeline_dash_tab.local_pipeline import PipelineLocal
 from src.core.dashboard.pipeline_dash_tab.pipeline_args import _find_pipeline_schema
 from src.core.dashboard.pipeline_dash_tab.pipeline_card import PipelineCard
 from src.core.dashboard.pipeline_editor_tab.pipeline_editor import PipelineEditorTab, PipelineDataCard as EditorDataCard
+from src.utils.widgets.filetree import FilesTreeWidget
 from src.core.plugin_manager.plugin_page import PluginsPage
 from src.core.profile_page.profile import ProfilePage
 from src.core.profile_page.startup_page import AccessModePage
@@ -19,6 +20,46 @@ from src.core.settings_page.sections.folder_path_section import FolderPathsSecti
 from src.core.settings_page.settings import SettingsPage
 from src.core.status_page.results.run_results import PipelineResultsPage, PipelineDataCard as ResultsDataCard
 from src.utils.nfcore_utils import NfcoreUtils
+from src.utils.widgets.fileview import FileViewerWindow
+
+
+def test_file_tree_keeps_multiqc_plot_directories_expandable(tmp_path, qtbot):
+    for folder, filename in (
+        ("pdf", "plot.pdf"),
+        ("png", "plot.png"),
+        ("svg", "plot.svg"),
+    ):
+        folder_path = tmp_path / "multiqc_plots" / folder
+        folder_path.mkdir(parents=True)
+        (folder_path / filename).write_bytes(b"plot")
+
+    tree_widget = FilesTreeWidget(
+        str(tmp_path / "multiqc_plots"),
+        allowed_exts=[".pdf", ".png", ".svg"],
+    )
+    qtbot.addWidget(tree_widget)
+
+    root_item = tree_widget.tree.topLevelItem(0)
+    assert [root_item.child(index).text(0) for index in range(root_item.childCount())] == [
+        "pdf", "png", "svg"
+    ]
+    assert all(root_item.child(index).childCount() == 1 for index in range(3))
+
+
+def test_png_file_viewer_loads_image_not_text(tmp_path, qtbot):
+    from PyQt6.QtGui import QImage
+
+    image_path = tmp_path / "plot.png"
+    image = QImage(8, 6, QImage.Format.Format_RGB32)
+    image.fill(Qt.GlobalColor.red)
+    assert image.save(str(image_path))
+
+    viewer = FileViewerWindow(str(image_path))
+    qtbot.addWidget(viewer)
+
+    assert viewer.image_label.pixmap() is not None
+    assert viewer.image_label.pixmap().size().width() == 8
+    assert not hasattr(viewer, "editor")
 
 
 def test_pipeline_schema_is_found_in_nextflow_clone(tmp_path):
