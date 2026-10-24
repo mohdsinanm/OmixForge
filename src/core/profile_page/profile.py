@@ -120,12 +120,14 @@ class ProfilePage(QWidget):
             color: #193b34;
             font-size: 22px;
             font-weight: 700;
+            background: transparent;
         }
 
         QLabel#loginSubtitle {
             color: #71847d;
             font-size: 14px;
             margin-bottom: 12px;
+            background: transparent;
         }
 
         QLineEdit#inputField {

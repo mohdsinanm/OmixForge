@@ -9,7 +9,7 @@ from PyQt6.QtSvgWidgets import QSvgWidget
 from src.core.profile_page.requirements import RequirementsNotSatisfied
 from src.utils.resource import resource_path
 from src.utils.widgets.loading_spinner import LoadingSpinner
-
+from src.utils.version import APP_VERSION
 
 class AccessModePage(QWidget):
     public_selected = pyqtSignal()
@@ -143,7 +143,7 @@ class AccessModePage(QWidget):
         footer = QHBoxLayout()
         footer.addWidget(QLabel("REPRODUCIBLE BY DESIGN"))
         footer.addStretch(1)
-        footer_note = QLabel("Samples  ·  Pipelines  ·  Results")
+        footer_note = QLabel(f"v{APP_VERSION}")
         footer.addWidget(footer_note)
         page_layout.addLayout(footer)
         self.setStyleSheet(self.stylesheet())
