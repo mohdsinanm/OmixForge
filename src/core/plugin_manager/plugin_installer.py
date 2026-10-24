@@ -5,6 +5,7 @@ from src.core.plugin_manager.manager import PluginManager
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.core.plugin_manager.plugin_installer_tabs.manage_tab import ManageTab
 from src.core.plugin_manager.plugin_installer_tabs.store_tab import StoreTab
+from src.utils.widgets.page_header import PageHeader
 
 logger = OmixForgeLogger.get_logger()
 
@@ -15,10 +16,14 @@ class PluginStore(QWidget):
         main_window: reference to MainWindow
         """
         super().__init__()
+        self.setObjectName("pluginStorePage")
         self.main_window = main_window
         self.plugin_manager: PluginManager = main_window.plugin_manager
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(22, 18, 22, 22)
+        layout.setSpacing(14)
+        layout.addWidget(PageHeader("Plugin Store", self))
 
         # Tabs
         self.tab_widget = QTabWidget()

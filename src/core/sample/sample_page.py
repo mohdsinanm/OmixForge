@@ -1,10 +1,9 @@
 
-from PyQt6.QtWidgets import QLabel, QMainWindow, QHBoxLayout, QWidget, QVBoxLayout, QTabWidget
-from PyQt6.QtGui import QColor, QPalette
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTabWidget
 
 from src.core.sample.sample_prep_tab.sample_prep import SamplePrepPage
 from src.core.sample.ena_fastq_downloader_tab.ena_fastq_downloader import ENAFastqDownloader
+from src.utils.widgets.page_header import PageHeader
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 
@@ -15,9 +14,14 @@ class Sample(QWidget):
         """Initialize the sample page with sample prep and ENA downloader tabs."""
         super().__init__()
 
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(22, 18, 22, 22)
+        layout.setSpacing(14)
 
-        tab_widget = QTabWidget()
+        layout.addWidget(PageHeader("Sample Prep", self))
+
+        tab_widget = QTabWidget(self)
+        tab_widget.setObjectName("samplePageTabs")
 
         sample_prep_tab = SamplePrepPage()
         ena_downloader = ENAFastqDownloader()
@@ -30,8 +34,6 @@ class Sample(QWidget):
 
 
         layout.addWidget(tab_widget)
-
-        self.setLayout(layout)
 
         # expose the widget so callers can embed this dashboard without
         # PipelineDashboard itself forcing it as the main window central widget

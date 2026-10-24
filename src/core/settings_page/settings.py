@@ -8,6 +8,8 @@ from src.core.settings_page.sections.app_settings_section import AppSettingsSect
 from src.core.settings_page.sections.server_setting_section import ServerSettingsSection
 from src.utils.constants import CONFIG_DIR, CONFIG_FILE, populate_constants
 from src.utils.fileops.file_handle import ensure_directory, json_read, json_write, file_exists
+from src.utils.theme_manager import theme_manager
+from src.utils.widgets.page_header import PageHeader
 import json
 
 
@@ -23,12 +25,15 @@ class SettingsPage(QWidget):
         self.server_section = ServerSettingsSection()
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(22, 18, 22, 22)
+        layout.setSpacing(14)
 
+        layout.addWidget(PageHeader("Settings", self))
         layout.addWidget(self.folder_section)
         layout.addWidget(self.server_section)
+        layout.addWidget(self.app_section)
         # TBD
         # layout.addWidget(self.profile_section)
-        # layout.addWidget(self.app_section)
         layout.addStretch()
 
         # Buttons
@@ -36,6 +41,7 @@ class SettingsPage(QWidget):
         btn_layout.addStretch()
 
         save_btn = QPushButton("Save")
+        save_btn.setObjectName("saveSettingsButton")
         save_btn.clicked.connect(self.save_settings)
 
         btn_layout.addWidget(save_btn)
@@ -56,6 +62,10 @@ class SettingsPage(QWidget):
         ensure_directory(CONFIG_DIR)
         json_write(CONFIG_FILE, config)
 
+        # Also persist the theme preference via theme_manager so it survives
+        # even if the user switches theme but never clicks Save
+        theme_manager.save_theme(theme_manager.current_theme())
+
         QMessageBox.information(self, "Settings", "Settings saved successfully. Restart the app to reflect the changes")
 
     def load_settings(self):
@@ -68,4 +78,3 @@ class SettingsPage(QWidget):
         self.profile_section.load_settings(data.get("profile", {}))
         self.app_section.load_settings(data.get("app", {}))
         self.server_section.load_settings(data.get("server", []))
-

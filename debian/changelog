@@ -1,4 +1,4 @@
-omixforge (1.2.0-1) noble; urgency=medium
+omixforge (2.0.0-1) noble; urgency=medium
 
   * Update package version to 1.2.0 and synchronize project metadata with Debian packaging.
   * Pipeline import from other sources

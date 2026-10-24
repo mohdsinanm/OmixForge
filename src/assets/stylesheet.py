@@ -1,63 +1,66 @@
-def global_style_sheet():
-    """Return global CSS stylesheet for the application.
-    
+"""Stylesheet provider for OmixForge application.
+
+Integrates with ThemeManager to provide centralized, theme-aware
+global and component stylesheets while maintaining backward compatibility.
+"""
+
+from typing import Optional
+from src.utils.theme_manager import theme_manager
+
+
+def global_style_sheet(theme_name: Optional[str] = None) -> str:
+    """Return the shared visual stylesheet for the application.
+
+    Parameters
+    ----------
+    theme_name : str, optional
+        Specific theme name ('light' or 'dark'). Defaults to active theme.
+
     Returns
     -------
     str
-        CSS stylesheet string for buttons and UI elements.
+        Complete QSS stylesheet.
     """
-    return """
-    QPushButton {
-        color: palette(ButtonText);          /* adapts */
-        border-radius: 10px;
-        padding: 8px 14px;
-        font-size: 13px;
-        border: 1px solid #2f6fd6;
-    }
+    return theme_manager.get_stylesheet(theme_name)
 
-    QPushButton:hover {
-        background-color: #5592ff;
-    }
 
-    QPushButton:pressed {
-        background-color: #2f6fd6;
-    }
+def close_button_style(theme_name: Optional[str] = None) -> str:
+    """Return CSS stylesheet for a neutral close button tailored to active theme.
 
-    QPushButton:disabled {
-        color: black
-        background-color: #9ca3af;
-        border: 1px solid #6b7280;
-    }
-    """
-def close_btn_red_bg():
-    """Return CSS stylesheet for red close button.
-    
+    Parameters
+    ----------
+    theme_name : str, optional
+        Specific theme name ('light' or 'dark'). Defaults to active theme.
+
     Returns
     -------
     str
         CSS stylesheet string for close button styling.
     """
-    return """
-    QPushButton {
-        color: palette(ButtonText);          /* adapts automatically */
-        background-color: #ef4444;           /* red */
-        border: 1px solid #b91c1c;           /* darker red border */
-        border-radius: 8px;
-        padding: 6px 10px;
-        font-size: 14px;
-    }
+    t = theme_manager.get_tokens(theme_name)
+    return f"""
+    QPushButton {{
+        color: {t.text_secondary};
+        background-color: {t.btn_default_bg};
+        border: 1px solid {t.btn_default_border};
+        border-radius: 6px;
+        padding: 6px 9px;
+        font-size: 13px;
+    }}
 
-    QPushButton:hover {
-        background-color: #f87171;
-    }
+    QPushButton:hover {{
+        background-color: {t.btn_destructive_hover_bg};
+        border-color: {t.btn_destructive_hover_border};
+        color: {t.btn_destructive_hover_fg};
+    }}
 
-    QPushButton:pressed {
-        background-color: #dc2626;
-    }
+    QPushButton:pressed {{
+        background-color: {t.btn_default_pressed_bg};
+    }}
 
-    QPushButton:disabled {
-        color: palette(Mid);
-        background-color: palette(Base);
-        border: 1px solid palette(Midlight);
-    }
+    QPushButton:disabled {{
+        color: {t.btn_default_disabled_fg};
+        background-color: {t.btn_default_disabled_bg};
+        border: 1px solid {t.btn_default_disabled_border};
+    }}
     """

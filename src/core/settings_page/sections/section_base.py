@@ -1,5 +1,4 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
-from PyQt6.QtGui import QFont
 
 
 class SettingsSection(QWidget):
@@ -10,7 +9,7 @@ class SettingsSection(QWidget):
         self.layout.setSpacing(8)
 
         title_label = QLabel(title)
-        title_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        title_label.setStyleSheet("color: #31564c; font-weight: 700; font-size: 14px;")
 
         self.layout.addWidget(title_label)
 

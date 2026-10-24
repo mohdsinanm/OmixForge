@@ -1,7 +1,7 @@
 import csv
 from pathlib import Path
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, 
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QHeaderView,
     QTableWidgetItem, QFileDialog, QLabel, QMessageBox, QSpinBox, QInputDialog, QApplication
 )
 from PyQt6.QtCore import Qt
@@ -10,6 +10,7 @@ from PyQt6.QtGui import QKeySequence
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.constants import SAMPLE_PREP_DIR, CONFIG_FILE
 from src.utils.fileops.file_handle import ensure_directory, json_read
+from src.utils.theme_manager import theme_manager
 logger = OmixForgeLogger.get_logger()
 
 
@@ -18,13 +19,16 @@ class SamplePrepPage(QWidget):
     
     def __init__(self):
         super().__init__()
+        self.setObjectName("samplePrepPage")
         self.current_file = None
 
         self.constants = json_read(CONFIG_FILE)
         self.SAMPLE_PREP_DIR =  self.constants.get("folders",{}).get("SAMPLE_PREP_DIR", SAMPLE_PREP_DIR)
 
         
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
         
         # Title
         title = QLabel("Sample Preparation - Data Table")
@@ -72,6 +76,10 @@ class SamplePrepPage(QWidget):
         
         # Table widget with default 5 rows and 3 columns
         self.table = QTableWidget(5, 4)
+        self.table.setObjectName("samplePrepTable")
+        self.table.setAlternatingRowColors(True)
+        self.table.setStyleSheet("QTableWidget#samplePrepTable::item { padding: 5px; }")
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setHorizontalHeaderLabels([i for i in ["sample","fastq_1","fastq_2","strandedness"]])
         self.table.setVerticalHeaderLabels([f"{i+1}" for i in range(5)])
         
@@ -90,7 +98,6 @@ class SamplePrepPage(QWidget):
         
         layout.addWidget(self.table)
         
-        self.setLayout(layout)
         self.widget = self
     
     def add_row(self):
@@ -323,24 +330,33 @@ class SamplePrepPage(QWidget):
         dialog.setWindowTitle("Edit Column Header")
         dialog.setLabelText(f"Enter new name for Column {col + 1}:")
         dialog.setTextValue(current_text)
-        dialog.setStyleSheet("""
-            QInputDialog {
-                border: 2px solid #333;
-            }
-            QInputDialog QLineEdit {
-                border: 1px solid #999;
-                padding: 4px;
-                border-radius: 3px;
-            }
-            QInputDialog QPushButton {
-                border: 1px solid #999;
-                padding: 4px 12px;
-                border-radius: 3px;
-                min-width: 50px;
-            }
-            QInputDialog QPushButton:hover {
-                background-color: #f0f0f0;
-            }
+        t = theme_manager.get_tokens()
+        dialog.setStyleSheet(f"""
+            QInputDialog {{
+                background-color: {t.secondary_surface_bg};
+                color: {t.text_primary};
+                border: 1px solid {t.border_standard};
+            }}
+            QInputDialog QLabel {{
+                color: {t.text_primary};
+            }}
+            QInputDialog QLineEdit {{
+                background-color: {t.input_bg};
+                color: {t.text_primary};
+                border: 1px solid {t.border_standard};
+                padding: 7px 9px;
+                border-radius: 6px;
+            }}
+            QInputDialog QPushButton {{
+                background-color: {t.btn_default_bg};
+                color: {t.btn_default_fg};
+                border: 1px solid {t.btn_default_border};
+                padding: 7px 13px;
+                border-radius: 6px;
+            }}
+            QInputDialog QPushButton:hover {{
+                background-color: {t.btn_default_hover_bg};
+            }}
         """)
         
         ok = dialog.exec()

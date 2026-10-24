@@ -1,82 +1,193 @@
-from PyQt6.QtWidgets import  QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSizePolicy,
+)
 from PyQt6.QtCore import Qt, QUrl
-from PyQt6.QtGui import QDesktopServices, QFont
+from PyQt6.QtGui import QDesktopServices
 
-class RequirementsNotSatisfied():
-    def __init__(self, main_layout, docker_installed, nextflow_installed):
-        """Initialize the requirements not satisfied widget with status indicators."""
-        # --- Title ---
-        title = QLabel("Oops — Requirements Missing")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setFont(QFont("Arial", 14, QFont.Weight.Bold))
-        main_layout.addWidget(title)
+from src.utils.theme_manager import theme_manager
 
-        # --- Requirements layout ---
-        req_layout = QVBoxLayout()
 
-        
-        req_layout.addLayout(self.requirement_row("Docker", docker_installed))
-        req_layout.addLayout(self.requirement_row("Nextflow", nextflow_installed))
+class RequirementsNotSatisfied(QWidget):
+    """Inline requirements-missing notice that blends into the startup page typography."""
 
-        main_layout.addLayout(req_layout)
+    def __init__(self, docker_installed: bool, nextflow_installed: bool, parent=None):
+        super().__init__(parent)
+        self.setObjectName("requirementsSection")
+        self._docker = docker_installed
+        self._nextflow = nextflow_installed
+        self._build_ui()
+        self._apply_styles()
+        theme_manager.theme_changed.connect(self._apply_styles)
 
-        # --- Documentation button ---
-        doc_btn = QPushButton("Open Documentation")
-        doc_btn.setFixedSize(180, 32)
+    # ------------------------------------------------------------------
+    # Build
+    # ------------------------------------------------------------------
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 110, 0, 0)
+        layout.setSpacing(0)
 
-        doc_btn.clicked.connect(self.open_docs)
-        doc_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        # ── Kicker ────────────────────────────────────────────────────
+        self._kicker = QLabel("BEFORE YOU START")
+        self._kicker.setObjectName("reqKicker")
+        layout.addWidget(self._kicker)
 
-        btn_row = QHBoxLayout()
-        btn_row.addStretch()
-        btn_row.addWidget(doc_btn)
-        btn_row.addStretch()
+        # ── Heading ───────────────────────────────────────────────────
+        self._heading = QLabel("Set up your environment")
+        self._heading.setObjectName("reqHeading")
+        layout.addWidget(self._heading)
 
-        main_layout.addLayout(btn_row)
+        layout.addSpacing(4)
 
-    def requirement_row(self, name, installed):
-        """Create a requirement status row with label and status indicator.
-        
-        Parameters
-        ----------
-        name : str
-            Name of the requirement (e.g., 'Docker', 'Nextflow').
-        installed : bool
-            Whether the requirement is installed.
-        
-        Returns
-        -------
-        QHBoxLayout
-            Layout containing requirement label and status indicator.
-        """
-        row = QHBoxLayout()
-        row.setContentsMargins(0, 0, 0, 0)
+        # ── Subtitle ──────────────────────────────────────────────────
+        self._subtitle = QLabel(
+            "OmixForge needs Docker and Nextflow to run bioinformatics pipelines."
+        )
+        self._subtitle.setObjectName("reqSubtitle")
+        self._subtitle.setWordWrap(True)
+        layout.addWidget(self._subtitle)
 
-        pair = QHBoxLayout()
-        pair.setSpacing(6)   # gap between label + mark
+        layout.addSpacing(18)
 
-        mark = "✔" if installed else "✖"
-        color = "green" if installed else "red"
+        # ── Status rows ───────────────────────────────────────────────
+        for name, installed in (("Docker", self._docker), ("Nextflow", self._nextflow)):
+            layout.addWidget(self._make_status_row(name, installed))
+            layout.addSpacing(8)
 
-        label = QLabel(f"<b>{name}</b>")
-        status = QLabel(f"<span style='color:{color}; font-size:16px'>{mark}</span>")
+        layout.addSpacing(10)
 
-        pair.addWidget(label)
-        pair.addWidget(status)
+        # ── Action row ────────────────────────────────────────────────
+        actions = QHBoxLayout()
+        actions.setContentsMargins(0, 0, 0, 0)
+        actions.setSpacing(12)
 
-        # add left stretch → center → right stretch
-        row.addStretch()
-        row.addLayout(pair)
-        row.addStretch()
+        self._doc_btn = QPushButton("View installation guide")
+        self._doc_btn.setObjectName("reqDocButton")
+        self._doc_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._doc_btn.clicked.connect(self._open_docs)
+        self._doc_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        actions.addWidget(self._doc_btn)
+
+        self._hint = QLabel("Then restart OmixForge.")
+        self._hint.setObjectName("reqHint")
+        actions.addWidget(self._hint)
+        actions.addStretch(1)
+
+        layout.addLayout(actions)
+
+    def _make_status_row(self, name: str, installed: bool) -> QWidget:
+        """Return a compact inline status row: ● Docker  [Installed / Missing]"""
+        row = QWidget()
+        row.setObjectName("reqRow")
+        h = QHBoxLayout(row)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(10)
+
+        # Dot indicator
+        dot = QLabel()
+        dot.setObjectName("reqDotOk" if installed else "reqDotMissing")
+        dot.setFixedSize(8, 8)
+
+        # Dependency name
+        name_lbl = QLabel(name)
+        name_lbl.setObjectName("reqDepName")
+
+        # Status chip
+        status_lbl = QLabel("Installed" if installed else "Not found")
+        status_lbl.setObjectName("reqChipOk" if installed else "reqChipMissing")
+
+        h.addWidget(dot, alignment=Qt.AlignmentFlag.AlignVCenter)
+        h.addWidget(name_lbl, alignment=Qt.AlignmentFlag.AlignVCenter)
+        h.addWidget(status_lbl, alignment=Qt.AlignmentFlag.AlignVCenter)
+        h.addStretch(1)
 
         return row
-    
-    def open_docs(self):
-        """Open the documentation URL in the default web browser."""
+
+    # ------------------------------------------------------------------
+    # Styles
+    # ------------------------------------------------------------------
+    def _apply_styles(self):
+        t = theme_manager.get_tokens()
+        self.setStyleSheet(f"""
+            QWidget#requirementsSection {{ background: transparent; }}
+            QWidget#reqRow {{ background: transparent; }}
+
+            QLabel#reqKicker {{
+                color: {t.warning};
+                font-size: 10px;
+                font-weight: 800;
+                letter-spacing: 1.6px;
+                margin-bottom: 6px;
+            }}
+            QLabel#reqHeading {{
+                color: {t.text_primary};
+                font-size: 22px;
+                font-weight: 700;
+            }}
+            QLabel#reqSubtitle {{
+                color: {t.text_secondary};
+                font-size: 13px;
+                line-height: 1.4;
+            }}
+
+            /* Dot indicators */
+            QLabel#reqDotOk {{
+                background: {t.success};
+                border-radius: 4px;
+            }}
+            QLabel#reqDotMissing {{
+                background: {t.error};
+                border-radius: 4px;
+            }}
+
+            /* Dependency name */
+            QLabel#reqDepName {{
+                color: {t.text_primary};
+                font-size: 13px;
+                font-weight: 600;
+                min-width: 80px;
+            }}
+
+            /* Status chips */
+            QLabel#reqChipOk {{
+                color: {t.success};
+                background: transparent;
+                font-size: 11px;
+                font-weight: 600;
+            }}
+            QLabel#reqChipMissing {{
+                color: {t.error};
+                background: transparent;
+                font-size: 11px;
+                font-weight: 600;
+            }}
+
+            /* Doc button — ghost style matching privateModeButton */
+            QPushButton#reqDocButton {{
+                background: {t.btn_default_bg};
+                border: 1px solid {t.btn_default_border};
+                border-radius: 7px;
+                color: {t.btn_default_fg};
+                font-size: 12px;
+                font-weight: 600;
+                padding: 9px 18px;
+            }}
+            QPushButton#reqDocButton:hover {{
+                background: {t.btn_default_hover_bg};
+                border-color: {t.accent_primary};
+            }}
+
+            QLabel#reqHint {{
+                color: {t.text_disabled};
+                font-size: 11px;
+            }}
+        """)
+
+    # ------------------------------------------------------------------
+    # Actions
+    # ------------------------------------------------------------------
+    def _open_docs(self):
+        """Open the installation guide in the default browser."""
         QDesktopServices.openUrl(
             QUrl("https://github.com/mohdsinanm/OmixForge/wiki/Dependency-installation")
         )
-
-
-
-

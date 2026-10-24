@@ -12,6 +12,7 @@ from src.utils.encryption.handle import generate_encrypted_file, decrypt_file, g
 from src.utils.constants import AUTH_DIR ,  AUTH_JSON
 from src.utils.fileops.file_handle import ensure_directory, file_exists
 from src.utils.widgets.loading_spinner import LoadingSpinner
+from src.utils.theme_manager import theme_manager
 
 
 logger = OmixForgeLogger.get_logger()
@@ -50,6 +51,11 @@ class ProfilePage(QWidget):
 
 
         self.setStyleSheet(self.stylesheet())
+        theme_manager.theme_changed.connect(self._on_theme_changed)
+
+    def _on_theme_changed(self, theme_name: str):
+        """Update profile page styling when theme changes."""
+        self.setStyleSheet(self.stylesheet())
 
     def attempt_login(self):
         """Attempt to authenticate user with provided credentials."""
@@ -69,8 +75,9 @@ class ProfilePage(QWidget):
             logger.error(f"Failed to login {e}")
             self.login_error_label.setText("Invalid username or password")
             self.login_error_label.setVisible(True)
-            self.username_input.setStyleSheet("border: 1px solid red;")
-            self.password_input.setStyleSheet("border: 1px solid red;")
+            err_color = theme_manager.get_color("error")
+            self.username_input.setStyleSheet(f"border: 1px solid {err_color};")
+            self.password_input.setStyleSheet(f"border: 1px solid {err_color};")
             return
 
     def attempt_signup(self):
@@ -102,72 +109,77 @@ class ProfilePage(QWidget):
     # ----- MODERN STYLES -----
     def stylesheet(self):
         """Return CSS stylesheet for the profile page widget."""
-        return """
-        QWidget {
+        t = theme_manager.get_tokens()
+        return f"""
+        QWidget {{
+            background-color: {t.main_bg};
+            color: {t.text_primary};
+            font-family: "Noto Sans";
+        }}
 
-            font-family: 'Segoe UI', sans-serif;
-        }
-
-        /* CARD */
-        QFrame#loginCard {
-
-            border-radius: 16px;
+        QFrame#loginCard {{
+            background-color: {t.elevated_card_bg};
+            border-radius: 8px;
             padding: 20px;
-            border: 1px solid #e4e4e4;
-        }
+            border: 1px solid {t.border_divider};
+        }}
 
-        /* TITLE */
-        QLabel#loginTitle {
+        QLabel#loginTitle {{
+            color: {t.text_heading};
             font-size: 22px;
-            font-weight: bold;
+            font-weight: 700;
+            background: transparent;
+        }}
 
-        }
-
-        QLabel#loginSubtitle {
+        QLabel#loginSubtitle {{
+            color: {t.text_secondary};
             font-size: 14px;
-
             margin-bottom: 12px;
-        }
+            background: transparent;
+        }}
 
-        /* INPUT FIELDS */
-        QLineEdit#inputField {
+        QLineEdit#inputField {{
+            background-color: {t.input_bg};
             padding: 10px 12px;
-            border-radius: 8px;
-            border: 1px solid #c8c8c8;
+            border-radius: 6px;
+            border: 1px solid {t.border_standard};
             font-size: 14px;
-            color: palette(ButtonText);          /* adapts */
-        }
-        QLineEdit#inputField:focus {
-            border: 1px solid #448aff;
-            color: palette(ButtonText);          /* adapts */
-        }
+            color: {t.text_primary};
+        }}
+        QLineEdit#inputField:focus {{
+            border: 1px solid {t.border_focus};
+        }}
 
-        /* LOGIN BUTTON */
-        QPushButton#loginButton {
+        QPushButton#loginButton {{
             padding: 12px;
-            background-color: #4a90e2;
-            color: white;
-            border: none;
-            border-radius: 8px;
+            background-color: {t.btn_primary_bg};
+            color: {t.btn_primary_fg};
+            border: 1px solid {t.btn_primary_border};
+            border-radius: 6px;
             font-size: 15px;
-            font-weight: bold;
-        }
-        QPushButton#loginButton:hover {
-            background-color: #3f7fcc;
-        }
-        QPushButton#loginButton:pressed {
-            background-color: #346db3;
-        }
+            font-weight: 700;
+        }}
+        QPushButton#loginButton:hover {{
+            background-color: {t.btn_primary_hover_bg};
+            border-color: {t.btn_primary_hover_bg};
+        }}
+        QPushButton#loginButton:pressed {{
+            background-color: {t.accent_pressed};
+        }}
 
-        QPushButton#backButton {
+        QPushButton#backButton {{
             border: none;
             background: transparent;
-            color: #4a90e2;
+            color: {t.accent_primary if t.name == "dark" else t.text_primary};
             font-size: 14px;
             padding: 6px;
-        }
-        QPushButton#backButton:hover {
+        }}
+        QPushButton#backButton:hover {{
             text-decoration: underline;
-            color: #3577c8;
-        }
+            color: {t.accent_hover if t.name == "dark" else t.btn_primary_hover_bg};
+        }}
+
+        QLabel#loginError {{
+            color: {t.error};
+        }}
         """

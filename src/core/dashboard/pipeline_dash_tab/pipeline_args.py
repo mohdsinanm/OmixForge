@@ -1,8 +1,22 @@
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 from src.utils.constants import RUN_DIR, SAMPLE_PREP_DIR, CONFIG_FILE
 from src.utils.fileops.file_handle import json_read
+from pathlib import Path
 
 logger = OmixForgeLogger.get_logger()
+
+
+def _find_pipeline_schema(local_path):
+    schema_path = Path(local_path) / "nextflow_schema.json"
+    if schema_path.is_file():
+        return schema_path
+
+    clone_schemas = sorted(
+        Path(local_path).glob("clones/*/nextflow_schema.json"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    return clone_schemas[0] if clone_schemas else schema_path
 
 from PyQt6.QtWidgets import (
      QVBoxLayout, QLabel,
@@ -18,6 +32,7 @@ class PipelineArgsDialog(QDialog):
 
     def __init__(self, pipeline_name: str, run_dir:str,  pipeline_info :dict, sample_sheet_path=None, parent=None):
         super().__init__(parent)
+        self.setObjectName("pipelineArgsDialog")
         self.setWindowTitle(f"Configure {pipeline_name}")
         self.setGeometry(100, 100, 600, 500)
         self.pipeline_name = pipeline_name
@@ -53,8 +68,10 @@ class PipelineArgsDialog(QDialog):
 
         # Container for dynamically rendered parameter widgets
         self.params_container = QWidget()
+        self.params_container.setStyleSheet("background: transparent;")
         self.params_layout = QVBoxLayout(self.params_container)
         scroll = QScrollArea()
+        scroll.viewport().setStyleSheet("background: transparent;")
         scroll.setWidgetResizable(True)
         scroll.setWidget(self.params_container)
         scroll.setFixedHeight(200)
@@ -62,7 +79,7 @@ class PipelineArgsDialog(QDialog):
 
         # Title
         title = QLabel(f"Pipeline Configuration: {pipeline_name}")
-        title.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        title.setFont(QFont("Noto Sans", 12, QFont.Weight.Bold))
         layout.addWidget(title)
         
         # Mandatory args grid
@@ -106,6 +123,7 @@ class PipelineArgsDialog(QDialog):
         
         # Submit to remote server option
         self.submit_to_server_checkbox = QCheckBox("Submit to server")
+        self.submit_to_server_checkbox.setObjectName("submitToServerCheckbox")
         self.submit_to_server_checkbox.stateChanged.connect(self.on_submit_to_server_toggled)
         layout.addWidget(self.submit_to_server_checkbox)
 
@@ -119,7 +137,7 @@ class PipelineArgsDialog(QDialog):
 
         # Optional args section
         opt_label = QLabel("Additional Arguments :")
-        opt_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        opt_label.setFont(QFont("Noto Sans", 10, QFont.Weight.Bold))
         layout.addWidget(opt_label)
         
         self.custom_args = []
@@ -361,7 +379,8 @@ class PipelineArgsDialog(QDialog):
     def params_extraction(self):
         """Extract parameters into a list of command-line arguments."""
         try:
-            json_content = json_read(f"{self.pipeline_info['local path']}/nextflow_schema.json")
+            schema_path = _find_pipeline_schema(self.pipeline_info["local path"])
+            json_content = json_read(str(schema_path))
             self.params_list = json_content.get("definitions", {})
             if "$defs" in json_content.keys():
                 self.params_list = json_content.get("$defs", {})

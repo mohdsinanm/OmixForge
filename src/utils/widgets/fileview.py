@@ -1,12 +1,12 @@
 
 import os
 from PyQt6.QtWidgets import (
-    QMainWindow, QTextEdit, QScrollArea, QVBoxLayout, QWidget, QToolBar, QPushButton
+    QMainWindow, QTextEdit, QScrollArea, QVBoxLayout, QWidget, QToolBar, QPushButton, QLabel
 )
-from PyQt6.QtGui import QFont, QAction
+from PyQt6.QtGui import QFont, QAction, QPixmap
 from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtGui import QDesktopServices
-from PyQt6.QtCore import QUrl
+from PyQt6.QtCore import QUrl, Qt
 
 class FileViewerWindow(QMainWindow):
     def __init__(self, file_path: str, parent=None):
@@ -39,6 +39,8 @@ class FileViewerWindow(QMainWindow):
             self._load_web()
         elif ext == ".svg":
             self._load_svg()
+        elif ext == ".png":
+            self._load_png()
         else:
             self._load_text()  # Fallback to text viewer
 
@@ -101,4 +103,15 @@ class FileViewerWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidget(svg)
         scroll.setWidgetResizable(True)
+        self.setCentralWidget(scroll)
+
+    def _load_png(self):
+        """Load and display a PNG image."""
+        self.image_label = QLabel()
+        self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.image_label.setPixmap(QPixmap(self.file_path))
+
+        scroll = QScrollArea()
+        scroll.setWidget(self.image_label)
+        scroll.setWidgetResizable(False)
         self.setCentralWidget(scroll)

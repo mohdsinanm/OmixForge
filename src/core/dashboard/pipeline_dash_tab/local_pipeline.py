@@ -1,5 +1,8 @@
 from datetime import datetime
+import codecs
 import json
+import os
+import signal
 import subprocess
 import csv
 import time
@@ -9,9 +12,9 @@ from pyqtwaitingspinner import WaitingSpinner
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea,
-    QHBoxLayout, QGridLayout, QPushButton, QDialog, QMessageBox, QApplication
+    QHBoxLayout, QGridLayout, QPushButton, QDialog, QMessageBox, QApplication, QSplitter
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QProcess, QThread, QObject,  QRunnable, QThreadPool, pyqtSlot, QObject, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QProcess, QThread, QObject, QRunnable, QThreadPool, pyqtSlot, QObject, pyqtSignal, QTimer
 from PyQt6.QtGui import QFont
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
@@ -21,7 +24,8 @@ from src.utils.fileops.file_handle import ensure_directory, write_to_file, appen
 from src.utils.encryption.handle import encrypt_file, decrypt_file, generate_key
 from src.core.dashboard.pipeline_dash_tab.pipeline_args import PipelineArgsDialog
 from src.core.dashboard.pipeline_dash_tab.pipeline_card import PipelineCard
-from src.assets.stylesheet import close_btn_red_bg
+from src.assets.stylesheet import close_button_style
+from src.utils.theme_manager import theme_manager
 
 logger = OmixForgeLogger.get_logger()
 
@@ -87,7 +91,7 @@ class PipelineInfoWorker(QObject):
 
 class ZipEncryptSignals(QObject):
     finished = pyqtSignal(str, int)     # emits run_name on success
-    error = pyqtSignal(str, int, str)   # emits run_name, error message
+    error = pyqtSignal(str, str, int)   # emits run_name, error message, exit code
 
 
 class ZipEncryptWorker(QRunnable):
@@ -177,6 +181,10 @@ class PipelineLocal(QWidget):
         super().__init__(parent)
         # keep references to running processes so they are not GC'd
         self.processes = {}
+        self.run_credentials = {}
+        self._log_decoders = {}
+        self.completed_detached_runs = {}
+        self._encrypting_runs = set()
         self.output_displays = {}  # Store references to output display widgets by run_name
         self.current_pipeline_name = None  # Track the currently displayed pipeline
         
@@ -194,33 +202,77 @@ class PipelineLocal(QWidget):
         self.pipelines = []
         self.pipeline_info_lines = {}
         self.get_local_pipelines()
+        self._recover_detached_runs()
 
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(18, 16, 18, 16)
+        main_layout.setSpacing(12)
+
+        heading_layout = QHBoxLayout()
+        heading_layout.setSpacing(10)
+        heading = QLabel("Installed pipelines")
+        heading.setObjectName("dashboardSectionTitle")
+        self.pipeline_count = QLabel()
+        self.pipeline_count.setObjectName("dashboardCount")
+        heading_layout.addWidget(heading)
+        heading_layout.addWidget(self.pipeline_count)
+        heading_layout.addStretch()
+        refresh_button = QPushButton("Refresh")
+        refresh_button.setObjectName("refresh_local_pipelines")
+        refresh_button.clicked.connect(self.refresh_pipelines)
+        heading_layout.addWidget(refresh_button)
+        main_layout.addLayout(heading_layout)
 
         # GRID LAYOUT FOR CARDS
         self.cards_grid = QGridLayout()
+        self.cards_grid.setContentsMargins(12, 12, 12, 12)
+        self.cards_grid.setHorizontalSpacing(12)
+        self.cards_grid.setVerticalSpacing(12)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
+        self.cards_scroll = QScrollArea()
+        self.cards_scroll.setObjectName("localPipelineScroll")
+        self.cards_scroll.viewport().setStyleSheet("background: transparent;")
+        self.cards_scroll.setWidgetResizable(True)
 
         # scroll only in vertical direction
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.cards_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.cards_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.cards_scroll.setMaximumHeight(16777215)
 
         scroll_widget = QWidget()
+        scroll_widget.setObjectName("localPipelineScrollContent")
+        scroll_widget.setStyleSheet("background: transparent;")
+        self.cards_content = scroll_widget
         scroll_widget.setLayout(self.cards_grid)
-        scroll.setWidget(scroll_widget)
-
-        main_layout.addWidget(scroll)
+        self.empty_state = QLabel("No installed pipelines yet.", scroll_widget)
+        self.empty_state.setObjectName("dashboardEmptyState")
+        self.empty_state.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.cards_scroll.setWidget(scroll_widget)
 
         # DETAILS BOX
         self.details_box = QFrame()
         self.details_box.hide()
         self.details_box.setObjectName("pipeline_info_box")
+        self.details_box.setMinimumHeight(160)
         self.details_layout = QVBoxLayout(self.details_box)
-        main_layout.addWidget(self.details_box)
+
+        self.content_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.content_splitter.setObjectName("pipelineInfoSplitter")
+        self.content_splitter.setHandleWidth(8)
+        self.content_splitter.setChildrenCollapsible(False)
+        self.content_splitter.addWidget(self.cards_scroll)
+        self.content_splitter.addWidget(self.details_box)
+        self.content_splitter.setStretchFactor(0, 2)
+        self.content_splitter.setStretchFactor(1, 3)
+        self._details_splitter_initialized = False
+        main_layout.addWidget(self.content_splitter, 1)
 
         self.render_cards()
+
+        self._run_monitor_timer = QTimer(self)
+        self._run_monitor_timer.setInterval(1500)
+        self._run_monitor_timer.timeout.connect(self._monitor_detached_runs)
+        self._run_monitor_timer.start()
 
 
     def get_local_pipelines(self):
@@ -233,6 +285,255 @@ class PipelineLocal(QWidget):
                     self.pipelines.append(name)
         except Exception as e:
             logger.error(f"Error decoding nextflow list output: {e}")
+
+    def _run_metadata_path(self, run_name):
+        run_dir = Path(self.RUN_DIR) / run_name.removesuffix(".txt")
+        return run_dir / "omixforge-run.json"
+
+    def _run_exit_path(self, run_name):
+        run_dir = Path(self.RUN_DIR) / run_name.removesuffix(".txt")
+        return run_dir / "omixforge-run.exit"
+
+    @staticmethod
+    def _process_start_token(pid):
+        """Return Linux /proc start time to guard against PID reuse."""
+        try:
+            stat = Path(f"/proc/{pid}/stat").read_text()
+            fields_after_name = stat[stat.rfind(")") + 1:].split()
+            return fields_after_name[19]
+        except (OSError, IndexError, ValueError):
+            return None
+
+    @classmethod
+    def _pid_is_running(cls, pid, start_token=None):
+        if not pid:
+            return False
+        try:
+            os.kill(int(pid), 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            pass
+        except (OSError, ValueError, TypeError):
+            return False
+        try:
+            stat = Path(f"/proc/{int(pid)}/stat").read_text()
+            fields_after_name = stat[stat.rfind(")") + 1:].split()
+            if fields_after_name[0] == "Z":
+                return False
+            current_token = fields_after_name[19]
+        except OSError:
+            # Some confined builds restrict /proc reads; kill(pid, 0) already
+            # confirmed that a process with this PID exists.
+            return True
+        except (IndexError, ValueError):
+            return False
+        return current_token == start_token if start_token is not None else current_token is not None
+
+    def _read_run_exit_code(self, run_name):
+        try:
+            value = self._run_exit_path(run_name).read_text().strip()
+            return int(value) if value != "interrupted" else value
+        except (OSError, ValueError):
+            return None
+
+    def _recover_detached_runs(self):
+        """Restore run state from detached supervisors left by a previous app session."""
+        run_root = Path(self.RUN_DIR)
+        if not run_root.exists():
+            return
+        for metadata_path in run_root.glob("*/omixforge-run.json"):
+            try:
+                metadata = json.loads(metadata_path.read_text())
+                run_name = metadata["run_name"]
+                pid = int(metadata["pid"])
+                start_token = metadata.get("process_start_token")
+                exit_code = self._read_run_exit_code(run_name)
+                if exit_code is not None:
+                    # If the plaintext run folder remains, encryption either did
+                    # not start or was interrupted. Rebuild the archive after login.
+                    if metadata.get("encrypted") and metadata_path.parent.exists():
+                        self.completed_detached_runs[run_name] = (metadata, exit_code)
+                    continue
+                if self._pid_is_running(pid, start_token):
+                    self.processes[run_name] = {
+                        "proc": None,
+                        "pipeline": metadata.get("pipeline"),
+                        "detached": True,
+                        "pid": pid,
+                        "process_start_token": start_token,
+                        "metadata": metadata,
+                    }
+                    PipelineLocal.active_runs.add(run_name)
+                    continue
+
+                log_path = Path(metadata.get("log_path", Path(self.PIPELINES_RUNS) / run_name))
+                with log_path.open("a", encoding="utf-8") as log_file:
+                    log_file.write(
+                        "\nPipeline supervisor stopped before recording an exit code. "
+                        "The run may have been interrupted while OmixForge was closed.\n"
+                        "Pipeline run completed <<exit-code:interrupted>>.\n"
+                    )
+                self._run_exit_path(run_name).write_text("interrupted\n")
+                if metadata.get("encrypted") and metadata_path.parent.exists():
+                    self.completed_detached_runs[run_name] = (metadata, "interrupted")
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                logger.warning(f"Could not restore detached run from {metadata_path}: {exc}")
+
+    def get_active_run_names(self):
+        return [
+            run_name for run_name, entry in self.processes.items()
+            if entry.get("detached")
+            and (
+                entry["proc"].poll() is None
+                if entry.get("proc") is not None
+                else self._pid_is_running(entry.get("pid"), entry.get("process_start_token"))
+            )
+        ]
+
+    def _monitor_detached_runs(self):
+        for run_name, entry in list(self.processes.items()):
+            if not entry.get("detached"):
+                continue
+            popen = entry.get("proc")
+            if popen is not None:
+                exit_code = popen.poll()
+                if exit_code is not None:
+                    self._finish_detached_run(run_name, exit_code)
+            elif not self._pid_is_running(entry.get("pid"), entry.get("process_start_token")):
+                exit_code = self._read_run_exit_code(run_name)
+                if exit_code is None:
+                    self._record_interrupted_run(run_name, entry.get("metadata", {}))
+                    exit_code = "interrupted"
+                self._finish_detached_run(run_name, exit_code)
+
+    def _record_interrupted_run(self, run_name, metadata):
+        log_path = Path(metadata.get("log_path", Path(self.PIPELINES_RUNS) / run_name))
+        try:
+            with log_path.open("a", encoding="utf-8") as log_file:
+                log_file.write(
+                    "\nPipeline supervisor stopped before recording an exit code. "
+                    "The run may have been interrupted while OmixForge was closed.\n"
+                    "Pipeline run completed <<exit-code:interrupted>>.\n"
+                )
+            self._run_exit_path(run_name).write_text("interrupted\n")
+        except OSError as exc:
+            logger.error(f"Could not record interrupted run {run_name}: {exc}")
+
+    def _finish_detached_run(self, run_name, exit_code):
+        entry = self.processes.pop(run_name, {})
+        metadata = entry.get("metadata") or {}
+        if not metadata:
+            try:
+                metadata = json.loads(self._run_metadata_path(run_name).read_text())
+            except (OSError, ValueError):
+                metadata = {}
+        PipelineLocal.active_runs.discard(run_name)
+        self._restore_run_controls_after_finish(run_name, metadata.get("pipeline"))
+        self.completed_detached_runs[run_name] = (metadata, exit_code)
+        credential = self.run_credentials.pop(run_name, None)
+        if metadata.get("encrypted"):
+            if credential:
+                self._start_run_encryption(run_name, exit_code, credential)
+        else:
+            self.completed_detached_runs.pop(run_name, None)
+
+    def _restore_run_controls_after_finish(self, run_name, pipeline_name=None):
+        """Release the Run button when its run ends, without changing another pipeline's controls."""
+        if getattr(self, "current_run_name", None) != run_name:
+            return
+
+        # The details pane can be switched while a pipeline runs. Only update the
+        # visible buttons when they still belong to the pipeline that just ended.
+        same_pipeline_is_visible = (
+            not pipeline_name
+            or getattr(self, "current_pipeline_name", None) == pipeline_name
+        )
+        if same_pipeline_is_visible:
+            for button, enabled in (
+                (getattr(self, "run_btn", None), True),
+                (getattr(self, "cancel_btn", None), False),
+            ):
+                try:
+                    if button is not None:
+                        button.setEnabled(enabled)
+                except RuntimeError:
+                    # The details pane may have been rebuilt while the run was active.
+                    pass
+
+        self.current_run_name = None
+        self.current_pipeline = None
+
+    def attach_private_credentials(self, credential):
+        """Use the just-authenticated credentials to finish encrypted background runs."""
+        if not isinstance(credential, dict):
+            return
+        for run_name, entry in self.processes.items():
+            if entry.get("metadata", {}).get("encrypted"):
+                self.run_credentials[run_name] = dict(credential)
+        for run_name, (metadata, exit_code) in list(self.completed_detached_runs.items()):
+            if metadata.get("encrypted"):
+                self._start_run_encryption(run_name, exit_code, dict(credential))
+
+    def _start_run_encryption(self, run_name, exit_code, credential):
+        if run_name in self._encrypting_runs:
+            return
+        base_name = run_name.removesuffix(".txt")
+        archive_path = Path(self.RUN_DIR) / f"{base_name}.tar.gz.enc"
+        run_dir = Path(self.RUN_DIR) / base_name
+        if not run_dir.exists():
+            self.completed_detached_runs.pop(run_name, None)
+            return
+        self._encrypting_runs.add(run_name)
+        worker = ZipEncryptWorker(
+            run_name, str(run_dir), str(archive_path.with_suffix("")), credential,
+            exit_code if isinstance(exit_code, int) else 1,
+        )
+        worker.signals.finished.connect(self._on_zip_encrypt_done)
+        worker.signals.error.connect(self._on_zip_encrypt_error)
+        QThreadPool.globalInstance().start(worker)
+
+    def _cancel_detached_run(self, run_name, message="Pipeline run cancelled by user."):
+        entry = self.processes.get(run_name)
+        if not entry or not entry.get("detached"):
+            return False
+        pid = entry.get("pid")
+        token = entry.get("process_start_token")
+        exit_path = self._run_exit_path(run_name)
+        log_path = Path(entry.get("metadata", {}).get("log_path", Path(self.PIPELINES_RUNS) / run_name))
+        if self._pid_is_running(pid, token):
+            try:
+                os.killpg(int(pid), signal.SIGTERM)
+            except OSError as exc:
+                logger.warning(f"Could not signal pipeline run {run_name}: {exc}")
+            deadline = time.monotonic() + 4
+            while time.monotonic() < deadline and self._pid_is_running(pid, token):
+                time.sleep(0.1)
+            if self._pid_is_running(pid, token):
+                try:
+                    os.killpg(int(pid), signal.SIGKILL)
+                except OSError as exc:
+                    logger.warning(f"Could not force-stop pipeline run {run_name}: {exc}")
+
+        if not exit_path.exists():
+            try:
+                with log_path.open("a", encoding="utf-8") as log_file:
+                    log_file.write(f"\n{message} <<exit-code:143>>.\n")
+                exit_path.write_text("143\n")
+            except OSError as exc:
+                logger.error(f"Could not record cancellation for {run_name}: {exc}")
+
+        proc = entry.get("proc")
+        if proc is not None:
+            try:
+                proc.wait(timeout=0.2)
+            except (subprocess.TimeoutExpired, OSError):
+                pass
+        self.processes.pop(run_name, None)
+        self.run_credentials.pop(run_name, None)
+        self.completed_detached_runs.pop(run_name, None)
+        PipelineLocal.active_runs.discard(run_name)
+        return True
     
     def refresh_pipelines(self):
         """Refresh the local pipelines list and re-render cards."""
@@ -245,18 +546,43 @@ class PipelineLocal(QWidget):
 
     def render_cards(self):
         columns = 3
+        card_height = 70
         row = 0
         col = 0
+        self.pipeline_count.setText(f"{len(self.pipelines)} available")
+
+        if len(self.pipelines) > 15:
+            margins = self.cards_grid.contentsMargins()
+            visible_rows = 5
+            self.cards_scroll.setMaximumHeight(
+                visible_rows * card_height
+                + (visible_rows - 1) * self.cards_grid.verticalSpacing()
+                + margins.top()
+                + margins.bottom()
+                + 2 * self.cards_scroll.frameWidth()
+            )
+        else:
+            self.cards_scroll.setMaximumHeight(16777215)
 
         # Clear existing cards so re-rendering doesn't duplicate widgets
         for i in reversed(range(self.cards_grid.count())):
             item = self.cards_grid.takeAt(i)
-            if item.widget():
+            if item.widget() and item.widget() is not self.empty_state:
                 item.widget().deleteLater()
+
+        if not self.pipelines:
+            self.cards_grid.addWidget(self.empty_state, 0, 0, 1, columns)
+            self.empty_state.show()
+            self.cards_content.setMinimumHeight(0)
+            return
+
+        self.cards_grid.removeWidget(self.empty_state)
+        self.empty_state.hide()
 
         for index, name in enumerate(self.pipelines):
             card = PipelineCard(name)
             card.setMaximumHeight(200) 
+            card.setMinimumHeight(70)
             card.clicked.connect(self.on_card_clicked)
 
             # Add card to grid
@@ -270,8 +596,21 @@ class PipelineLocal(QWidget):
                 col = 0
                 row += 1
 
+        margins = self.cards_grid.contentsMargins()
+        rows = (len(self.pipelines) + columns - 1) // columns
+        content_height = (
+            rows * card_height
+            + (rows - 1) * self.cards_grid.verticalSpacing()
+            + margins.top()
+            + margins.bottom()
+        )
+        self.cards_content.setMinimumHeight(content_height)
+
     def _find_run_for_pipeline(self, pipeline_name: str):
         """Return the run_name key for a running process matching pipeline_name, or None."""
+        remote_run_name = getattr(self, "remote_run_name", None)
+        if remote_run_name and getattr(self, "remote_pipeline", None) == pipeline_name:
+            return remote_run_name
         for rn, entry in self.processes.items():
             try:
                 p_name = entry.get('pipeline')
@@ -287,6 +626,16 @@ class PipelineLocal(QWidget):
             except Exception:
                 continue
         return None
+
+    def _can_cancel_run(self, run_name: str) -> bool:
+        """Allow private runs to be cancelled only in an authenticated private session."""
+        entry = self.processes.get(run_name, {})
+        is_private_run = entry.get("metadata", {}).get("encrypted", False)
+        if not is_private_run:
+            return True
+
+        app = QApplication.instance()
+        return bool(getattr(app, "cred", None)) if app is not None else False
 
 
     def on_card_clicked(self, name):
@@ -380,7 +729,7 @@ class PipelineLocal(QWidget):
 
         close_btn = QPushButton("X", parent=self.details_box)
         close_btn.setObjectName("close_pipeline_details")
-        close_btn.setStyleSheet(close_btn_red_bg())
+        close_btn.setStyleSheet(close_button_style())
         close_btn.setFixedSize(40,30)
         close_btn.clicked.connect(self._on_close_button_click)
         self.action_items_top.addStretch()
@@ -389,11 +738,13 @@ class PipelineLocal(QWidget):
         self.details_layout.addLayout(self.action_items_top)
 
         self._details_content_label = QLabel(content)
+        self._details_content_label.setObjectName("pipelineInfoLog")
         self._details_content_label.setWordWrap(True)
         self._details_content_label.setFont(QFont("Courier New", 10))
 
         # Scroll area
         scroll = QScrollArea()
+        scroll.viewport().setStyleSheet("background: transparent;")
         scroll.setWidgetResizable(True)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -423,7 +774,10 @@ class PipelineLocal(QWidget):
         running_rn = self._find_run_for_pipeline(name)
         if running_rn:
             self.run_btn.setEnabled(False)
-            self.cancel_btn.setEnabled(True)
+            self.cancel_btn.setEnabled(
+                running_rn != getattr(self, "remote_run_name", None)
+                and self._can_cancel_run(running_rn)
+            )
             # set current run tracking so cancel will refer to the right process
             self.current_run_name = running_rn
             self.current_pipeline = name
@@ -435,6 +789,19 @@ class PipelineLocal(QWidget):
         self.action_section.addWidget(self.cancel_btn)
         self.action_section.addWidget(delete_btn)
         self.details_layout.addLayout(self.action_section)
+        self._show_details_pane()
+
+    def _show_details_pane(self):
+        self.details_box.show()
+        if self._details_splitter_initialized:
+            return
+        available_height = max(self.content_splitter.height(), 400)
+        detail_height = max(200, int(available_height * 0.52))
+        self.content_splitter.setSizes([
+            max(160, available_height - detail_height),
+            detail_height,
+        ])
+        self._details_splitter_initialized = True
 
     def clear_layout(self, layout):
         if layout is not None:
@@ -480,7 +847,7 @@ class PipelineLocal(QWidget):
         
         # Show error
         error_label = QLabel(f"Error loading pipeline info:\n{error_msg}")
-        error_label.setStyleSheet("color: red;")
+        error_label.setStyleSheet(f"color: {theme_manager.get_color('error')};")
         error_label.setWordWrap(True)
         self.details_layout.addWidget(error_label)
     
@@ -547,7 +914,7 @@ class PipelineLocal(QWidget):
                     if resp2 != QMessageBox.StandardButton.Yes:
                         try:
                             err_label = QLabel("Delete aborted by user. Pipeline not removed.")
-                            err_label.setStyleSheet("color: red;")
+                            err_label.setStyleSheet(f"color: {theme_manager.get_color('error')};")
                             err_label.setWordWrap(True)
                             self.details_layout.addWidget(err_label)
                         except Exception:
@@ -662,7 +1029,7 @@ class PipelineLocal(QWidget):
                     logger.error(f"Failed to delete pipeline {pipeline}: {message}")
                     try:
                         err_label = QLabel(f"Delete failed: {message}")
-                        err_label.setStyleSheet("color: red;")
+                        err_label.setStyleSheet(f"color: {theme_manager.get_color('error')};")
                         err_label.setWordWrap(True)
                         self.details_layout.addWidget(err_label)
                     except Exception:
@@ -677,7 +1044,7 @@ class PipelineLocal(QWidget):
                 logger.error(f"Error deleting pipeline: {err}")
                 try:
                     err_label = QLabel(f"Delete error: {err}")
-                    err_label.setStyleSheet("color: red;")
+                    err_label.setStyleSheet(f"color: {theme_manager.get_color('error')};")
                     err_label.setWordWrap(True)
                     self.details_layout.addWidget(err_label)
                 except Exception:
@@ -721,6 +1088,18 @@ class PipelineLocal(QWidget):
         if not pipeline:
             QMessageBox.warning(self, "Error", "No pipeline selected.")
             return
+
+        # Guard against stale button state and rapid repeated clicks.
+        existing_run = self._find_run_for_pipeline(pipeline)
+        if existing_run:
+            self.run_btn.setEnabled(False)
+            self.cancel_btn.setEnabled(
+                existing_run != getattr(self, "remote_run_name", None)
+                and self._can_cancel_run(existing_run)
+            )
+            self.current_run_name = existing_run
+            self.current_pipeline = pipeline
+            return
         
         
         run_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -753,7 +1132,12 @@ class PipelineLocal(QWidget):
 
             # Track remote submission as an active run for badge counting
             self.remote_run_name = run_name
+            self.remote_pipeline = pipeline
+            self.current_run_name = run_name
+            self.current_pipeline = pipeline
             PipelineLocal.active_runs.add(run_name)
+            self.run_btn.setEnabled(False)
+            self.cancel_btn.setEnabled(False)
 
             # Connect signals
             self.remote_worker.progress.connect(self._on_remote_progress)
@@ -775,6 +1159,20 @@ class PipelineLocal(QWidget):
 
         logger.info(f"Starting pipeline: {pipeline}")
         try:
+            app = QApplication.instance()
+            credential = getattr(app, "cred", None) if app is not None else None
+            if isinstance(credential, dict) and credential:
+                # Write the marker before creating any shared log output so a
+                # public session never sees a private run during startup.
+                private_marker = Path(self.RUN_DIR) / ".private_runs" / f"{Path(run_name).stem}.json"
+                private_marker.parent.mkdir(parents=True, exist_ok=True)
+                private_marker.write_text(json.dumps({"run_name": run_name}), encoding="utf-8")
+                try:
+                    private_marker.chmod(0o600)
+                    private_marker.parent.chmod(0o700)
+                except OSError:
+                    pass
+
             # Write config to JSON file in run directory
             config_file = f"{run_dir}/params.json"
             with open(config_file, 'w') as f:
@@ -783,11 +1181,8 @@ class PipelineLocal(QWidget):
             write_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Running pipeline: {pipeline}\n")
             write_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Config: {json.dumps(config, indent=2)}\n")
 
-            # create QProcess without parent
-            proc = QProcess()
-            proc.setProgram("nextflow")
             selected_revision = config.get("rev", "master")
-            proc.setArguments([
+            nextflow_args = [
                 "run",
                 pipeline,
                 "-revision",
@@ -796,11 +1191,63 @@ class PipelineLocal(QWidget):
                 "docker",
                 "-params-file",
                 str(config_file),
-            ])
-            proc.setWorkingDirectory(str(run_dir))
+            ]
 
-            # keep proc referenced
-            self.processes[run_name] = {"proc": proc, "pipeline": pipeline}
+            log_path = str(Path(self.PIPELINES_RUNS) / run_name)
+            exit_path = str(self._run_exit_path(run_name))
+            supervisor = (
+                'log_file="$1"; exit_file="$2"; shift 2; '
+                'on_signal() { '
+                'printf "\\nPipeline run cancelled by user. <<exit-code:143>>.\\n" >>"$log_file"; '
+                'printf "143\\n" >"$exit_file"; exit 143; }; '
+                'trap on_signal TERM INT HUP; '
+                'nextflow "$@" >>"$log_file" 2>&1; exit_code=$?; '
+                'printf "\\nPipeline run completed <<exit-code:%s>>.\\n" "$exit_code" >>"$log_file"; '
+                'printf "%s\\n" "$exit_code" >"$exit_file"; exit "$exit_code"'
+            )
+            proc = subprocess.Popen(
+                ["/bin/sh", "-c", supervisor, "omixforge-runner", log_path, exit_path, *nextflow_args],
+                cwd=str(run_dir),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+                close_fds=True,
+            )
+
+            metadata = {
+                "run_name": run_name,
+                "pipeline": pipeline,
+                "pid": proc.pid,
+                "process_start_token": self._process_start_token(proc.pid),
+                "started_at": datetime.now().isoformat(timespec="seconds"),
+                "log_path": log_path,
+                "exit_path": exit_path,
+                "encrypted": isinstance(credential, dict) and bool(credential),
+            }
+            try:
+                metadata_path = self._run_metadata_path(run_name)
+                metadata_path.parent.mkdir(parents=True, exist_ok=True)
+                temporary_metadata = metadata_path.with_suffix(".tmp")
+                temporary_metadata.write_text(json.dumps(metadata, indent=2))
+                temporary_metadata.replace(metadata_path)
+            except Exception:
+                try:
+                    os.killpg(proc.pid, signal.SIGTERM)
+                except OSError:
+                    pass
+                proc.wait(timeout=3)
+                raise
+
+            self.processes[run_name] = {
+                "proc": proc,
+                "pipeline": pipeline,
+                "detached": True,
+                "pid": proc.pid,
+                "process_start_token": metadata["process_start_token"],
+                "metadata": metadata,
+            }
+            self.run_credentials[run_name] = dict(credential) if isinstance(credential, dict) else None
             PipelineLocal.active_runs.add(run_name)
 
             # mark current run/pipeline
@@ -816,12 +1263,6 @@ class PipelineLocal(QWidget):
             except Exception:
                 pass
 
-            # connect signals
-            proc.readyReadStandardOutput.connect(lambda rn=run_name: self._proc_stdout(rn))
-            proc.readyReadStandardError.connect(lambda rn=run_name: self._proc_stderr(rn))
-            proc.finished.connect(lambda exitCode, exitStatus, rn=run_name: self._proc_finished(rn, exitCode, exitStatus))
-
-            proc.start()
             QMessageBox.information(self, "Pipeline Started", f"Started {pipeline}\nConfig saved to {config_file}")
         except Exception as e:
             logger.error(f"Error starting pipeline: {e}")
@@ -829,23 +1270,12 @@ class PipelineLocal(QWidget):
             QMessageBox.critical(self, "Error", f"Failed to start pipeline: {e}")
 
     def _proc_stdout(self, run_name):
-        # lookup the live process by run_name (proc may have been deleted)
-        entry = self.processes.get(run_name)
-        if not entry:
-            return
-        proc = entry.get('proc')
-        if not proc:
-            return
-        try:
-            out = proc.readAllStandardOutput().data().decode('utf-8', errors='ignore')
-            if out:
-                for line in out.splitlines():
-                    append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", line + "\n")
-                    logger.info(line)
-        except Exception as e:
-            logger.error(f"Error reading stdout for {run_name}: {e}")
+        self._drain_process_stream(run_name, "stdout")
 
     def _proc_stderr(self, run_name):
+        self._drain_process_stream(run_name, "stderr")
+
+    def _drain_process_stream(self, run_name, stream_name, final=False):
         entry = self.processes.get(run_name)
         if not entry:
             return
@@ -853,21 +1283,47 @@ class PipelineLocal(QWidget):
         if not proc:
             return
         try:
-            err = proc.readAllStandardError().data().decode('utf-8', errors='ignore')
-            if err:
-                for line in err.splitlines():
-                    append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", line + "\n")
-                    logger.error(line)
+            read_output = (
+                proc.readAllStandardOutput
+                if stream_name == "stdout"
+                else proc.readAllStandardError
+            )
+            raw_output = read_output().data()
+            decoder = self._log_decoders.setdefault(run_name, {}).get(stream_name)
+            if decoder is None:
+                decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+                self._log_decoders[run_name][stream_name] = decoder
+            text = decoder.decode(raw_output, final=final)
+            if text:
+                append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", text)
+                if stream_name == "stderr":
+                    logger.error(text.rstrip())
+                else:
+                    logger.info(text.rstrip())
         except Exception as e:
-            logger.error(f"Error reading stderr for {run_name}: {e}")
+            logger.error(f"Error reading {stream_name} for {run_name}: {e}")
 
     def on_cancel_clicked(self):
         # Cancel the currently running pipeline (if any)
         if not hasattr(self, 'current_run_name') or not self.current_run_name:
             return
         rn = self.current_run_name
+        if not self._can_cancel_run(rn):
+            QMessageBox.information(
+                self,
+                "Private pipeline is running",
+                "Log in with the private account that started this run to cancel it.",
+            )
+            return
         entry = self.processes.get(rn)
         if not entry:
+            return
+        if entry.get("detached"):
+            self._cancel_detached_run(rn)
+            self.current_run_name = None
+            self.current_pipeline = None
+            self.run_btn.setEnabled(True)
+            self.cancel_btn.setEnabled(False)
             return
         proc = entry.get('proc')
         if not proc:
@@ -890,6 +1346,7 @@ class PipelineLocal(QWidget):
             except Exception:
                 pass
             self.processes.pop(rn, None)
+            self.run_credentials.pop(rn, None)
             PipelineLocal.active_runs.discard(rn)
             try:
                 self.run_btn.setEnabled(True)
@@ -902,10 +1359,69 @@ class PipelineLocal(QWidget):
             self.current_run_name = None
             self.current_pipeline = None
 
+    def cancel_active_runs(self):
+        """Stop every local pipeline process before leaving the workspace."""
+        run_names = list(self.processes)
+        for run_name, entry in list(self.processes.items()):
+            if entry.get("detached"):
+                self._cancel_detached_run(
+                    run_name,
+                    "Pipeline run cancelled by user during logout.",
+                )
+                continue
+            proc = entry.get("proc") if entry else None
+            if proc is None:
+                continue
+            try:
+                self._proc_stdout(run_name)
+                self._proc_stderr(run_name)
+                for signal in (
+                    proc.readyReadStandardOutput,
+                    proc.readyReadStandardError,
+                    proc.finished,
+                ):
+                    try:
+                        signal.disconnect()
+                    except (TypeError, RuntimeError):
+                        pass
+                if proc.state() != QProcess.ProcessState.NotRunning:
+                    proc.terminate()
+                    if not proc.waitForFinished(2000):
+                        proc.kill()
+                        proc.waitForFinished(1000)
+                self._drain_process_stream(run_name, "stdout", final=True)
+                self._drain_process_stream(run_name, "stderr", final=True)
+                append_to_file(
+                    f"{self.PIPELINES_RUNS}/{run_name}",
+                    "Pipeline run cancelled by user during logout.\n",
+                )
+            except Exception as exc:
+                logger.error(f"Error cancelling pipeline {run_name} during logout: {exc}")
+            finally:
+                try:
+                    proc.deleteLater()
+                except Exception:
+                    pass
+                self.processes.pop(run_name, None)
+                self.run_credentials.pop(run_name, None)
+                self._log_decoders.pop(run_name, None)
+                PipelineLocal.active_runs.discard(run_name)
+
+        if getattr(self, "current_run_name", None) in run_names:
+            self.current_run_name = None
+            self.current_pipeline = None
+        try:
+            self.run_btn.setEnabled(True)
+            self.cancel_btn.setEnabled(False)
+        except Exception:
+            pass
+
     def _on_remote_progress(self, message):
         logger.info(f"Remote pipeline progress: {message}")
 
     def _on_remote_finished(self, success, message):
+        run_name = getattr(self, "remote_run_name", None)
+        pipeline = getattr(self, "remote_pipeline", None)
         if success:
             logger.info(f"Remote pipeline finished: {message}")
             QMessageBox.information(self, "Remote Pipeline", message)
@@ -913,21 +1429,27 @@ class PipelineLocal(QWidget):
             logger.error(f"Remote pipeline failed: {message}")
             QMessageBox.critical(self, "Remote Pipeline Error", message)
 
-        if getattr(self, 'remote_run_name', None):
-            PipelineLocal.active_runs.discard(self.remote_run_name)
-            self.remote_run_name = None
+        if run_name:
+            PipelineLocal.active_runs.discard(run_name)
+            self._restore_run_controls_after_finish(run_name, pipeline)
+        self.remote_run_name = None
+        self.remote_pipeline = None
 
         # Clean up references
         self.remote_worker = None
         self.remote_thread = None
 
     def _on_remote_error(self, error_msg):
+        run_name = getattr(self, "remote_run_name", None)
+        pipeline = getattr(self, "remote_pipeline", None)
         logger.error(f"Remote pipeline error: {error_msg}")
         QMessageBox.critical(self, "Remote Pipeline Error", f"Remote submission failed: {error_msg}")
 
-        if getattr(self, 'remote_run_name', None):
-            PipelineLocal.active_runs.discard(self.remote_run_name)
-            self.remote_run_name = None
+        if run_name:
+            PipelineLocal.active_runs.discard(run_name)
+            self._restore_run_controls_after_finish(run_name, pipeline)
+        self.remote_run_name = None
+        self.remote_pipeline = None
 
         # Clean up references
         self.remote_worker = None
@@ -935,33 +1457,34 @@ class PipelineLocal(QWidget):
 
     def _proc_finished(self, run_name, exitCode, exitStatus):
         try:
+            self._drain_process_stream(run_name, "stdout", final=True)
+            self._drain_process_stream(run_name, "stderr", final=True)
+            run_credential = self.run_credentials.get(run_name)
+            if run_credential:
+                zip_name = f"{self.RUN_DIR}/{run_name.replace('.txt', '.tar.gz')}"
+                run_dir = f"{self.RUN_DIR}/{run_name.replace('.txt','')}"
+                worker = ZipEncryptWorker(run_name, run_dir, zip_name, run_credential, exitCode)
+                worker.signals.finished.connect(self._on_zip_encrypt_done)
+                worker.signals.error.connect(self._on_zip_encrypt_error)
+                QThreadPool.globalInstance().start(worker)
+            else:
+                append_to_file(
+                    f"{self.PIPELINES_RUNS}/{run_name}",
+                    f"Pipeline run completed <<exit-code:{exitCode}>>.\n",
+                )
+                logger.info(f"Pipeline {run_name} finished (code={exitCode})")
+        except Exception as e:
+            logger.error(f"Failed to complete run - {e}")
+            append_to_file(
+                f"{self.PIPELINES_RUNS}/{run_name}",
+                "Pipeline run completed <<exit-code:1>>.\n",
+            )
 
-            try:
-                app = QApplication.instance()
-                try:
-                    if app.cred:
-                        zip_name = f"{self.RUN_DIR}/{run_name.replace('.txt', '.tar.gz')}"
-                        run_dir = f"{self.RUN_DIR}/{run_name.replace('.txt','')}"
-
-                        worker = ZipEncryptWorker(run_name, run_dir, zip_name, app.cred, exitCode)
-
-                        # Connect callbacks
-                        worker.signals.finished.connect(self._on_zip_encrypt_done)
-                        worker.signals.error.connect(self._on_zip_encrypt_error)
-
-                        # Start async
-                        QThreadPool.globalInstance().start(worker)
-                except AttributeError:
-                    append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{exitCode}>>.\n")
-                    logger.info(f"Pipeline {run_name} finished (code={exitCode})")
-            except Exception as e:
-                logger.error(f"Failed to complete run - {e}")
-                append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{1}>>.\n")
-
-            
         finally:
             # Clean up stored process
             entry = self.processes.pop(run_name, None)
+            self.run_credentials.pop(run_name, None)
+            self._log_decoders.pop(run_name, None)
             PipelineLocal.active_runs.discard(run_name)
             proc = None
             if entry:
@@ -978,35 +1501,34 @@ class PipelineLocal(QWidget):
                         proc.deleteLater()
                 except Exception:
                     pass
-            # If this finished run was the currently displayed one, update buttons
-            if hasattr(self, 'current_run_name') and self.current_run_name == run_name:
-                try:
-                    self.run_btn.setEnabled(True)
-                except Exception:
-                    pass
-                try:
-                    self.cancel_btn.setEnabled(False)
-                except Exception:
-                    pass
-                # clear current run tracking
-                self.current_run_name = None
-                self.current_pipeline = None
+            self._restore_run_controls_after_finish(
+                run_name,
+                entry.get("pipeline") if entry else None,
+            )
 
     def _on_zip_encrypt_done(self, run_name, exitCode):
         logger.info(f"Zip/encrypt cleanup completed for run: {run_name}")
-        append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{exitCode}>>.\n")
+        self._encrypting_runs.discard(run_name)
+        self.completed_detached_runs.pop(run_name, None)
         logger.info(f"Pipeline {run_name} finished (code={exitCode})")
 
 
     def _on_zip_encrypt_error(self, run_name, err, exitCode):
+        self._encrypting_runs.discard(run_name)
         logger.error(f"Zip/encrypt failed for run {run_name}: {err}")
         append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{1}>>.\n")
         logger.error(f"Pipeline {run_name} finished (code={exitCode}) , But encryption failed")
         
 
     def closeEvent(self, event):
-        # Terminate any running processes when the widget is closed/destroyed
+        # Detached supervisors outlive OmixForge; only legacy QProcesses are stopped here.
+        if getattr(self, "_run_monitor_timer", None):
+            self._run_monitor_timer.stop()
         for rn, entry in list(self.processes.items()):
+            if entry.get("detached"):
+                self.processes.pop(rn, None)
+                self.run_credentials.pop(rn, None)
+                continue
             proc = entry.get('proc') if entry else None
             try:
                 if proc and proc.state() != QProcess.ProcessState.NotRunning:
@@ -1023,6 +1545,7 @@ class PipelineLocal(QWidget):
             except Exception:
                 pass
             self.processes.pop(rn, None)
+            self.run_credentials.pop(rn, None)
         
         # Stop any worker threads cleanly
         try:

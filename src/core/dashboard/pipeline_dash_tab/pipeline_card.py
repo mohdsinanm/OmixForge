@@ -2,8 +2,7 @@
 from PyQt6.QtWidgets import ( 
     QLabel, QFrame, QHBoxLayout,
 )
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtCore import pyqtSignal, Qt
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
 
@@ -17,27 +16,12 @@ class PipelineCard(QFrame):
         self.name = name
 
         self.setObjectName("pipelineCard")
-        self.setStyleSheet("""
-            QFrame#pipelineCard {
-                border: 1px solid #ccc;
-                border-radius: 10px;
-                padding: 12px;
-                background: #fafafa;
-                color: #444;
-            }
-            QFrame#pipelineCard:hover {
-                background: #eaeaea;
-            }
-            QFrame#pipelineCard:hover QLabel {
-                color: black;
-            }
-        """)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         layout = QHBoxLayout()
+        layout.setContentsMargins(16, 14, 16, 14)
         label = QLabel(name)
-        
-               
-        label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        label.setObjectName("pipelineCardName")
         layout.addWidget(label)
         layout.addStretch()
         self.setLayout(layout)

@@ -1,6 +1,8 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QProgressBar
 from PyQt6.QtCore import Qt, QTimer
 
+from src.utils.theme_manager import theme_manager
+
 
 class LoadingSpinner(QWidget):
     def __init__(self, message="Loading...", parent=None):
@@ -9,7 +11,7 @@ class LoadingSpinner(QWidget):
         Parameters
         ----------
         message : str, optional
-            Message to display while loading. Default is "Loading...".
+            Message to display while loading. Default is \"Loading...\".
         parent : QWidget, optional
             Parent widget for this spinner.
         """
@@ -17,12 +19,11 @@ class LoadingSpinner(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
-        layout.setContentsMargins(0, 20, 50, 20)
+        layout.setContentsMargins(0, 20, 0, 20)
 
         # Message label
         self.message_label = QLabel(message)
         self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.message_label.setStyleSheet("font-size: 13px; color: #666; font-weight: 500;")
         layout.addWidget(self.message_label)
         
         # Animated progress bar
@@ -30,18 +31,6 @@ class LoadingSpinner(QWidget):
         self.progress_bar.setMinimum(0)
         self.progress_bar.setMaximum(100)
         self.progress_bar.setValue(0)
-        self.progress_bar.setStyleSheet("""
-            QProgressBar {
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                background-color: #f0f0f0;
-                height: 8px;
-            }
-            QProgressBar::chunk {
-                background-color: #4a90e2;
-                border-radius: 4px;
-            }
-        """)
         layout.addWidget(self.progress_bar)
 
         # Animation timer for smooth progress
@@ -56,6 +45,40 @@ class LoadingSpinner(QWidget):
         # Initially hide content to show empty space
         self.message_label.hide()
         self.progress_bar.hide()
+
+        # Apply current theme styles
+        self._apply_theme()
+        theme_manager.theme_changed.connect(self._on_theme_changed)
+
+    # ------------------------------------------------------------------
+    # Theme helpers
+    # ------------------------------------------------------------------
+
+    def _apply_theme(self):
+        """Apply theme tokens to the spinner label and progress bar."""
+        t = theme_manager.get_tokens()
+        self.message_label.setStyleSheet(
+            f"font-size: 13px; color: {t.text_secondary}; font-weight: 500;"
+        )
+        self.progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid {t.border_standard};
+                border-radius: 5px;
+                background-color: {t.secondary_surface_bg};
+                height: 8px;
+            }}
+            QProgressBar::chunk {{
+                background-color: {t.accent_primary};
+                border-radius: 4px;
+            }}
+        """)
+
+    def _on_theme_changed(self, _theme_name: str):
+        self._apply_theme()
+
+    # ------------------------------------------------------------------
+    # Animation helpers
+    # ------------------------------------------------------------------
 
     def _update_progress(self):
         """Update the progress bar animation."""
@@ -83,6 +106,3 @@ class LoadingSpinner(QWidget):
         self.timer.stop()
         self.message_label.hide()
         self.progress_bar.hide()
-
-
-

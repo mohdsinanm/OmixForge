@@ -1,6 +1,8 @@
+from typing import TYPE_CHECKING
+
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QListWidget, QPushButton,
-    QLabel, QMessageBox, QLineEdit
+    QLabel, QMessageBox, QLineEdit, QHBoxLayout
 )
 from src.utils.resource import get_plugins_dir
 import requests
@@ -11,23 +13,35 @@ from src.utils.constants import PLUGINS_API_URL
 
 logger = OmixForgeLogger.get_logger()
 
+if TYPE_CHECKING:
+    from src.core.plugin_manager.plugin_installer import PluginStore
+
 class StoreTab(QWidget):
     """Fetch plugins from public GitHub repo with search functionality"""
 
     def __init__(self, store: "PluginStore"):
         super().__init__()
+        self.setObjectName("pluginStoreTab")
         self.store = store
 
         layout = QVBoxLayout(self)
 
-        # Search bar
+        # Search and refresh controls
+        search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search plugins...")
         self.search_input.textChanged.connect(self.filter_plugins)
-        layout.addWidget(self.search_input)
+        search_layout.addWidget(self.search_input, 1)
+
+        self.refresh_button = QPushButton("Refresh")
+        self.refresh_button.setObjectName("refreshPluginStoreButton")
+        self.refresh_button.clicked.connect(self.fetch_available_plugins)
+        search_layout.addWidget(self.refresh_button)
+        layout.addLayout(search_layout)
 
         # Plugin list
         self.list_widget = QListWidget()
+        self.list_widget.setObjectName("availablePluginsList")
         layout.addWidget(QLabel("Available plugins:"))
         layout.addWidget(self.list_widget)
 
@@ -40,7 +54,7 @@ class StoreTab(QWidget):
         self.available_plugins = []       # Full list
         self.filtered_plugins = []        # Filtered by search
 
-        self.fetch_available_plugins()
+        # self.fetch_available_plugins()
 
     def fetch_available_plugins(self):
         """Fetch plugin files from GitHub repo"""
@@ -50,8 +64,7 @@ class StoreTab(QWidget):
             r.raise_for_status()
             contents = r.json()
             self.available_plugins = [f['name'] for f in contents if f['name'].endswith(".py") and f['name'] !='check_plugins.py']
-            self.filtered_plugins = self.available_plugins.copy()
-            self.update_list()
+            self.filter_plugins(self.search_input.text())
         except Exception as e:
             logger.error(f"Failed to fetch plugins: {e}")
             QMessageBox.warning(self, "Error", f"Failed to fetch plugins: {e}")
