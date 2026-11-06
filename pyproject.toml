@@ -1,6 +1,6 @@
 [project]
 name = "omixforge"
-version = "2.0.0"
+version = "2.0.1"
 description = ""
 authors = [
     {name = "mohdsinanm",email = "mohamedysf@bicpu.edu.in"}

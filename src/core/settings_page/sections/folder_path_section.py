@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import (
     QWidget, QGridLayout, QLineEdit, QPushButton, QFileDialog, QLabel
 )
+from PyQt6.QtCore import QDir
 
 from src.core.settings_page.sections.section_base import SettingsSection
 
@@ -52,7 +53,19 @@ class FolderPathsSection(SettingsSection):
         self.pipeline_dir.setText(data.get("PIPELINE_DIR", ""))
 
     def _browse_folder(self, line_edit):
-        path = QFileDialog.getExistingDirectory(self, "Select folder")
-        if path:
+        dialog = QFileDialog(self)
+        dialog.setWindowTitle("Select folder")
+        dialog.setFileMode(QFileDialog.FileMode.Directory)
+        dialog.setOption(QFileDialog.Option.ShowDirsOnly, True)
+        dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True)
+
+        dialog.setFilter(
+            QDir.Filter.AllDirs |
+            QDir.Filter.Hidden |
+            QDir.Filter.NoDotAndDotDot
+        )
+
+        if dialog.exec():
+            path = dialog.selectedFiles()[0]
             line_edit.setText(path)
 
