@@ -1,3 +1,6 @@
+omixforge (2.0.1-1) noble; urgency=medium
+  * Fix hidden files select
+  
 omixforge (2.0.0-1) noble; urgency=medium
 
   * Update package version to 1.2.0 and synchronize project metadata with Debian packaging.
