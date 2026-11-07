@@ -1,12 +1,55 @@
 
 import os
+import platform
+import subprocess
 from PyQt6.QtWidgets import (
-    QMainWindow, QTextEdit, QScrollArea, QVBoxLayout, QWidget, QToolBar, QPushButton, QLabel
+    QMainWindow, QTextEdit, QScrollArea, QVBoxLayout, QWidget, QToolBar,
+    QPushButton, QLabel, QMessageBox,
 )
 from PyQt6.QtGui import QFont, QAction, QPixmap
 from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtCore import QUrl, Qt
+
+
+def open_file_externally(file_path: str, parent=None) -> None:
+    """Open a file with the host's default application."""
+    is_wsl = (
+        "WSL_DISTRO_NAME" in os.environ
+        or "WSL_INTEROP" in os.environ
+        or "microsoft" in platform.release().lower()
+    )
+
+    if is_wsl:
+        try:
+            result = subprocess.run(
+                ["wslpath", "-w", file_path],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            windows_path = result.stdout.strip()
+            if not windows_path:
+                raise OSError("wslpath returned an empty Windows path")
+            subprocess.Popen(["explorer.exe", windows_path])
+            return
+        except (OSError, subprocess.SubprocessError) as error:
+            if QDesktopServices.openUrl(QUrl.fromLocalFile(file_path)):
+                return
+            QMessageBox.warning(
+                parent,
+                "Unable to Open File",
+                f"Could not open the file in Windows: {error}",
+            )
+            return
+
+    if not QDesktopServices.openUrl(QUrl.fromLocalFile(file_path)):
+        QMessageBox.warning(
+            parent,
+            "Unable to Open File",
+            f"No application could be found to open:\n{file_path}",
+        )
+
 
 class FileViewerWindow(QMainWindow):
     def __init__(self, file_path: str, parent=None):
@@ -93,7 +136,7 @@ class FileViewerWindow(QMainWindow):
 
     def _load_web(self):
         """Load and display HTML/web content in a browser view."""
-        QDesktopServices.openUrl(QUrl.fromLocalFile(self.file_path))
+        open_file_externally(self.file_path, self)
         return
 
 

@@ -13,6 +13,7 @@ from src.core.dashboard.pipeline_dash_tab.pipeline_args import _find_pipeline_sc
 from src.core.dashboard.pipeline_dash_tab.pipeline_card import PipelineCard
 from src.core.dashboard.pipeline_editor_tab.pipeline_editor import PipelineEditorTab, PipelineDataCard as EditorDataCard
 from src.utils.widgets.filetree import FilesTreeWidget
+from src.utils.widgets import fileview as fileview_module
 from src.core.plugin_manager.plugin_page import PluginsPage
 from src.core.profile_page.profile import ProfilePage
 from src.core.profile_page.startup_page import AccessModePage
@@ -45,6 +46,84 @@ def test_file_tree_keeps_multiqc_plot_directories_expandable(tmp_path, qtbot):
         "pdf", "png", "svg"
     ]
     assert all(root_item.child(index).childCount() == 1 for index in range(3))
+
+
+def test_file_tree_opens_pdf_in_windows_from_wsl(tmp_path, qtbot, monkeypatch):
+    pdf_path = tmp_path / "plot.pdf"
+    pdf_path.write_bytes(b"pdf")
+    tree_widget = FilesTreeWidget(str(tmp_path), allowed_exts=[".pdf"])
+    qtbot.addWidget(tree_widget)
+    item = tree_widget.tree.topLevelItem(0).child(0)
+    calls = []
+    path_conversions = []
+
+    def convert_to_windows_path(*args, **kwargs):
+        path_conversions.append((args, kwargs))
+        return SimpleNamespace(stdout=r"\\wsl.localhost\Ubuntu\tmp\plot.pdf")
+
+    monkeypatch.setenv("WSL_DISTRO_NAME", "Ubuntu")
+    monkeypatch.setattr(
+        fileview_module.subprocess,
+        "run",
+        convert_to_windows_path,
+    )
+    monkeypatch.setattr(
+        fileview_module.subprocess,
+        "Popen",
+        lambda args: calls.append(args),
+    )
+
+    tree_widget._on_item_double_clicked(item, 0)
+
+    assert path_conversions == [(
+        (["wslpath", "-w", str(pdf_path)],),
+        {"check": True, "capture_output": True, "text": True},
+    )]
+    assert calls == [[
+        "explorer.exe",
+        r"\\wsl.localhost\Ubuntu\tmp\plot.pdf",
+    ]]
+
+
+def test_external_file_uses_qt_opener_outside_wsl(monkeypatch):
+    opened_urls = []
+    monkeypatch.delenv("WSL_DISTRO_NAME", raising=False)
+    monkeypatch.delenv("WSL_INTEROP", raising=False)
+    monkeypatch.setattr(fileview_module.platform, "release", lambda: "6.8.0-linux")
+    monkeypatch.setattr(
+        fileview_module.QDesktopServices,
+        "openUrl",
+        lambda url: opened_urls.append(url) or True,
+    )
+
+    fileview_module.open_file_externally("/tmp/plot.pdf")
+
+    assert len(opened_urls) == 1
+    assert opened_urls[0].toLocalFile() == "/tmp/plot.pdf"
+
+
+def test_external_file_falls_back_to_qt_when_wsl_bridge_is_unavailable(monkeypatch):
+    opened_urls = []
+
+    def missing_wslpath(*args, **kwargs):
+        raise FileNotFoundError("wslpath")
+
+    monkeypatch.setenv("WSL_DISTRO_NAME", "Ubuntu")
+    monkeypatch.setattr(
+        fileview_module.subprocess,
+        "run",
+        missing_wslpath,
+    )
+    monkeypatch.setattr(
+        fileview_module.QDesktopServices,
+        "openUrl",
+        lambda url: opened_urls.append(url) or True,
+    )
+
+    fileview_module.open_file_externally("/tmp/plot.pdf")
+
+    assert len(opened_urls) == 1
+    assert opened_urls[0].toLocalFile() == "/tmp/plot.pdf"
 
 
 def test_png_file_viewer_loads_image_not_text(tmp_path, qtbot):
