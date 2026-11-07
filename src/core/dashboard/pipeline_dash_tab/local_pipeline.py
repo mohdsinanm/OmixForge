@@ -187,6 +187,7 @@ class PipelineLocal(QWidget):
         self._encrypting_runs = set()
         self.output_displays = {}  # Store references to output display widgets by run_name
         self.current_pipeline_name = None  # Track the currently displayed pipeline
+        self._loaded_pipeline_name = None
         
         self.constants = json_read(CONFIG_FILE)
         self.RUN_DIR = self.constants.get("folders",{}).get("RUN_DIR", RUN_DIR)
@@ -646,8 +647,16 @@ class PipelineLocal(QWidget):
 
     def on_card_clicked(self, name):
         """Handle pipeline card click - start async info fetch with spinner."""
+        info_thread = self.info_worker_thread
+        if name == self.current_pipeline_name:
+            if info_thread is not None and info_thread.isRunning():
+                return
+            if self._loaded_pipeline_name == name and self.details_box.isVisible():
+                return
+
         # Store the current pipeline name for use in on_run_clicked
         self.current_pipeline_name = name
+        self._loaded_pipeline_name = None
         
         # Clear old details (includes nested layouts and widgets)
         self.clear_layout(self.details_layout)
@@ -719,6 +728,7 @@ class PipelineLocal(QWidget):
         
         # Update stored info
         self.pipeline_info_lines = info
+        self._loaded_pipeline_name = name
         
         # Clear spinner and label
         for i in reversed(range(self.details_layout.count())):
@@ -824,6 +834,7 @@ class PipelineLocal(QWidget):
 
     def _on_close_button_click(self):
         self.details_box.hide()
+        self._loaded_pipeline_name = None
 
         try:
             self.clear_layout(self.details_layout)

@@ -82,6 +82,38 @@ def test_pipeline_import_action_buttons_have_equal_width(qtbot):
     assert widget.url_import_btn.maximumWidth() == widget.btn.maximumWidth()
 
 
+def test_pipeline_card_repeated_click_does_not_reload_current_pipeline(
+    qtbot, monkeypatch
+):
+    import src.core.dashboard.pipeline_dash_tab.local_pipeline as local_pipeline_module
+
+    monkeypatch.setattr(
+        local_pipeline_module,
+        "run_shell_command",
+        lambda _: SimpleNamespace(stdout=""),
+    )
+    monkeypatch.setattr(local_pipeline_module, "json_read", lambda _: {})
+    page = PipelineLocal()
+    qtbot.addWidget(page)
+    page.current_pipeline_name = "nf-core/demo"
+    page.info_worker_thread = SimpleNamespace(isRunning=lambda: True)
+
+    def unexpected_worker(_name):
+        raise AssertionError("Repeated click started another info worker")
+
+    monkeypatch.setattr(local_pipeline_module, "PipelineInfoWorker", unexpected_worker)
+
+    page.on_card_clicked("nf-core/demo")
+    page.show()
+    page.info_worker_thread = SimpleNamespace(isRunning=lambda: False)
+    page._loaded_pipeline_name = "nf-core/demo"
+    page.details_box.show()
+    QApplication.processEvents()
+    page.on_card_clicked("nf-core/demo")
+
+    assert page.current_pipeline_name == "nf-core/demo"
+
+
 def test_file_tree_keeps_multiqc_plot_directories_expandable(tmp_path, qtbot):
     for folder, filename in (
         ("pdf", "plot.pdf"),
