@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 from PyQt6.QtCore import QPoint, Qt
 from PyQt6.QtGui import QCloseEvent
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QToolButton, QLineEdit, QTabWidget, QComboBox, QPushButton, QApplication
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QToolButton, QLineEdit, QTabWidget, QComboBox, QPushButton, QApplication, QTableWidgetItem
 
 from src.core.about_page.about import AboutPage
 from src.core.dashboard.pipeline_dashboard import PipelineDashboard
@@ -80,6 +80,23 @@ def test_pipeline_import_action_buttons_have_equal_width(qtbot):
 
     assert widget.url_import_btn.minimumWidth() == widget.btn.minimumWidth()
     assert widget.url_import_btn.maximumWidth() == widget.btn.maximumWidth()
+
+
+def test_ena_downloader_marks_failed_files_for_retry(qtbot):
+    downloader = ENAFastqDownloader()
+    qtbot.addWidget(downloader)
+    downloader.successful_results = [{
+        "accession": "SRR1",
+        "fastq_urls": ["https://example.test/read1.fastq.gz"],
+    }]
+    downloader.results_table.setRowCount(1)
+    downloader.results_table.setItem(0, 1, QTableWidgetItem("SRR1"))
+    downloader.results_table.setItem(0, 5, QTableWidgetItem("Ready"))
+    downloader.download_results = {"https://example.test/read1.fastq.gz": False}
+
+    downloader._update_download_statuses()
+
+    assert downloader.results_table.item(0, 5).text() == "Failed (1/1)"
 
 
 def test_pipeline_card_repeated_click_does_not_reload_current_pipeline(
@@ -809,7 +826,10 @@ def test_pipeline_import_empty_results_offer_refresh_guidance(qtbot):
     assert "refresh to try again" in import_tab.status_label.text()
 
 
-def test_git_import_error_shows_inline_retry_guidance(qtbot):
+def test_git_import_error_shows_inline_retry_guidance(qtbot, monkeypatch):
+    import src.core.dashboard.pipeline_import_tab.pipeline_import as import_module
+
+    monkeypatch.setattr(import_module, "show_error_dialog", lambda *_args, **_kwargs: None)
     import_tab = PipelineImport()
     qtbot.addWidget(import_tab)
 
@@ -840,6 +860,10 @@ def test_about_page_is_populated():
     page = AboutPage()
     labels = [label.text() for label in page.findChildren(QLabel) if label.text()]
     assert page.findChild(QLabel, "dashboardTitle").text() == "About"
+    assert any(
+        button.text() == "View / Export Application Log"
+        for button in page.findChildren(QPushButton)
+    )
     assert any("OmixForge" in text for text in labels)
     assert any("Version:" in text for text in labels)
     assert any("License" in text for text in labels)

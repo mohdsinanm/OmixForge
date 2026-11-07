@@ -20,8 +20,7 @@ class PipelineRefreshWorker(QObject):
             pipelines = utils.get_pipelines()
             self.pipelines_ready.emit(pipelines)
         except Exception as e:
-            logger.error(f"Error refreshing pipelines: {e}")
+            logger.exception(f"Error refreshing pipelines: {e}")
             self.error.emit(str(e))
         finally:
             self.finished.emit()
-

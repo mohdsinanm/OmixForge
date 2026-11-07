@@ -84,7 +84,7 @@ class PipelineImportWorker(QObject):
                 )
                 return
         except Exception as e:
-            logger.error(f"Error importing pipeline: {e}")
+            logger.exception(f"Error importing pipeline: {e}")
             self.error.emit(str(e))
         finally:
             self.finished.emit()

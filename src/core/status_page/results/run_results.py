@@ -11,6 +11,7 @@ from src.utils.resource import resource_path
 from src.utils.widgets.credential_popup import CredentialsDialog
 from src.core.status_page.run_state import classify_run_log, is_private_run
 from src.utils.theme_manager import theme_manager
+from src.utils.logger_module.error_reporting import show_error_dialog
 logger = OmixForgeLogger.get_logger()
 
 from PyQt6.QtWidgets import (
@@ -52,6 +53,7 @@ class TarDecryptWorker(QRunnable):
             self.signals.finished.emit(self.run_name)
 
         except Exception as e:
+            logger.exception(f"Failed to decrypt pipeline archive {self.run_name}: {e}")
             self.signals.error.emit(self.run_name, str(e))
 
 class PipelineDataCard(QFrame):
@@ -398,7 +400,17 @@ class PipelineResultsPage(QWidget):
                 QMessageBox.warning(self, "Error", "Credentials does not match")
 
         except Exception as e:
-            logger.error(f"Error decrypting pipeline {name}: {e}")
+            logger.exception(f"Error decrypting pipeline {name}: {e}")
+            if hasattr(self, "loading_dialog") and self.loading_dialog:
+                self.loading_dialog.close()
+                self.loading_dialog.deleteLater()
+                self.loading_dialog = None
+            show_error_dialog(
+                self,
+                "Decryption Failed",
+                "The run could not be decrypted. Verify the credentials and try again.",
+                str(e),
+            )
 
     def _on_tar_decrypt_done(self, runname):
         if hasattr(self, "loading_dialog"):
@@ -420,12 +432,12 @@ class PipelineResultsPage(QWidget):
             self.loading_dialog.close()
             self.loading_dialog.deleteLater()
             self.loading_dialog = None
-
-            QMessageBox.critical(
-                self,
-                "Decryption Failed",
-                f"{runname} failed to decrypt:\n{e}"
-            )
+        show_error_dialog(
+            self,
+            "Decryption Failed",
+            f"{runname} could not be decrypted. Verify the credentials and try again.",
+            e,
+        )
 
     def on_delete_clicked(self, name: str):
 
@@ -445,7 +457,13 @@ class PipelineResultsPage(QWidget):
             self.render_cards()
 
         except Exception as e:
-            logger.error(f"Error deleting pipeline {name}: {e}")
+            logger.exception(f"Error deleting pipeline {name}: {e}")
+            show_error_dialog(
+                self,
+                "Delete Failed",
+                f"Could not delete {name}. Check the log, then retry.",
+                str(e),
+            )
 
     def clear_details_layout(self):
         while self.details_layout.count():

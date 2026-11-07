@@ -70,7 +70,7 @@ class FileDownloadWorker(QObject):
             
         except Exception as e:
             error_msg = f"Download failed: {str(e)}"
-            logger.error(error_msg)
+            logger.exception(error_msg)
             self.finished.emit(self.file_url, False, error_msg)
 
 

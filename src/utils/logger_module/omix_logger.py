@@ -8,6 +8,11 @@ class OmixForgeLogger:
     _logger = None
 
     @staticmethod
+    def get_log_file_path() -> Path:
+        """Return the active application log file path."""
+        return Path(LOG_DIR) / "OmixForge.log"
+
+    @staticmethod
     def get_logger(name: str = "OmixForge"):
         """
         Returns a global logger instance.
@@ -21,7 +26,7 @@ class OmixForgeLogger:
         os.makedirs(log_dir, exist_ok=True)
     
 
-        log_file = log_dir / "OmixForge.log"
+        log_file = OmixForgeLogger.get_log_file_path()
 
         # Logger setup
         logger = logging.getLogger(name)
@@ -36,7 +41,8 @@ class OmixForgeLogger:
         file_handler = RotatingFileHandler(
             log_file,
             maxBytes=5 * 1024 * 1024,   # 5 MB per file
-            backupCount=3              # keep 3 backups
+            backupCount=3,              # keep 3 backups
+            encoding="utf-8",
         )
         file_handler.setLevel(logging.INFO)
 

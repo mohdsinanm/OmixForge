@@ -80,13 +80,13 @@ class ENAFetcherWorker(QObject):
                     
                 except Exception as e:
                     error_msg = f"Error fetching {accession}: {str(e)}"
-                    logger.error(error_msg)
+                    logger.exception(error_msg)
                     failed_accessions.append((accession, error_msg))
             
             self.result_ready.emit(successful_results, failed_accessions)
             
         except Exception as e:
-            logger.error(f"Fatal error in fetcher worker: {e}")
+            logger.exception(f"Fatal error in fetcher worker: {e}")
             self.error.emit(str(e))
         finally:
             self.finished.emit()

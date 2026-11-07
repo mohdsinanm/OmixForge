@@ -33,6 +33,7 @@ from src.core.plugin_manager.plugin_installer import PluginStore
 from src.core.about_page.about import AboutPage
 from src.assets.stylesheet import global_style_sheet
 from src.utils.theme_manager import theme_manager
+from src.utils.logger_module.error_reporting import ApplicationExceptionHandler
 
 
 class MainWindow(QMainWindow):
@@ -610,8 +611,11 @@ def main():
     app.setPalette(theme_manager.get_palette())
     app.setStyleSheet(global_style_sheet())
 
+    exception_handler = ApplicationExceptionHandler(app)
     initiate = InitiateApp()
     window = MainWindow(initiate)
+    exception_handler.parent_widget = window
+    app.aboutToQuit.connect(exception_handler.restore)
     window.showMaximized()
 
     sys.exit(app.exec())
