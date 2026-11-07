@@ -151,6 +151,11 @@ class PipelineResultsPage(QWidget):
         self.details_box.setMinimumHeight(160)
         self.details_layout = QVBoxLayout(self.details_box)
 
+        title = QLabel("Result files")
+        title.setObjectName("dashboardSectionTitle")
+        title.setContentsMargins(5, 8, 5, 10)
+        main_layout.addWidget(title)
+
         self.content_splitter = QSplitter(Qt.Orientation.Vertical)
         self.content_splitter.setObjectName("runResultsSplitter")
         self.content_splitter.setHandleWidth(8)

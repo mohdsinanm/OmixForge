@@ -98,6 +98,21 @@ class PipelineRunStatus(QWidget):
         self.get_local_pipelines_status()
 
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(18, 18, 18, 18)
+        main_layout.setSpacing(12)
+
+        summary_header = QHBoxLayout()
+        summary_header.setSpacing(10)
+        self.summary_heading = QLabel("Summary")
+        self.summary_heading.setObjectName("dashboardSectionTitle")
+        summary_header.addWidget(self.summary_heading)
+
+        self.summary_label = QLabel()
+        self.summary_label.setObjectName("runStatusSummary")
+        self.summary_label.setTextFormat(Qt.TextFormat.RichText)
+        summary_header.addWidget(self.summary_label)
+        summary_header.addStretch()
+        main_layout.addLayout(summary_header)
 
         # GRID LAYOUT FOR CARDS
         self.cards_grid = QGridLayout()
@@ -178,6 +193,12 @@ class PipelineRunStatus(QWidget):
         columns = 4
         row = 0
         col = 0
+        status_counts = {
+            "FAILED": 0,
+            "CANCELLED": 0,
+            "COMPLETED": 0,
+            "RUNNING": 0,
+        }
         for column in range(columns):
             self.cards_grid.setColumnStretch(column, 1)
 
@@ -190,6 +211,8 @@ class PipelineRunStatus(QWidget):
         for index, name in enumerate(self.pipeline_runs):
             content = read_from_file(f"{self.PIPELINES_RUNS}/{name}")
             status, pid = self._run_card_status(name, content)
+            if status in status_counts:
+                status_counts[status] += 1
             card = PipelineCard(name, status, pid)
 
             card.clicked.connect(self.on_card_clicked)
@@ -209,6 +232,24 @@ class PipelineRunStatus(QWidget):
             if col >= columns:
                 col = 0
                 row += 1
+
+        tokens = theme_manager.get_tokens()
+        self.summary_label.setText(
+            f'<span style="color: {tokens.success};">'
+            f"Completed: {status_counts['COMPLETED']}</span>"
+            '&nbsp;&nbsp;'
+            f'<span style="color: {tokens.error};">'
+            f"Failed: {status_counts['FAILED']}</span>"
+            '&nbsp;&nbsp;'
+            f'<span style="color: {tokens.warning};">'
+            f"Running: {status_counts['RUNNING']}</span>"
+            '&nbsp;&nbsp;'
+            f'<span style="color: {tokens.badge_neutral_fg};">'
+            f"Cancelled: {status_counts['CANCELLED']}</span>"
+        )
+        self.summary_label.setStyleSheet(
+            "font-weight: 700; font-size: 12px; padding: 4px 12px;"
+        )
 
     def _run_card_status(self, name, content):
         """Return the visible run state and live supervisor PID, when available."""

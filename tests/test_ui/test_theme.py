@@ -196,6 +196,21 @@ class TestStylesheetGeneration:
         ss = theme_manager.get_stylesheet()
         assert DARK_TOKENS.main_bg.lower() in ss.lower()
 
+    def test_pipeline_status_scroll_surfaces_use_primary_content_background(self, qapp):
+        from src.utils.theme_manager import theme_manager
+        theme_manager.set_theme("light")
+        ss = theme_manager.get_stylesheet()
+        selectors = (
+            "QWidget#runResultsScrollContent",
+            "QScrollArea#runResultsScroll",
+            "QWidget#runStatusScrollContent",
+            "QScrollArea#runStatusScroll",
+        )
+        surfaces_rule = ss.split("QWidget#runResultsScrollContent", 1)[1].split("}", 1)[0]
+
+        assert all(selector in ss for selector in selectors)
+        assert theme_manager.get_tokens().primary_content_bg in surfaces_rule
+
     def test_global_style_sheet_delegates_to_theme_manager(self, qapp):
         from src.utils.theme_manager import theme_manager
         from src.assets.stylesheet import global_style_sheet

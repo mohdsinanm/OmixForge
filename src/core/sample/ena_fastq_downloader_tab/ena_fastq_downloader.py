@@ -121,7 +121,8 @@ class ENAFastqDownloader(QWidget):
         
         # Title
         title = QLabel("ENA FASTQ Downloader")
-        title.setFont(QFont("Noto Sans", 16, QFont.Weight.Bold))
+        title.setObjectName("dashboardSectionTitle")
+        title.setContentsMargins(0, 8, 5, 10)
         main_layout.addWidget(title)
         
         # Instructions

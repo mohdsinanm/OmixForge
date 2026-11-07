@@ -32,6 +32,8 @@ class SamplePrepPage(QWidget):
         
         # Title
         title = QLabel("Sample Preparation - Data Table")
+        title.setObjectName("dashboardSectionTitle")
+        title.setContentsMargins(0, 8, 5, 10)
         layout.addWidget(title)
         
         # Controls row
@@ -469,4 +471,3 @@ class SamplePrepPage(QWidget):
                         self.table.setItem(row, col, new_item)
         
         logger.info(f"Cleared {len(selected_ranges)} cell range(s)")
-

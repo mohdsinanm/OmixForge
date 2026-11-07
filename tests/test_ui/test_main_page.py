@@ -1,7 +1,7 @@
 import json
 from types import SimpleNamespace
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QPoint, Qt
 from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QToolButton, QLineEdit, QTabWidget, QComboBox, QPushButton, QApplication
 
@@ -18,11 +18,37 @@ from src.core.plugin_manager.plugin_page import PluginsPage
 from src.core.profile_page.profile import ProfilePage
 from src.core.profile_page.startup_page import AccessModePage
 from src.core.sample.sample_page import Sample
+from src.core.sample.sample_prep_tab.sample_prep import SamplePrepPage
+from src.core.sample.ena_fastq_downloader_tab.ena_fastq_downloader import ENAFastqDownloader
 from src.core.settings_page.sections.folder_path_section import FolderPathsSection
 from src.core.settings_page.settings import SettingsPage
 from src.core.status_page.results.run_results import PipelineResultsPage, PipelineDataCard as ResultsDataCard
 from src.utils.nfcore_utils import NfcoreUtils
 from src.utils.widgets.fileview import FileViewerWindow
+
+
+def test_sample_tool_titles_use_shared_section_heading_style(qtbot):
+    sample_prep = SamplePrepPage()
+    ena_downloader = ENAFastqDownloader()
+    qtbot.addWidget(sample_prep)
+    qtbot.addWidget(ena_downloader)
+    sample_prep.resize(800, 600)
+    ena_downloader.resize(800, 600)
+    sample_prep.show()
+    ena_downloader.show()
+    qtbot.wait(10)
+
+    sample_prep_title = sample_prep.findChild(QLabel, "dashboardSectionTitle")
+    ena_downloader_title = ena_downloader.findChild(QLabel, "dashboardSectionTitle")
+
+    assert sample_prep_title.text() == "Sample Preparation - Data Table"
+    assert ena_downloader_title.text() == "ENA FASTQ Downloader"
+    assert sample_prep.layout().contentsMargins().left() == 18
+    assert sample_prep.layout().contentsMargins().top() == 18
+    assert ena_downloader.layout().contentsMargins().left() == 18
+    assert ena_downloader.layout().contentsMargins().top() == 18
+    assert sample_prep_title.mapTo(sample_prep, QPoint(0, 0)).x() == 18
+    assert ena_downloader_title.mapTo(ena_downloader, QPoint(0, 0)).x() == 18
 
 
 def test_pipeline_import_action_buttons_have_equal_width(qtbot):
@@ -1061,6 +1087,58 @@ def test_pipeline_status_cards_resize_with_four_column_grid(
     qtbot.wait(50)
 
     assert cards[0].width() > narrow_width
+
+
+def test_pipeline_status_summary_counts_and_refreshes_statuses(
+    qtbot, monkeypatch, tmp_path,
+):
+    import src.core.status_page.status.run_status as run_status_module
+
+    statuses = {
+        "failed-one.log": "FAILED",
+        "failed-two.log": "FAILED",
+        "cancelled.log": "CANCELLED",
+        "completed.log": "COMPLETED",
+        "running.log": "RUNNING",
+    }
+    monkeypatch.setattr(run_status_module, "CONFIG_FILE", tmp_path / "app.config")
+    monkeypatch.setattr(run_status_module, "json_read", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(
+        run_status_module,
+        "list_files_in_directory",
+        lambda *_args, **_kwargs: list(statuses),
+    )
+    monkeypatch.setattr(run_status_module, "read_from_file", lambda *_args, **_kwargs: "")
+    monkeypatch.setattr(
+        run_status_module.PipelineRunStatus,
+        "_run_card_status",
+        lambda _self, name, _content: (statuses[name], None),
+    )
+
+    page = run_status_module.PipelineRunStatus()
+    qtbot.addWidget(page)
+    assert page.summary_heading.text() == "Summary"
+    assert page.layout().contentsMargins().left() == 18
+    assert page.layout().contentsMargins().top() == 16
+    heading_style = run_status_module.theme_manager.get_stylesheet()
+    assert "QLabel#dashboardSectionTitle" in heading_style
+    assert "font-size: 17px;" in heading_style
+    assert "font-weight: 700;" in heading_style
+    initial_summary = page.summary_label.text()
+    assert "Completed: 1" in initial_summary
+    assert "Failed: 2" in initial_summary
+    assert "Running: 1" in initial_summary
+    assert "Cancelled: 1" in initial_summary
+    assert run_status_module.theme_manager.get_tokens().success in initial_summary
+    assert run_status_module.theme_manager.get_tokens().error in initial_summary
+    assert run_status_module.theme_manager.get_tokens().warning in initial_summary
+    assert run_status_module.theme_manager.get_tokens().badge_neutral_fg in initial_summary
+
+    statuses["running.log"] = "COMPLETED"
+    page.render_cards()
+
+    assert "Completed: 2" in page.summary_label.text()
+    assert "Running: 0" in page.summary_label.text()
 
 
 def test_pipeline_result_cards_show_run_status(monkeypatch, qtbot):
