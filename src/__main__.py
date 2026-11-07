@@ -1,3 +1,4 @@
+import os
 import sys
 from PyQt6.QtCore import QSize, Qt, QTimer
 from PyQt6.QtGui import QAction, QIcon, QFont
@@ -598,6 +599,9 @@ class MainWindow(QMainWindow):
 
 
 def main():
+    if os.environ.get("WSL_DISTRO_NAME") or os.environ.get("WSL_INTEROP"):
+        QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseSoftwareOpenGL)
+
     app = QApplication(sys.argv)
 
     # Load the user's saved theme preference BEFORE creating the main window
