@@ -547,6 +547,17 @@ class MainWindow(QMainWindow):
         self.sidebar_list.insertItem(self.plugin_insert_row, item)
         self.plugin_insert_row += 1
 
+    def remove_plugin_sidebar_item(self, name: str):
+        """Remove a plugin item from the sidebar menu."""
+        for row in range(self.sidebar_list.count()):
+            item = self.sidebar_list.item(row)
+            if item.data(Qt.ItemDataRole.UserRole) == ("plugin", name):
+                self.sidebar_list.takeItem(row)
+                if row < self.plugin_insert_row:
+                    self.plugin_insert_row -= 1
+                self.sidebar_list.clearSelection()
+                return
+
     def update_pipeline_status_badge(self, count):
         """Update the Pipeline Status sidebar badge."""
         if count > 0:

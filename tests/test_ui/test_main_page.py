@@ -27,6 +27,27 @@ from src.utils.nfcore_utils import NfcoreUtils
 from src.utils.widgets.fileview import FileViewerWindow
 
 
+def test_plugin_sidebar_item_can_be_removed_and_readded(window, monkeypatch):
+    monkeypatch.setattr("src.__main__.PluginManager.load_all", lambda *_args: None)
+    window.load_main_app()
+
+    window.add_plugin_sidebar_item("Sidebar Removal Test")
+    window.add_plugin_sidebar_item("Sidebar Order Test")
+
+    window.remove_plugin_sidebar_item("Sidebar Removal Test")
+
+    assert window.plugin_insert_row == window.sidebar_list.row(window.plugin_header) + 2
+    assert [
+        window.sidebar_list.item(row).data(Qt.ItemDataRole.UserRole)
+        for row in range(window.sidebar_list.count())
+    ].count(("plugin", "Sidebar Removal Test")) == 0
+
+    window.add_plugin_sidebar_item("Sidebar Removal Test")
+    assert window.sidebar_list.item(window.plugin_insert_row - 1).data(
+        Qt.ItemDataRole.UserRole
+    ) == ("plugin", "Sidebar Removal Test")
+
+
 def test_sample_prep_column_rename_is_an_explicit_option(qtbot, monkeypatch):
     sample_prep = SamplePrepPage()
     qtbot.addWidget(sample_prep)
