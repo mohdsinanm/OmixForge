@@ -27,6 +27,29 @@ from src.utils.nfcore_utils import NfcoreUtils
 from src.utils.widgets.fileview import FileViewerWindow
 
 
+def test_sample_prep_column_rename_is_an_explicit_option(qtbot, monkeypatch):
+    sample_prep = SamplePrepPage()
+    qtbot.addWidget(sample_prep)
+    rename_calls = []
+    monkeypatch.setattr(
+        sample_prep, "edit_column_header", lambda column: rename_calls.append(column)
+    )
+
+    sample_prep.table.horizontalHeader().sectionClicked.emit(1)
+    sample_prep.table.horizontalHeader().sectionDoubleClicked.emit(1)
+    assert rename_calls == []
+
+    sample_prep.table.setCurrentCell(0, 1)
+    rename_button = next(
+        button
+        for button in sample_prep.findChildren(QPushButton)
+        if button.text() == "Rename Column"
+    )
+    rename_button.click()
+
+    assert rename_calls == [1]
+
+
 def test_sample_tool_titles_use_shared_section_heading_style(qtbot):
     sample_prep = SamplePrepPage()
     ena_downloader = ENAFastqDownloader()
