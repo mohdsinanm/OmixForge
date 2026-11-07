@@ -4,6 +4,7 @@ from pyqtwaitingspinner import WaitingSpinner
 
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
+from src.utils.logger_module.error_reporting import show_error_dialog
 from src.core.dashboard.pipeline_import_tab.import_worker import PipelineImportWorker
 from src.core.dashboard.pipeline_import_tab.import_git_worker import PipelineGitImportWorker
 from src.core.dashboard.pipeline_import_tab.refresh_worker import PipelineRefreshWorker
@@ -80,6 +81,13 @@ class PipelineImport(QWidget):
         self.btn = QPushButton("Refresh Pipelines", parent=self.content)
         self.btn.clicked.connect(self.refresh_pipelines)
         self.btn.setObjectName("refersh_pipeline")
+
+        button_width = max(
+            self.url_import_btn.sizeHint().width(),
+            self.btn.sizeHint().width(),
+        )
+        self.url_import_btn.setFixedWidth(button_width)
+        self.btn.setFixedWidth(button_width)
 
         self.search_input = QLineEdit(parent=self.content)
         self.search_input.setObjectName("pipeline_search_input")
@@ -207,7 +215,6 @@ class PipelineImport(QWidget):
                 self.refresh_spinner.stop()
             except RuntimeError:
                 logger.debug("Spinner already deleted, skipping stop()")
-                return
             self.content_layout.removeWidget(self.refresh_spinner)
             self.refresh_spinner.deleteLater()
             self.refresh_spinner = None
@@ -226,16 +233,19 @@ class PipelineImport(QWidget):
             return
         
         # Stop spinner
-        if self.refresh_spinner:
+        spinner = self.refresh_spinner
+        if spinner:
             try:
-                self.refresh_spinner.stop()
+                spinner.stop()
             except RuntimeError:
                 logger.debug("Spinner already deleted, skipping stop()")
-                return
-            self.content_layout.removeWidget(self.refresh_spinner)
-            self.refresh_spinner.deleteLater()
-            self.refresh_spinner = None
-            self.active_refresh_spinner = None
+            try:
+                self.content_layout.removeWidget(spinner)
+                spinner.deleteLater()
+            except (RuntimeError, TypeError):
+                logger.debug("Refresh spinner was already destroyed")
+        self.refresh_spinner = None
+        self.active_refresh_spinner = None
         
         self.btn.setText("Refresh Pipelines")
         self.btn.setEnabled(True)
@@ -243,6 +253,12 @@ class PipelineImport(QWidget):
             f"Refresh failed: {error_msg}\nCheck your network connection and refresh to retry."
         )
         logger.warning(f"Error refreshing pipelines: {error_msg}")
+        show_error_dialog(
+            self,
+            "Pipeline Refresh Failed",
+            "Could not refresh the workflow list. Check your network connection, then retry.",
+            error_msg,
+        )
 
     def _update_pipeline_filter(self, _text=None):
         """Filter the loaded workflow list by name and topics."""
@@ -448,7 +464,12 @@ class PipelineImport(QWidget):
         else:
             logger.error(f"Import failed: {message}")
             self.status_label.setText(message)
-            QMessageBox.critical(self, "Import Failed", f"Import failed: {message}")
+            show_error_dialog(
+                self,
+                "Import Failed",
+                "The workflow could not be imported. Verify its name and Nextflow setup, then retry.",
+                message,
+            )
     
     def _on_import_error(self, error_msg):
         """Handle import error."""
@@ -458,21 +479,28 @@ class PipelineImport(QWidget):
             return
         
         # Stop spinner
-        if self.import_spinner:
+        spinner = self.import_spinner
+        if spinner:
             try:
-                self.import_spinner.stop()
+                spinner.stop()
             except RuntimeError:
                 logger.debug("Spinner already deleted, skipping stop()")
-                # Continue cleanup even if spinner is already deleted
         
         self.active_import_spinner = None
         
         # Remove spinner widgets
-        for w in [self.import_spinner] + [w for w in self.detail_widgets if isinstance(w, QLabel) and "Importing" in (w.text() if hasattr(w, 'text') else "")]:
+        progress_widgets = [w for w in self.detail_widgets if isinstance(w, QLabel) and "Importing" in w.text()]
+        if spinner is not None:
+            progress_widgets.insert(0, spinner)
+        for w in progress_widgets:
             if w in self.detail_widgets:
                 self.detail_widgets.remove(w)
+            try:
                 self.content_layout.removeWidget(w)
                 w.deleteLater()
+            except (RuntimeError, TypeError):
+                logger.debug("Import progress widget was already destroyed")
+        self.import_spinner = None
         
         self.import_btn.setEnabled(True)
         self.combobox.setEnabled(True)  # Re-enable dropdown on error
@@ -481,7 +509,12 @@ class PipelineImport(QWidget):
         self.status_label.setText(
             f"Import failed: {error_msg}\nCheck your Nextflow/network setup and retry."
         )
-        QMessageBox.critical(self, "Import Error", f"Error importing pipeline: {error_msg}")
+        show_error_dialog(
+            self,
+            "Import Error",
+            "The workflow import failed. Check the log for details, then retry.",
+            error_msg,
+        )
 
     def import_from_url(self):
         """Import a pipeline from a GitHub URL asynchronously with spinner."""
@@ -548,20 +581,28 @@ class PipelineImport(QWidget):
             return
 
         # Stop spinner
-        if self.git_spinner:
+        spinner = self.git_spinner
+        if spinner:
             try:
-                self.git_spinner.stop()
+                spinner.stop()
             except RuntimeError:
                 logger.debug("Git spinner already deleted, skipping stop()")
 
         self.active_git_spinner = None
 
         # Cleanup spinner widgets
-        for w in [self.git_spinner] + [w for w in self.detail_widgets if isinstance(w, QLabel) and "Cloning" in (w.text() if hasattr(w, 'text') else "")]:
+        progress_widgets = [w for w in self.detail_widgets if isinstance(w, QLabel) and "Cloning" in w.text()]
+        if spinner is not None:
+            progress_widgets.insert(0, spinner)
+        for w in progress_widgets:
             if w in self.detail_widgets:
                 self.detail_widgets.remove(w)
+            try:
                 self.content_layout.removeWidget(w)
                 w.deleteLater()
+            except RuntimeError:
+                logger.debug("Git progress widget was already destroyed")
+        self.git_spinner = None
 
         # Re-enable controls
         self.url_import_btn.setEnabled(True)
@@ -576,7 +617,12 @@ class PipelineImport(QWidget):
         else:
             logger.error(f"Git import failed: {message}")
             self.status_label.setText(f"Import failed: {message}")
-            QMessageBox.critical(self, "Import Failed", message)
+            show_error_dialog(
+                self,
+                "Import Failed",
+                "The repository could not be imported. Check the URL and repository access, then retry.",
+                message,
+            )
 
     def _on_git_import_error(self, error_msg):
         """Handle error during git import."""
@@ -586,20 +632,28 @@ class PipelineImport(QWidget):
             return
 
         # Stop spinner
-        if self.git_spinner:
+        spinner = self.git_spinner
+        if spinner:
             try:
-                self.git_spinner.stop()
+                spinner.stop()
             except RuntimeError:
                 logger.debug("Git spinner already deleted, skipping stop()")
 
         self.active_git_spinner = None
 
         # Cleanup spinner widgets
-        for w in [self.git_spinner] + [w for w in self.detail_widgets if isinstance(w, QLabel) and "Cloning" in (w.text() if hasattr(w, 'text') else "")]:
+        progress_widgets = [w for w in self.detail_widgets if isinstance(w, QLabel) and "Cloning" in w.text()]
+        if spinner is not None:
+            progress_widgets.insert(0, spinner)
+        for w in progress_widgets:
             if w in self.detail_widgets:
                 self.detail_widgets.remove(w)
+            try:
                 self.content_layout.removeWidget(w)
                 w.deleteLater()
+            except (RuntimeError, TypeError):
+                logger.debug("Git progress widget was already destroyed")
+        self.git_spinner = None
 
         self.url_import_btn.setEnabled(True)
         self.combobox.setEnabled(True)
@@ -608,4 +662,9 @@ class PipelineImport(QWidget):
         self.status_label.setText(
             f"Import failed: {error_msg}\nCheck the repository URL and your network connection, then retry."
         )
-        QMessageBox.critical(self, "Import Error", f"Error importing from git: {error_msg}")
+        show_error_dialog(
+            self,
+            "Import Error",
+            "The repository import failed. Check the URL and network connection, then retry.",
+            error_msg,
+        )

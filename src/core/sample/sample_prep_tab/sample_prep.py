@@ -32,6 +32,8 @@ class SamplePrepPage(QWidget):
         
         # Title
         title = QLabel("Sample Preparation - Data Table")
+        title.setObjectName("dashboardSectionTitle")
+        title.setContentsMargins(0, 8, 5, 10)
         layout.addWidget(title)
         
         # Controls row
@@ -56,6 +58,10 @@ class SamplePrepPage(QWidget):
         remove_col_btn = QPushButton("Remove Column")
         remove_col_btn.clicked.connect(self.remove_column)
         controls_layout.addWidget(remove_col_btn)
+
+        rename_col_btn = QPushButton("Rename Column")
+        rename_col_btn.clicked.connect(self.rename_column)
+        controls_layout.addWidget(rename_col_btn)
         
         # Save button
         save_btn = QPushButton("Save as CSV")
@@ -89,9 +95,6 @@ class SamplePrepPage(QWidget):
                 item = QTableWidgetItem("")
                 item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
                 self.table.setItem(row, col, item)
-        
-        # Connect horizontal header click to edit column header
-        self.table.horizontalHeader().sectionClicked.connect(self.edit_column_header)
         
         # Store clipboard for copy/paste
         self.clipboard = QApplication.clipboard()
@@ -145,6 +148,16 @@ class SamplePrepPage(QWidget):
             return
         self.table.removeColumn(current_col)
         logger.info(f"Removed column {current_col+1}")
+
+    def rename_column(self):
+        """Rename the column containing the currently selected cell."""
+        current_col = self.table.currentColumn()
+        if current_col < 0:
+            QMessageBox.warning(
+                self, "No Selection", "Please select a cell in the column to rename."
+            )
+            return
+        self.edit_column_header(current_col)
     
     def save_csv(self):
         """Export table data to a CSV file."""
@@ -469,4 +482,3 @@ class SamplePrepPage(QWidget):
                         self.table.setItem(row, col, new_item)
         
         logger.info(f"Cleared {len(selected_ranges)} cell range(s)")
-

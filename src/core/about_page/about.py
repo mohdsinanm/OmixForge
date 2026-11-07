@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QFrame
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QFrame, QPushButton
 )
 from PyQt6.QtGui import QFont, QPixmap
 from PyQt6.QtCore import Qt
@@ -8,6 +8,7 @@ from src.utils.resource import resource_path
 from src.utils.version import APP_VERSION
 from src.utils.theme_manager import theme_manager
 from src.utils.widgets.page_header import PageHeader
+from src.utils.logger_module.log_viewer import ApplicationLogDialog
 
 
 class AboutPage(QWidget):
@@ -161,7 +162,10 @@ class AboutPage(QWidget):
         tech_text.setWordWrap(True)
         tech_text.setAlignment(Qt.AlignmentFlag.AlignLeft)
         content_layout.addWidget(tech_text)
-        
+
+        log_button = QPushButton("View / Export Application Log")
+        log_button.clicked.connect(lambda: ApplicationLogDialog(self).exec())
+        content_layout.addWidget(log_button)
         
         # Add stretch at the end
         content_layout.addStretch()

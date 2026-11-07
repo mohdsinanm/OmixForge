@@ -68,7 +68,7 @@ class PipelineGitImportWorker(QObject):
                     try:
                         shutil.rmtree(dest)
                     except Exception:
-                        pass
+                        logger.exception(f"Failed to clean up partial repository at {dest}")
                 self.import_ready.emit(False, msg)
                 return
 
@@ -108,7 +108,7 @@ class PipelineGitImportWorker(QObject):
             self.import_ready.emit(True, f"Cloned and verified: {repo_name}")
 
         except Exception as e:
-            logger.error(f"Error during git import: {e}")
+            logger.exception(f"Error during git import: {e}")
             self.error.emit(str(e))
         finally:
             self.finished.emit()

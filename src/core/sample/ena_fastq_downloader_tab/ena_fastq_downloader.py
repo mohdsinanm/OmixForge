@@ -11,6 +11,7 @@ from PyQt6.QtGui import QFont, QColor
 from pyqtwaitingspinner import WaitingSpinner
 
 from src.utils.logger_module.omix_logger import OmixForgeLogger
+from src.utils.logger_module.error_reporting import show_error_dialog
 from src.core.sample.ena_fastq_downloader_tab.ena_fetcher_worker import ENAFetcherWorker
 from src.utils.widgets.loading_spinner import LoadingSpinner
 from src.utils.theme_manager import theme_manager
@@ -72,6 +73,7 @@ class DownloadWorkerThread(QRunnable):
             
         except Exception as e:
             error_msg = f"Download failed: {str(e)}"
+            logger.exception(f"Download failed for {self.file_url}: {e}")
             self.signals.finished.emit(self.file_url, False, error_msg)
 
 
@@ -94,6 +96,8 @@ class ENAFastqDownloader(QWidget):
         # Download state tracking
         self.is_downloading = False
         self.active_download_workers = []
+        self.failed_downloads = []
+        self.download_results = {}
         self.should_cancel_downloads = False
         
         self._init_ui()
@@ -121,7 +125,8 @@ class ENAFastqDownloader(QWidget):
         
         # Title
         title = QLabel("ENA FASTQ Downloader")
-        title.setFont(QFont("Noto Sans", 16, QFont.Weight.Bold))
+        title.setObjectName("dashboardSectionTitle")
+        title.setContentsMargins(0, 8, 5, 10)
         main_layout.addWidget(title)
         
         # Instructions
@@ -407,7 +412,7 @@ class ENAFastqDownloader(QWidget):
                 logger.info(f"Loaded accessions from file: {file_path}")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to load file: {e}")
-                logger.error(f"Failed to load accession file: {e}")
+                logger.exception(f"Failed to load accession file: {e}")
     
     def _on_fetch_clicked(self):
         """Start fetching accession data."""
@@ -475,14 +480,26 @@ class ENAFastqDownloader(QWidget):
             logger.info(f"Fetch complete: {len(successful_results)} successful, {len(failed_accessions)} failed")
             
         except Exception as e:
-            logger.error(f"Error displaying results: {e}")
+            self.fetch_progress_panel.setVisible(False)
+            logger.exception(f"Error displaying fetched accession results: {e}")
+            show_error_dialog(
+                self,
+                "Could Not Display Results",
+                "Accession data was fetched, but the results could not be displayed. Retry the fetch.",
+                str(e),
+            )
     
     def _on_fetch_error(self, error_msg):
         """Handle fetch error."""
         # Hide fixed progress panel
         self.fetch_progress_panel.setVisible(False)
-        QMessageBox.critical(self, "Fetch Error", f"Failed to fetch accessions:\n{error_msg}")
         logger.error(f"Fetch error: {error_msg}")
+        show_error_dialog(
+            self,
+            "Fetch Failed",
+            "Could not fetch accession data. Check your network connection, then retry.",
+            error_msg,
+        )
     
     def _populate_results_tables(self):
         """Populate the results tables."""
@@ -648,6 +665,8 @@ class ENAFastqDownloader(QWidget):
         # Start downloads in thread pool
         self.active_downloads = len(all_urls)
         self.completed_downloads = 0
+        self.failed_downloads = []
+        self.download_results = {}
         self.should_cancel_downloads = False
         
         for url in all_urls:
@@ -674,6 +693,8 @@ class ENAFastqDownloader(QWidget):
             logger.info(f"Downloaded: {url}")
         else:
             logger.warning(f"Failed to download {url}: {message}")
+            self.failed_downloads.append((url, message))
+        self.download_results[url] = success
         
         # Check if all downloads are complete
         if self.completed_downloads >= self.active_downloads:
@@ -717,12 +738,64 @@ class ENAFastqDownloader(QWidget):
         self.output_dir_btn.setEnabled(True)
         self.cancel_download_btn.setEnabled(False)
         
-        self.download_progress_label.setText(
-            f"Download complete! All {self.active_downloads} files downloaded."
-        )
-        QMessageBox.information(
-            self,
-            "Download Complete",
-            f"Successfully downloaded {self.active_downloads} files to:\n{self.output_dir}"
-        )
-        logger.info(f"All downloads complete to {self.output_dir}")
+        failed_count = len(self.failed_downloads)
+        succeeded_count = self.active_downloads - failed_count
+        self._update_download_statuses()
+        if failed_count:
+            self.download_progress_label.setText(
+                f"Download finished: {succeeded_count} succeeded, {failed_count} failed."
+            )
+            failures = "\n".join(
+                f"{url}: {message}" for url, message in self.failed_downloads
+            )
+            show_error_dialog(
+                self,
+                "Some Downloads Failed",
+                f"{failed_count} file(s) could not be downloaded. "
+                "Uncheck successful rows, then retry the failed rows.",
+                failures,
+            )
+            logger.warning(
+                f"Download operation completed with {failed_count} failure(s) "
+                f"out of {self.active_downloads} files."
+            )
+        else:
+            self.download_progress_label.setText(
+                f"Download complete! All {self.active_downloads} files downloaded."
+            )
+            QMessageBox.information(
+                self,
+                "Download Complete",
+                f"Successfully downloaded {self.active_downloads} files to:\n{self.output_dir}"
+            )
+            logger.info(f"All downloads complete to {self.output_dir}")
+
+    def _update_download_statuses(self):
+        for row in range(self.results_table.rowCount()):
+            accession_item = self.results_table.item(row, 1)
+            if accession_item is None:
+                continue
+
+            accession = accession_item.text()
+            urls = next(
+                (
+                    result["fastq_urls"]
+                    for result in self.successful_results
+                    if result["accession"] == accession
+                ),
+                [],
+            )
+            outcomes = [self.download_results.get(url) for url in urls]
+            failures = sum(outcome is False for outcome in outcomes)
+            status_item = self.results_table.item(row, 5)
+            if status_item is None:
+                continue
+
+            if failures:
+                status_item.setText(f"Failed ({failures}/{len(urls)})")
+                status_item.setForeground(QColor(theme_manager.get_color("error")))
+            elif outcomes and all(outcome is True for outcome in outcomes):
+                status_item.setText("Downloaded")
+                status_item.setForeground(
+                    QColor(theme_manager.get_color("success"))
+                )

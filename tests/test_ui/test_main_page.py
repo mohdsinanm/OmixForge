@@ -1,9 +1,9 @@
 import json
 from types import SimpleNamespace
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QPoint, Qt
 from PyQt6.QtGui import QCloseEvent
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QToolButton, QLineEdit, QTabWidget, QComboBox, QPushButton, QApplication
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QToolButton, QLineEdit, QTabWidget, QComboBox, QPushButton, QApplication, QTableWidgetItem
 
 from src.core.about_page.about import AboutPage
 from src.core.dashboard.pipeline_dashboard import PipelineDashboard
@@ -13,15 +13,143 @@ from src.core.dashboard.pipeline_dash_tab.pipeline_args import _find_pipeline_sc
 from src.core.dashboard.pipeline_dash_tab.pipeline_card import PipelineCard
 from src.core.dashboard.pipeline_editor_tab.pipeline_editor import PipelineEditorTab, PipelineDataCard as EditorDataCard
 from src.utils.widgets.filetree import FilesTreeWidget
+from src.utils.widgets import fileview as fileview_module
 from src.core.plugin_manager.plugin_page import PluginsPage
 from src.core.profile_page.profile import ProfilePage
 from src.core.profile_page.startup_page import AccessModePage
 from src.core.sample.sample_page import Sample
+from src.core.sample.sample_prep_tab.sample_prep import SamplePrepPage
+from src.core.sample.ena_fastq_downloader_tab.ena_fastq_downloader import ENAFastqDownloader
 from src.core.settings_page.sections.folder_path_section import FolderPathsSection
 from src.core.settings_page.settings import SettingsPage
 from src.core.status_page.results.run_results import PipelineResultsPage, PipelineDataCard as ResultsDataCard
 from src.utils.nfcore_utils import NfcoreUtils
 from src.utils.widgets.fileview import FileViewerWindow
+
+
+def test_plugin_sidebar_item_can_be_removed_and_readded(window, monkeypatch):
+    monkeypatch.setattr("src.__main__.PluginManager.load_all", lambda *_args: None)
+    window.load_main_app()
+
+    window.add_plugin_sidebar_item("Sidebar Removal Test")
+    window.add_plugin_sidebar_item("Sidebar Order Test")
+
+    window.remove_plugin_sidebar_item("Sidebar Removal Test")
+
+    assert window.plugin_insert_row == window.sidebar_list.row(window.plugin_header) + 2
+    assert [
+        window.sidebar_list.item(row).data(Qt.ItemDataRole.UserRole)
+        for row in range(window.sidebar_list.count())
+    ].count(("plugin", "Sidebar Removal Test")) == 0
+
+    window.add_plugin_sidebar_item("Sidebar Removal Test")
+    assert window.sidebar_list.item(window.plugin_insert_row - 1).data(
+        Qt.ItemDataRole.UserRole
+    ) == ("plugin", "Sidebar Removal Test")
+
+
+def test_sample_prep_column_rename_is_an_explicit_option(qtbot, monkeypatch):
+    sample_prep = SamplePrepPage()
+    qtbot.addWidget(sample_prep)
+    rename_calls = []
+    monkeypatch.setattr(
+        sample_prep, "edit_column_header", lambda column: rename_calls.append(column)
+    )
+
+    sample_prep.table.horizontalHeader().sectionClicked.emit(1)
+    sample_prep.table.horizontalHeader().sectionDoubleClicked.emit(1)
+    assert rename_calls == []
+
+    sample_prep.table.setCurrentCell(0, 1)
+    rename_button = next(
+        button
+        for button in sample_prep.findChildren(QPushButton)
+        if button.text() == "Rename Column"
+    )
+    rename_button.click()
+
+    assert rename_calls == [1]
+
+
+def test_sample_tool_titles_use_shared_section_heading_style(qtbot):
+    sample_prep = SamplePrepPage()
+    ena_downloader = ENAFastqDownloader()
+    qtbot.addWidget(sample_prep)
+    qtbot.addWidget(ena_downloader)
+    sample_prep.resize(800, 600)
+    ena_downloader.resize(800, 600)
+    sample_prep.show()
+    ena_downloader.show()
+    qtbot.wait(10)
+
+    sample_prep_title = sample_prep.findChild(QLabel, "dashboardSectionTitle")
+    ena_downloader_title = ena_downloader.findChild(QLabel, "dashboardSectionTitle")
+
+    assert sample_prep_title.text() == "Sample Preparation - Data Table"
+    assert ena_downloader_title.text() == "ENA FASTQ Downloader"
+    assert sample_prep.layout().contentsMargins().left() == 18
+    assert sample_prep.layout().contentsMargins().top() == 18
+    assert ena_downloader.layout().contentsMargins().left() == 18
+    assert ena_downloader.layout().contentsMargins().top() == 18
+    assert sample_prep_title.mapTo(sample_prep, QPoint(0, 0)).x() == 18
+    assert ena_downloader_title.mapTo(ena_downloader, QPoint(0, 0)).x() == 18
+
+
+def test_pipeline_import_action_buttons_have_equal_width(qtbot):
+    widget = PipelineImport()
+    qtbot.addWidget(widget)
+
+    assert widget.url_import_btn.minimumWidth() == widget.btn.minimumWidth()
+    assert widget.url_import_btn.maximumWidth() == widget.btn.maximumWidth()
+
+
+def test_ena_downloader_marks_failed_files_for_retry(qtbot):
+    downloader = ENAFastqDownloader()
+    qtbot.addWidget(downloader)
+    downloader.successful_results = [{
+        "accession": "SRR1",
+        "fastq_urls": ["https://example.test/read1.fastq.gz"],
+    }]
+    downloader.results_table.setRowCount(1)
+    downloader.results_table.setItem(0, 1, QTableWidgetItem("SRR1"))
+    downloader.results_table.setItem(0, 5, QTableWidgetItem("Ready"))
+    downloader.download_results = {"https://example.test/read1.fastq.gz": False}
+
+    downloader._update_download_statuses()
+
+    assert downloader.results_table.item(0, 5).text() == "Failed (1/1)"
+
+
+def test_pipeline_card_repeated_click_does_not_reload_current_pipeline(
+    qtbot, monkeypatch
+):
+    import src.core.dashboard.pipeline_dash_tab.local_pipeline as local_pipeline_module
+
+    monkeypatch.setattr(
+        local_pipeline_module,
+        "run_shell_command",
+        lambda _: SimpleNamespace(stdout=""),
+    )
+    monkeypatch.setattr(local_pipeline_module, "json_read", lambda _: {})
+    page = PipelineLocal()
+    qtbot.addWidget(page)
+    page.current_pipeline_name = "nf-core/demo"
+    page.info_worker_thread = SimpleNamespace(isRunning=lambda: True)
+
+    def unexpected_worker(_name):
+        raise AssertionError("Repeated click started another info worker")
+
+    monkeypatch.setattr(local_pipeline_module, "PipelineInfoWorker", unexpected_worker)
+
+    page.on_card_clicked("nf-core/demo")
+    page.show()
+    page.info_worker_thread = SimpleNamespace(isRunning=lambda: False)
+    page._loaded_pipeline_name = "nf-core/demo"
+    page.details_box.show()
+    QApplication.processEvents()
+    page.on_card_clicked("nf-core/demo")
+
+    assert page.current_pipeline_name == "nf-core/demo"
 
 
 def test_file_tree_keeps_multiqc_plot_directories_expandable(tmp_path, qtbot):
@@ -45,6 +173,84 @@ def test_file_tree_keeps_multiqc_plot_directories_expandable(tmp_path, qtbot):
         "pdf", "png", "svg"
     ]
     assert all(root_item.child(index).childCount() == 1 for index in range(3))
+
+
+def test_file_tree_opens_pdf_in_windows_from_wsl(tmp_path, qtbot, monkeypatch):
+    pdf_path = tmp_path / "plot.pdf"
+    pdf_path.write_bytes(b"pdf")
+    tree_widget = FilesTreeWidget(str(tmp_path), allowed_exts=[".pdf"])
+    qtbot.addWidget(tree_widget)
+    item = tree_widget.tree.topLevelItem(0).child(0)
+    calls = []
+    path_conversions = []
+
+    def convert_to_windows_path(*args, **kwargs):
+        path_conversions.append((args, kwargs))
+        return SimpleNamespace(stdout=r"\\wsl.localhost\Ubuntu\tmp\plot.pdf")
+
+    monkeypatch.setenv("WSL_DISTRO_NAME", "Ubuntu")
+    monkeypatch.setattr(
+        fileview_module.subprocess,
+        "run",
+        convert_to_windows_path,
+    )
+    monkeypatch.setattr(
+        fileview_module.subprocess,
+        "Popen",
+        lambda args: calls.append(args),
+    )
+
+    tree_widget._on_item_double_clicked(item, 0)
+
+    assert path_conversions == [(
+        (["wslpath", "-w", str(pdf_path)],),
+        {"check": True, "capture_output": True, "text": True},
+    )]
+    assert calls == [[
+        "explorer.exe",
+        r"\\wsl.localhost\Ubuntu\tmp\plot.pdf",
+    ]]
+
+
+def test_external_file_uses_qt_opener_outside_wsl(monkeypatch):
+    opened_urls = []
+    monkeypatch.delenv("WSL_DISTRO_NAME", raising=False)
+    monkeypatch.delenv("WSL_INTEROP", raising=False)
+    monkeypatch.setattr(fileview_module.platform, "release", lambda: "6.8.0-linux")
+    monkeypatch.setattr(
+        fileview_module.QDesktopServices,
+        "openUrl",
+        lambda url: opened_urls.append(url) or True,
+    )
+
+    fileview_module.open_file_externally("/tmp/plot.pdf")
+
+    assert len(opened_urls) == 1
+    assert opened_urls[0].toLocalFile() == "/tmp/plot.pdf"
+
+
+def test_external_file_falls_back_to_qt_when_wsl_bridge_is_unavailable(monkeypatch):
+    opened_urls = []
+
+    def missing_wslpath(*args, **kwargs):
+        raise FileNotFoundError("wslpath")
+
+    monkeypatch.setenv("WSL_DISTRO_NAME", "Ubuntu")
+    monkeypatch.setattr(
+        fileview_module.subprocess,
+        "run",
+        missing_wslpath,
+    )
+    monkeypatch.setattr(
+        fileview_module.QDesktopServices,
+        "openUrl",
+        lambda url: opened_urls.append(url) or True,
+    )
+
+    fileview_module.open_file_externally("/tmp/plot.pdf")
+
+    assert len(opened_urls) == 1
+    assert opened_urls[0].toLocalFile() == "/tmp/plot.pdf"
 
 
 def test_png_file_viewer_loads_image_not_text(tmp_path, qtbot):
@@ -641,7 +847,10 @@ def test_pipeline_import_empty_results_offer_refresh_guidance(qtbot):
     assert "refresh to try again" in import_tab.status_label.text()
 
 
-def test_git_import_error_shows_inline_retry_guidance(qtbot):
+def test_git_import_error_shows_inline_retry_guidance(qtbot, monkeypatch):
+    import src.core.dashboard.pipeline_import_tab.pipeline_import as import_module
+
+    monkeypatch.setattr(import_module, "show_error_dialog", lambda *_args, **_kwargs: None)
     import_tab = PipelineImport()
     qtbot.addWidget(import_tab)
 
@@ -672,6 +881,10 @@ def test_about_page_is_populated():
     page = AboutPage()
     labels = [label.text() for label in page.findChildren(QLabel) if label.text()]
     assert page.findChild(QLabel, "dashboardTitle").text() == "About"
+    assert any(
+        button.text() == "View / Export Application Log"
+        for button in page.findChildren(QPushButton)
+    )
     assert any("OmixForge" in text for text in labels)
     assert any("Version:" in text for text in labels)
     assert any("License" in text for text in labels)
@@ -847,6 +1060,53 @@ def test_pipeline_local_editor_and_results_pages_render_cards(monkeypatch, tmp_p
     assert any(card.name == "result_run" for card in results_page.findChildren(ResultsDataCard))
 
 
+def test_installed_pipeline_cards_resize_with_four_column_grid(
+    qtbot, monkeypatch, tmp_path,
+):
+    import src.core.dashboard.pipeline_dash_tab.local_pipeline as local_module
+
+    monkeypatch.setattr(
+        local_module,
+        "json_read",
+        lambda *_args, **_kwargs: {
+            "folders": {
+                "RUN_DIR": str(tmp_path),
+                "PIPELINES_RUNS": str(tmp_path),
+                "SAMPLE_PREP_DIR": str(tmp_path),
+            }
+        },
+    )
+    monkeypatch.setattr(
+        local_module,
+        "run_shell_command",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            stdout="first\nsecond\nthird\nfourth\n"
+        ),
+    )
+
+    page = PipelineLocal()
+    qtbot.addWidget(page)
+    page.resize(1000, 700)
+    page.show()
+    qtbot.wait(50)
+    cards = page.findChildren(PipelineCard)
+
+    assert len(cards) == 4
+    assert [page.cards_grid.getItemPosition(i) for i in range(4)] == [
+        (0, 0, 1, 1),
+        (0, 1, 1, 1),
+        (0, 2, 1, 1),
+        (0, 3, 1, 1),
+    ]
+    assert all(card.height() == 70 for card in cards)
+    narrow_width = cards[0].width()
+
+    page.resize(1400, 700)
+    qtbot.wait(50)
+
+    assert cards[0].width() > narrow_width
+
+
 def test_pipeline_editor_refresh_is_manual(qtbot, monkeypatch):
     import src.core.dashboard.pipeline_editor_tab.pipeline_editor as editor_module
 
@@ -890,6 +1150,95 @@ def test_pipeline_status_page_has_expected_tabs_and_cards(tmp_path, monkeypatch)
 
     cards = page.findChildren(PipelineCard)
     assert any(card.name == "demo_run.log" for card in cards)
+
+
+def test_pipeline_status_cards_resize_with_four_column_grid(
+    qtbot, monkeypatch, tmp_path,
+):
+    import src.core.status_page.status.run_status as run_status_module
+
+    monkeypatch.setattr(run_status_module, "CONFIG_FILE", tmp_path / "app.config")
+    monkeypatch.setattr(run_status_module, "json_read", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(
+        run_status_module,
+        "list_files_in_directory",
+        lambda *_args, **_kwargs: ["first.log", "second.log", "third.log", "fourth.log"],
+    )
+    monkeypatch.setattr(run_status_module, "read_from_file", lambda *_args, **_kwargs: "")
+
+    page = run_status_module.PipelineRunStatus()
+    qtbot.addWidget(page)
+    page.resize(1000, 700)
+    page.show()
+    qtbot.wait(50)
+    cards = page.findChildren(run_status_module.PipelineCard)
+
+    assert len(cards) == 4
+    assert [page.cards_grid.getItemPosition(i) for i in range(4)] == [
+        (0, 0, 1, 1),
+        (0, 1, 1, 1),
+        (0, 2, 1, 1),
+        (0, 3, 1, 1),
+    ]
+    assert all(card.height() == 90 for card in cards)
+    narrow_width = cards[0].width()
+
+    page.resize(1400, 700)
+    qtbot.wait(50)
+
+    assert cards[0].width() > narrow_width
+
+
+def test_pipeline_status_summary_counts_and_refreshes_statuses(
+    qtbot, monkeypatch, tmp_path,
+):
+    import src.core.status_page.status.run_status as run_status_module
+
+    statuses = {
+        "failed-one.log": "FAILED",
+        "failed-two.log": "FAILED",
+        "cancelled.log": "CANCELLED",
+        "completed.log": "COMPLETED",
+        "running.log": "RUNNING",
+    }
+    monkeypatch.setattr(run_status_module, "CONFIG_FILE", tmp_path / "app.config")
+    monkeypatch.setattr(run_status_module, "json_read", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(
+        run_status_module,
+        "list_files_in_directory",
+        lambda *_args, **_kwargs: list(statuses),
+    )
+    monkeypatch.setattr(run_status_module, "read_from_file", lambda *_args, **_kwargs: "")
+    monkeypatch.setattr(
+        run_status_module.PipelineRunStatus,
+        "_run_card_status",
+        lambda _self, name, _content: (statuses[name], None),
+    )
+
+    page = run_status_module.PipelineRunStatus()
+    qtbot.addWidget(page)
+    assert page.summary_heading.text() == "Summary"
+    assert page.layout().contentsMargins().left() == 18
+    assert page.layout().contentsMargins().top() == 16
+    heading_style = run_status_module.theme_manager.get_stylesheet()
+    assert "QLabel#dashboardSectionTitle" in heading_style
+    assert "font-size: 17px;" in heading_style
+    assert "font-weight: 700;" in heading_style
+    initial_summary = page.summary_label.text()
+    assert "Completed: 1" in initial_summary
+    assert "Failed: 2" in initial_summary
+    assert "Running: 1" in initial_summary
+    assert "Cancelled: 1" in initial_summary
+    assert run_status_module.theme_manager.get_tokens().success in initial_summary
+    assert run_status_module.theme_manager.get_tokens().error in initial_summary
+    assert run_status_module.theme_manager.get_tokens().warning in initial_summary
+    assert run_status_module.theme_manager.get_tokens().badge_neutral_fg in initial_summary
+
+    statuses["running.log"] = "COMPLETED"
+    page.render_cards()
+
+    assert "Completed: 2" in page.summary_label.text()
+    assert "Running: 0" in page.summary_label.text()
 
 
 def test_pipeline_result_cards_show_run_status(monkeypatch, qtbot):

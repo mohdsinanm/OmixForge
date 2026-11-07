@@ -531,6 +531,12 @@ class ThemeManager(QObject):
             color: {t.text_primary};
         }}
 
+        QLabel#dashboardSectionTitle {{
+            color: {t.text_heading};
+            font-size: 17px;
+            font-weight: 700;
+        }}
+
         /* Toolbars */
         QToolBar#mainToolbar {{
             background-color: {t.toolbar_bg};
@@ -825,14 +831,17 @@ class ThemeManager(QObject):
         QWidget#pluginManageTab,
         QWidget[loadedPluginRoot="true"],
         QStackedWidget#loadedPluginStack,
-        QWidget#runResultsScrollContent,
-        QWidget#runStatusScrollContent,
-        QScrollArea#runResultsScroll,
-        QScrollArea#runStatusScroll,
         QScrollArea#pluginScrollArea,
         QWidget#pluginScrollAreaContent,
         QWidget#dashboardScrollContent {{
             background-color: {t.main_bg};
+        }}
+
+        QWidget#runResultsScrollContent,
+        QScrollArea#runResultsScroll,
+        QWidget#runStatusScrollContent,
+        QScrollArea#runStatusScroll {{
+            background-color: {t.primary_content_bg};
         }}
 
         QScrollArea {{

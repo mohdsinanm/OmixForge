@@ -43,3 +43,25 @@ def test_import_worker_reports_actionable_non_transient_failure(monkeypatch):
 
     assert results[0][0] is False
     assert "Verify the workflow name" in results[0][1]
+
+
+def test_import_worker_emits_error_and_records_traceback(monkeypatch):
+    log_calls = []
+
+    class LoggerSpy:
+        def exception(self, message):
+            log_calls.append(message)
+
+    def failed_command(_command):
+        raise RuntimeError("worker failed")
+
+    monkeypatch.setattr(import_worker, "logger", LoggerSpy())
+    monkeypatch.setattr(import_worker, "run_shell_command", failed_command)
+    worker = import_worker.PipelineImportWorker("rnaseq")
+    errors = []
+    worker.error.connect(errors.append)
+
+    worker.run()
+
+    assert errors == ["worker failed"]
+    assert log_calls == ["Error importing pipeline: worker failed"]

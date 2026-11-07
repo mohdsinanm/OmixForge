@@ -1,3 +1,12 @@
+omixforge (2.0.1-1) noble; urgency=medium
+  * Fix hidden files select
+  * Report background worker failures with actionable dialogs and persistent logs.
+  * Add application log viewing and export from the About page.
+  * Restore UI state after failed asynchronous operations to support retries.
+  * Fix removal of plugin entries from the navigation sidebar.
+
+ -- Sinan <mohamedysf@bicpu.edu.in>  Sat, 07 Nov 2026 12:37:14 +0000
+  
 omixforge (2.0.0-1) noble; urgency=medium
 
   * Update package version to 1.2.0 and synchronize project metadata with Debian packaging.

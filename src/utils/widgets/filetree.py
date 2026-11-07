@@ -3,10 +3,9 @@ import os
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem
 )
-from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtCore import Qt
 
-from src.utils.widgets.fileview import FileViewerWindow
-from PyQt6.QtGui import QDesktopServices
+from src.utils.widgets.fileview import FileViewerWindow, open_file_externally
 
 
 class FilesTreeWidget(QWidget):
@@ -110,7 +109,7 @@ class FilesTreeWidget(QWidget):
 
         # Open externally (NO window)
         if ext in (".html", ".pdf"):
-            QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+            open_file_externally(path, self)
             return
 
         if os.path.isfile(path):

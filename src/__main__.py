@@ -1,3 +1,4 @@
+import os
 import sys
 from PyQt6.QtCore import QSize, Qt, QTimer
 from PyQt6.QtGui import QAction, QIcon, QFont
@@ -32,6 +33,7 @@ from src.core.plugin_manager.plugin_installer import PluginStore
 from src.core.about_page.about import AboutPage
 from src.assets.stylesheet import global_style_sheet
 from src.utils.theme_manager import theme_manager
+from src.utils.logger_module.error_reporting import ApplicationExceptionHandler
 
 
 class MainWindow(QMainWindow):
@@ -545,6 +547,17 @@ class MainWindow(QMainWindow):
         self.sidebar_list.insertItem(self.plugin_insert_row, item)
         self.plugin_insert_row += 1
 
+    def remove_plugin_sidebar_item(self, name: str):
+        """Remove a plugin item from the sidebar menu."""
+        for row in range(self.sidebar_list.count()):
+            item = self.sidebar_list.item(row)
+            if item.data(Qt.ItemDataRole.UserRole) == ("plugin", name):
+                self.sidebar_list.takeItem(row)
+                if row < self.plugin_insert_row:
+                    self.plugin_insert_row -= 1
+                self.sidebar_list.clearSelection()
+                return
+
     def update_pipeline_status_badge(self, count):
         """Update the Pipeline Status sidebar badge."""
         if count > 0:
@@ -598,6 +611,9 @@ class MainWindow(QMainWindow):
 
 
 def main():
+    if os.environ.get("WSL_DISTRO_NAME") or os.environ.get("WSL_INTEROP"):
+        QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseSoftwareOpenGL)
+
     app = QApplication(sys.argv)
 
     # Load the user's saved theme preference BEFORE creating the main window
@@ -606,8 +622,11 @@ def main():
     app.setPalette(theme_manager.get_palette())
     app.setStyleSheet(global_style_sheet())
 
+    exception_handler = ApplicationExceptionHandler(app)
     initiate = InitiateApp()
     window = MainWindow(initiate)
+    exception_handler.parent_widget = window
+    app.aboutToQuit.connect(exception_handler.restore)
     window.showMaximized()
 
     sys.exit(app.exec())

@@ -11,7 +11,7 @@ from pathlib import Path
 from pyqtwaitingspinner import WaitingSpinner
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea,
+    QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea, QSizePolicy,
     QHBoxLayout, QGridLayout, QPushButton, QDialog, QMessageBox, QApplication, QSplitter
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QProcess, QThread, QObject, QRunnable, QThreadPool, pyqtSlot, QObject, pyqtSignal, QTimer
@@ -26,6 +26,7 @@ from src.core.dashboard.pipeline_dash_tab.pipeline_args import PipelineArgsDialo
 from src.core.dashboard.pipeline_dash_tab.pipeline_card import PipelineCard
 from src.assets.stylesheet import close_button_style
 from src.utils.theme_manager import theme_manager
+from src.utils.logger_module.error_reporting import show_error_dialog
 
 logger = OmixForgeLogger.get_logger()
 
@@ -83,7 +84,7 @@ class PipelineInfoWorker(QObject):
             self.info_ready.emit(info)
 
         except Exception as e:
-            logger.error(f"Error fetching pipeline info: {e}")
+            logger.exception(f"Error fetching pipeline info: {e}")
             self.error.emit(str(e))
 
         finally:
@@ -121,6 +122,7 @@ class ZipEncryptWorker(QRunnable):
             self.signals.finished.emit(self.run_name, self.exitCode)
 
         except Exception as e:
+            logger.exception(f"Failed to encrypt completed run {self.run_name}: {e}")
             self.signals.error.emit(self.run_name, str(e), self.exitCode)
 
 class PipelineDeleteWorker(QObject):
@@ -167,7 +169,7 @@ class PipelineDeleteWorker(QObject):
                 else:
                     self.result.emit(False, err)
         except Exception as e:
-            logger.error(f"Error deleting pipeline: {e}")
+            logger.exception(f"Error deleting pipeline: {e}")
             self.error.emit(str(e))
         finally:
             self.finished.emit()
@@ -187,6 +189,7 @@ class PipelineLocal(QWidget):
         self._encrypting_runs = set()
         self.output_displays = {}  # Store references to output display widgets by run_name
         self.current_pipeline_name = None  # Track the currently displayed pipeline
+        self._loaded_pipeline_name = None
         
         self.constants = json_read(CONFIG_FILE)
         self.RUN_DIR = self.constants.get("folders",{}).get("RUN_DIR", RUN_DIR)
@@ -228,6 +231,7 @@ class PipelineLocal(QWidget):
         self.cards_grid.setContentsMargins(12, 12, 12, 12)
         self.cards_grid.setHorizontalSpacing(12)
         self.cards_grid.setVerticalSpacing(12)
+        self.cards_grid.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.cards_scroll = QScrollArea()
         self.cards_scroll.setObjectName("localPipelineScroll")
@@ -545,10 +549,12 @@ class PipelineLocal(QWidget):
 
 
     def render_cards(self):
-        columns = 3
+        columns = 4
         card_height = 70
         row = 0
         col = 0
+        for column in range(columns):
+            self.cards_grid.setColumnStretch(column, 1)
         self.pipeline_count.setText(f"{len(self.pipelines)} available")
 
         if len(self.pipelines) > 15:
@@ -581,8 +587,11 @@ class PipelineLocal(QWidget):
 
         for index, name in enumerate(self.pipelines):
             card = PipelineCard(name)
-            card.setMaximumHeight(200) 
-            card.setMinimumHeight(70)
+            card.setFixedHeight(card_height)
+            card.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Fixed,
+            )
             card.clicked.connect(self.on_card_clicked)
 
             # Add card to grid
@@ -640,8 +649,16 @@ class PipelineLocal(QWidget):
 
     def on_card_clicked(self, name):
         """Handle pipeline card click - start async info fetch with spinner."""
+        info_thread = self.info_worker_thread
+        if name == self.current_pipeline_name:
+            if info_thread is not None and info_thread.isRunning():
+                return
+            if self._loaded_pipeline_name == name and self.details_box.isVisible():
+                return
+
         # Store the current pipeline name for use in on_run_clicked
         self.current_pipeline_name = name
+        self._loaded_pipeline_name = None
         
         # Clear old details (includes nested layouts and widgets)
         self.clear_layout(self.details_layout)
@@ -713,6 +730,7 @@ class PipelineLocal(QWidget):
         
         # Update stored info
         self.pipeline_info_lines = info
+        self._loaded_pipeline_name = name
         
         # Clear spinner and label
         for i in reversed(range(self.details_layout.count())):
@@ -818,6 +836,7 @@ class PipelineLocal(QWidget):
 
     def _on_close_button_click(self):
         self.details_box.hide()
+        self._loaded_pipeline_name = None
 
         try:
             self.clear_layout(self.details_layout)
@@ -837,7 +856,6 @@ class PipelineLocal(QWidget):
         except RuntimeError:
             # Spinner was already deleted
             logger.debug("Spinner already deleted, skipping stop()")
-            return
         
         # Clear spinner and label
         for i in reversed(range(self.details_layout.count())):
@@ -850,6 +868,12 @@ class PipelineLocal(QWidget):
         error_label.setStyleSheet(f"color: {theme_manager.get_color('error')};")
         error_label.setWordWrap(True)
         self.details_layout.addWidget(error_label)
+        show_error_dialog(
+            self,
+            "Pipeline Details Failed",
+            "Could not load workflow details. Click the workflow card again to retry.",
+            error_msg,
+        )
     
     def on_delete_clicked(self):
         """Asynchronously delete a pipeline using PipelineDeleteWorker and show a spinner.
@@ -1034,6 +1058,12 @@ class PipelineLocal(QWidget):
                         self.details_layout.addWidget(err_label)
                     except Exception:
                         pass
+                    show_error_dialog(
+                        self,
+                        "Pipeline Delete Failed",
+                        "The workflow was not deleted. Check its local status and retry.",
+                        message,
+                    )
                 try:
                     delete_thread.quit()
                 except Exception:
@@ -1042,6 +1072,12 @@ class PipelineLocal(QWidget):
             def _on_delete_error(err):
                 _cleanup_spinner_and_widgets()
                 logger.error(f"Error deleting pipeline: {err}")
+                show_error_dialog(
+                    self,
+                    "Pipeline Delete Failed",
+                    "The workflow could not be deleted. Check the log, then retry.",
+                    err,
+                )
                 try:
                     err_label = QLabel(f"Delete error: {err}")
                     err_label.setStyleSheet(f"color: {theme_manager.get_color('error')};")
@@ -1076,11 +1112,13 @@ class PipelineLocal(QWidget):
             delete_thread.start()
 
         except Exception as e:
-            logger.error(f"Error deleting pipeline: {e}")
-            try:
-                QMessageBox.critical(self, "Delete Error", f"Failed to delete pipeline: {e}")
-            except Exception:
-                pass
+            logger.exception(f"Error deleting pipeline: {e}")
+            show_error_dialog(
+                self,
+                "Delete Error",
+                "The workflow could not be deleted. Check the log, then retry.",
+                str(e),
+            )
 
     def on_run_clicked(self):
         # Get the pipeline name from stored attribute
@@ -1265,9 +1303,16 @@ class PipelineLocal(QWidget):
 
             QMessageBox.information(self, "Pipeline Started", f"Started {pipeline}\nConfig saved to {config_file}")
         except Exception as e:
-            logger.error(f"Error starting pipeline: {e}")
+            logger.exception(f"Error starting pipeline: {e}")
             append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Error starting pipeline: {e}\n")
-            QMessageBox.critical(self, "Error", f"Failed to start pipeline: {e}")
+            if run_name not in self.processes:
+                self._restore_run_controls_after_finish(run_name, pipeline)
+            show_error_dialog(
+                self,
+                "Pipeline Start Failed",
+                "The workflow could not be started. Check the sample sheet, parameters, and Nextflow setup, then retry.",
+                str(e),
+            )
 
     def _proc_stdout(self, run_name):
         self._drain_process_stream(run_name, "stdout")
@@ -1427,7 +1472,12 @@ class PipelineLocal(QWidget):
             QMessageBox.information(self, "Remote Pipeline", message)
         else:
             logger.error(f"Remote pipeline failed: {message}")
-            QMessageBox.critical(self, "Remote Pipeline Error", message)
+            show_error_dialog(
+                self,
+                "Remote Pipeline Error",
+                "The remote run failed. Review its run log and retry after correcting the issue.",
+                message,
+            )
 
         if run_name:
             PipelineLocal.active_runs.discard(run_name)
@@ -1443,7 +1493,12 @@ class PipelineLocal(QWidget):
         run_name = getattr(self, "remote_run_name", None)
         pipeline = getattr(self, "remote_pipeline", None)
         logger.error(f"Remote pipeline error: {error_msg}")
-        QMessageBox.critical(self, "Remote Pipeline Error", f"Remote submission failed: {error_msg}")
+        show_error_dialog(
+            self,
+            "Remote Pipeline Error",
+            "Remote submission failed. Verify the SSH connection and server configuration, then retry.",
+            error_msg,
+        )
 
         if run_name:
             PipelineLocal.active_runs.discard(run_name)
@@ -1518,6 +1573,12 @@ class PipelineLocal(QWidget):
         logger.error(f"Zip/encrypt failed for run {run_name}: {err}")
         append_to_file(f"{self.PIPELINES_RUNS}/{run_name}", f"Pipeline run completed <<exit-code:{1}>>.\n")
         logger.error(f"Pipeline {run_name} finished (code={exitCode}) , But encryption failed")
+        show_error_dialog(
+            self,
+            "Private Run Encryption Failed",
+            "The run finished, but its results could not be encrypted. The original run data was retained.",
+            f"{run_name}: {err}\nRe-authenticate to retry encryption.",
+        )
         
 
     def closeEvent(self, event):
@@ -1967,6 +2028,7 @@ except Exception as e:
             self.finished.emit(True, f"Pipeline finished successfully on {host}")
             
         except Exception as e:
+            logger.exception(f"Remote pipeline operation failed for {self.pipeline}: {e}")
             self.error.emit(str(e))
 
     def _proc_stdout(self, run_name):
@@ -2028,4 +2090,3 @@ except Exception as e:
         if getattr(self, 'remote_run_name', None):
             PipelineLocal.active_runs.discard(self.remote_run_name)
             self.remote_run_name = None
-
