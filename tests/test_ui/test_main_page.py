@@ -25,6 +25,14 @@ from src.utils.nfcore_utils import NfcoreUtils
 from src.utils.widgets.fileview import FileViewerWindow
 
 
+def test_pipeline_import_action_buttons_have_equal_width(qtbot):
+    widget = PipelineImport()
+    qtbot.addWidget(widget)
+
+    assert widget.url_import_btn.minimumWidth() == widget.btn.minimumWidth()
+    assert widget.url_import_btn.maximumWidth() == widget.btn.maximumWidth()
+
+
 def test_file_tree_keeps_multiqc_plot_directories_expandable(tmp_path, qtbot):
     for folder, filename in (
         ("pdf", "plot.pdf"),

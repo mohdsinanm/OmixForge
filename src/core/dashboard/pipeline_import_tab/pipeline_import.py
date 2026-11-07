@@ -81,6 +81,13 @@ class PipelineImport(QWidget):
         self.btn.clicked.connect(self.refresh_pipelines)
         self.btn.setObjectName("refersh_pipeline")
 
+        button_width = max(
+            self.url_import_btn.sizeHint().width(),
+            self.btn.sizeHint().width(),
+        )
+        self.url_import_btn.setFixedWidth(button_width)
+        self.btn.setFixedWidth(button_width)
+
         self.search_input = QLineEdit(parent=self.content)
         self.search_input.setObjectName("pipeline_search_input")
         self.search_input.setPlaceholderText("Search pipelines by name or topic")
