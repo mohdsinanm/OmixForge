@@ -12,7 +12,7 @@ from src.utils.theme_manager import theme_manager
 logger = OmixForgeLogger.get_logger()
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea,
+    QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea, QSizePolicy,
     QHBoxLayout, QGridLayout, QPushButton, QApplication, QSplitter
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QThreadPool
@@ -101,6 +101,7 @@ class PipelineRunStatus(QWidget):
 
         # GRID LAYOUT FOR CARDS
         self.cards_grid = QGridLayout()
+        self.cards_grid.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         scroll = QScrollArea()
         scroll.setObjectName("runStatusScroll")
@@ -174,9 +175,11 @@ class PipelineRunStatus(QWidget):
 
 
     def render_cards(self):
-        columns = 3
+        columns = 4
         row = 0
         col = 0
+        for column in range(columns):
+            self.cards_grid.setColumnStretch(column, 1)
 
         # Clear existing cards so re-rendering doesn't duplicate widgets
         for i in reversed(range(self.cards_grid.count())):
@@ -191,7 +194,11 @@ class PipelineRunStatus(QWidget):
 
             card.clicked.connect(self.on_card_clicked)
 
-            card.setMaximumHeight(200)
+            card.setFixedHeight(90)
+            card.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Fixed,
+            )
             # Add card to grid
             self.cards_grid.addWidget(card, row, col)
 

@@ -11,7 +11,7 @@ from pathlib import Path
 from pyqtwaitingspinner import WaitingSpinner
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea,
+    QWidget, QVBoxLayout, QLabel, QFrame, QScrollArea, QSizePolicy,
     QHBoxLayout, QGridLayout, QPushButton, QDialog, QMessageBox, QApplication, QSplitter
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QProcess, QThread, QObject, QRunnable, QThreadPool, pyqtSlot, QObject, pyqtSignal, QTimer
@@ -228,6 +228,7 @@ class PipelineLocal(QWidget):
         self.cards_grid.setContentsMargins(12, 12, 12, 12)
         self.cards_grid.setHorizontalSpacing(12)
         self.cards_grid.setVerticalSpacing(12)
+        self.cards_grid.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.cards_scroll = QScrollArea()
         self.cards_scroll.setObjectName("localPipelineScroll")
@@ -545,10 +546,12 @@ class PipelineLocal(QWidget):
 
 
     def render_cards(self):
-        columns = 3
+        columns = 4
         card_height = 70
         row = 0
         col = 0
+        for column in range(columns):
+            self.cards_grid.setColumnStretch(column, 1)
         self.pipeline_count.setText(f"{len(self.pipelines)} available")
 
         if len(self.pipelines) > 15:
@@ -581,8 +584,11 @@ class PipelineLocal(QWidget):
 
         for index, name in enumerate(self.pipelines):
             card = PipelineCard(name)
-            card.setMaximumHeight(200) 
-            card.setMinimumHeight(70)
+            card.setFixedHeight(card_height)
+            card.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Fixed,
+            )
             card.clicked.connect(self.on_card_clicked)
 
             # Add card to grid
@@ -2028,4 +2034,3 @@ except Exception as e:
         if getattr(self, 'remote_run_name', None):
             PipelineLocal.active_runs.discard(self.remote_run_name)
             self.remote_run_name = None
-

@@ -934,6 +934,53 @@ def test_pipeline_local_editor_and_results_pages_render_cards(monkeypatch, tmp_p
     assert any(card.name == "result_run" for card in results_page.findChildren(ResultsDataCard))
 
 
+def test_installed_pipeline_cards_resize_with_four_column_grid(
+    qtbot, monkeypatch, tmp_path,
+):
+    import src.core.dashboard.pipeline_dash_tab.local_pipeline as local_module
+
+    monkeypatch.setattr(
+        local_module,
+        "json_read",
+        lambda *_args, **_kwargs: {
+            "folders": {
+                "RUN_DIR": str(tmp_path),
+                "PIPELINES_RUNS": str(tmp_path),
+                "SAMPLE_PREP_DIR": str(tmp_path),
+            }
+        },
+    )
+    monkeypatch.setattr(
+        local_module,
+        "run_shell_command",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            stdout="first\nsecond\nthird\nfourth\n"
+        ),
+    )
+
+    page = PipelineLocal()
+    qtbot.addWidget(page)
+    page.resize(1000, 700)
+    page.show()
+    qtbot.wait(50)
+    cards = page.findChildren(PipelineCard)
+
+    assert len(cards) == 4
+    assert [page.cards_grid.getItemPosition(i) for i in range(4)] == [
+        (0, 0, 1, 1),
+        (0, 1, 1, 1),
+        (0, 2, 1, 1),
+        (0, 3, 1, 1),
+    ]
+    assert all(card.height() == 70 for card in cards)
+    narrow_width = cards[0].width()
+
+    page.resize(1400, 700)
+    qtbot.wait(50)
+
+    assert cards[0].width() > narrow_width
+
+
 def test_pipeline_editor_refresh_is_manual(qtbot, monkeypatch):
     import src.core.dashboard.pipeline_editor_tab.pipeline_editor as editor_module
 
@@ -977,6 +1024,43 @@ def test_pipeline_status_page_has_expected_tabs_and_cards(tmp_path, monkeypatch)
 
     cards = page.findChildren(PipelineCard)
     assert any(card.name == "demo_run.log" for card in cards)
+
+
+def test_pipeline_status_cards_resize_with_four_column_grid(
+    qtbot, monkeypatch, tmp_path,
+):
+    import src.core.status_page.status.run_status as run_status_module
+
+    monkeypatch.setattr(run_status_module, "CONFIG_FILE", tmp_path / "app.config")
+    monkeypatch.setattr(run_status_module, "json_read", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(
+        run_status_module,
+        "list_files_in_directory",
+        lambda *_args, **_kwargs: ["first.log", "second.log", "third.log", "fourth.log"],
+    )
+    monkeypatch.setattr(run_status_module, "read_from_file", lambda *_args, **_kwargs: "")
+
+    page = run_status_module.PipelineRunStatus()
+    qtbot.addWidget(page)
+    page.resize(1000, 700)
+    page.show()
+    qtbot.wait(50)
+    cards = page.findChildren(run_status_module.PipelineCard)
+
+    assert len(cards) == 4
+    assert [page.cards_grid.getItemPosition(i) for i in range(4)] == [
+        (0, 0, 1, 1),
+        (0, 1, 1, 1),
+        (0, 2, 1, 1),
+        (0, 3, 1, 1),
+    ]
+    assert all(card.height() == 90 for card in cards)
+    narrow_width = cards[0].width()
+
+    page.resize(1400, 700)
+    qtbot.wait(50)
+
+    assert cards[0].width() > narrow_width
 
 
 def test_pipeline_result_cards_show_run_status(monkeypatch, qtbot):
